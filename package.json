@@ -1,0 +1,10 @@
+{
+  "name": "usdp-contracts",
+  "version": "0.0.1",
+  "main": "index.js",
+  "author": "@bcn_god",
+  "license": "MIT",
+  "dependencies": {
+    "openzeppelin-test-helpers": "^0.5.1"
+  }
+}
