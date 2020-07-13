@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.6;
 
 import "./helpers/SafeMath.sol";
-import "./parameters.sol";
-import "./usdp.sol";
+import "./Parameters.sol";
 import "./helpers/ERC20SafeTransfer.sol";
 
+
 interface USDPLike {
-    function mint(address, uint256) external;
-    function burn(address, uint256) external;
+    function mint(address, uint) external;
+    function burn(address, uint) external;
 }
+
+
 /**
  * @title Vault
  * @notice Vault is the core of USD ThePay.cash Stablecoin distribution system
@@ -37,6 +39,9 @@ contract Vault is Auth {
     // user debts
     mapping(address => mapping(address => uint)) internal debts;
 
+    // debts of tokens
+    mapping(address => uint) public tokenDebts;
+
     // stability fee pinned to each position
     mapping(address => mapping(address => uint)) public stabilityFee;
 
@@ -48,8 +53,7 @@ contract Vault is Auth {
 
     // timestamp of the last update
     mapping(address => mapping(address => uint)) public lastUpdate;
-    
-    
+
     /**
      * @param _parameters The address of the system parameters
      * @param _col COL token address
@@ -66,7 +70,13 @@ contract Vault is Auth {
      * @param user The owner of a position
      **/
     function update(address token, address user) public hasVaultAccess {
-        debts[token][user] = getDebt(token, user);
+        uint newDebt = getDebt(token, user);
+        tokenDebts[token] = tokenDebts[token].sub(debts[token][user]).add(newDebt);
+
+        // check USDP limit for token
+        require(tokenDebts[token] <= parameters.tokenDebtLimit(token), "USDP: TOKEN_DEBT_LIMIT");
+
+        debts[token][user] = newDebt;
         stabilityFee[token][user] = parameters.stabilityFee(token);
         liquidationFee[token][user] = parameters.liquidationFee(token);
         lastUpdate[token][user] = now;
@@ -148,6 +158,11 @@ contract Vault is Auth {
      **/
     function addDebt(address token, address user, uint amount) external hasVaultAccess {
         debts[token][user] = getDebt(token, user).add(amount);
+        tokenDebts[token] = tokenDebts[token].add(amount);
+
+        // check USDP limit for token
+        require(tokenDebts[token] <= parameters.tokenDebtLimit(token), "USDP: TOKEN_DEBT_LIMIT");
+
         USDP.mint(user, amount);
     }
 
@@ -159,6 +174,7 @@ contract Vault is Auth {
      **/
     function subDebt(address token, address user, uint amount) external hasVaultAccess {
         debts[token][user] = getDebt(token, user).sub(amount);
+        tokenDebts[token] = tokenDebts[token].sub(amount);
         USDP.burn(user, amount);
     }
 
@@ -171,6 +187,7 @@ contract Vault is Auth {
     function liquidate(address token, address user, address liquidationSystem) external hasVaultAccess {
         COL.safeTransferAndVerify(liquidationSystem, colToken[token][user]);
         token.safeTransferAndVerify(liquidationSystem, collaterals[token][user]);
+        tokenDebts[token] = tokenDebts[token].sub(debts[token][user]);
         delete debts[token][user];
         delete collaterals[token][user];
         delete colToken[token][user];
@@ -178,8 +195,8 @@ contract Vault is Auth {
     }
 
     /**
-     * @notice only manager can call this function
-     * @dev Forcely change broken oracle type to the correct one
+     * @notice Only manager can call this function
+     * @dev Changes broken oracle type to the correct one
      * @param token The address of the main collateral token
      * @param user The address of a position's owner
      * @param newOracleType The new type of an oracle
@@ -197,8 +214,6 @@ contract Vault is Auth {
         uint sFeePercent = stabilityFee[token][user];
         uint amount = debts[token][user];
         uint secondsPast = now - lastUpdate[token][user];
-
-        if (secondsPast == 0 || amount == 0 || sFeePercent == 0) return amount;
 
         // 100000 is a fee denominator
         uint fee = amount.mul(sFeePercent).mul(secondsPast).div(365 days).div(100000);

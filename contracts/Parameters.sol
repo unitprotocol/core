@@ -1,30 +1,33 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.6;
+
+import "./helpers/ERC20Like.sol";
+
 
 // Manages USDP's system access
 contract Auth {
 
-    // Address of the the contract with parameters
+    // address of the the contract with parameters
     Parameters public parameters;
 
     constructor(address _parameters) public {
         parameters = Parameters(_parameters);
     }
 
-    // Ensures tx's sender is a manager
+    // ensures tx's sender is a manager
     modifier onlyManager() {
         require(parameters.isManager(msg.sender), "USDP: AUTH_FAILED");
         _;
     }
 
-    // Ensures tx's sender is able to modify the Vault
+    // ensures tx's sender is able to modify the Vault
     modifier hasVaultAccess() {
         require(parameters.canModifyVault(msg.sender), "USDP: AUTH_FAILED");
         _;
     }
 
-    // Ensures tx's sender is the Vault
+    // ensures tx's sender is the Vault
     modifier onlyVault() {
         require(msg.sender == parameters.vault(), "USDP: AUTH_FAILED");
         _;
@@ -33,10 +36,10 @@ contract Auth {
 
 contract Parameters is Auth {
 
-    // Determines the minimum percentage of COL token part in collateral, 0 decimals
+    // determines the minimum percentage of COL token part in collateral, 0 decimals
     uint public minColPercent;
 
-    // Determines the maximum percentage of COL token part in collateral, 0 decimals
+    // determines the maximum percentage of COL token part in collateral, 0 decimals
     uint public maxColPercent;
 
     // map token to stability fee percentage; 3 decimals
@@ -48,16 +51,19 @@ contract Parameters is Auth {
     // map token to liquidation fee percentage, 0 decimals
     mapping(address => uint) public liquidationFee;
 
+    // map token to USDP mint limit
+    mapping(address => uint) public tokenDebtLimit;
+
     // permissions to modify the Vault
     mapping(address => bool) public canModifyVault;
 
     // managers
     mapping(address => bool) public isManager;
 
-    // The whitelist of the tokens that can be used as main collateral
-    mapping(address => bool) public isCollateral;
+    // enabled oracle types for position spawn
+    mapping(uint => bool) public isOracleTypeEnabled;
 
-    // The address of the Vault
+    // address of the Vault
     address public vault;
 
     /**
@@ -68,7 +74,8 @@ contract Parameters is Auth {
     **/
     constructor(address _vault) public Auth(address(this)) {
         isManager[msg.sender] = true;
-        setColPartRange(1, 5); // from 1% to 5%
+        minColPercent = 1; // 1%
+        maxColPercent = 5; // 5%
         vault = _vault;
     }
 
@@ -89,19 +96,19 @@ contract Parameters is Auth {
      * @param stabilityFeeValue The percentage of the year stability fee (3 decimals)
      * @param liquidationFeeValue The liquidation fee percentage (0 decimals)
      * @param minCollateralizationPercentValue The minimum percentage of the collateral ratio
-     * @param isActivated The ability flag
+     * @param usdpLimit The USDP token issue limit
      **/
     function setCollateral(
         address token,
         uint stabilityFeeValue,
         uint liquidationFeeValue,
         uint minCollateralizationPercentValue,
-        bool isActivated
+        uint usdpLimit
     ) external onlyManager {
         setStabilityFee(token, stabilityFeeValue);
         setLiquidationFee(token, liquidationFeeValue);
         setMinCollateralizationPercent(token, minCollateralizationPercentValue);
-        isCollateral[token] = isActivated;
+        setTokenDebtLimit(token, usdpLimit);
     }
 
     /**
@@ -151,9 +158,29 @@ contract Parameters is Auth {
      * @param min The min percentage (0 decimals)
      * @param max The max percentage (0 decimals)
      **/
-    function setColPartRange(uint min, uint max) external onlyManager {
+    function setColPartRange(uint min, uint max) public onlyManager {
         require(max <= 100 && min <= max, "USDP: WRONG_RANGE");
         minColPercent = min;
         maxColPercent = max;
+    }
+
+    /**
+     * notice Only manager is able to call this function
+     * @dev Enables/disables oracle types
+     * @param _type The type of the oracle
+     * @param enabled The control flag
+     **/
+    function setOracleType(uint _type, bool enabled) public onlyManager {
+        isOracleTypeEnabled[_type] = enabled;
+    }
+
+    /**
+     * notice Only manager is able to call this function
+     * @dev Sets USDP limit for a specific collateral
+     * @param token The token address
+     * @param limit The limit number
+     **/
+    function setTokenDebtLimit(address token, uint limit) public onlyManager {
+        tokenDebtLimit[token] = limit;
     }
 }

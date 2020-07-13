@@ -10,228 +10,98 @@ const { calculateAddressAtNonce, deployContractBytecode } = require('./helpers/d
 const BN = web3.utils.BN;
 const { expect } = require('chai');
 
-const Vault = artifacts.require('Vault');
 const Parameters = artifacts.require('Parameters');
-const USDP = artifacts.require('USDP');
-const WETH = artifacts.require('WETH');
-const DummyToken = artifacts.require('DummyToken');
-const UniswapOracle = artifacts.require('UniswapOracle');
-const UniswapV2FactoryDeployCode = require('./helpers/UniswapV2DeployCode');
-const IUniswapV2Factory = artifacts.require('IUniswapV2Factory');
-const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
-const VaultManager = artifacts.require('VaultManager');
-const Liquidator = artifacts.require('Liquidator');
 
-
-const utils = context =>
-{
-	return {
-		poolDeposit: async (token, amount, decimals) => {
-			amount = decimals ? String(amount * 10 ** decimals) : ether(amount.toString());
-			await token.approve(context.uniswapRouter.address, amount);
-			await context.uniswapRouter.addLiquidity(
-				token.address,
-				context.weth.address,
-				amount,
-				ether('1'),
-				amount,
-				ether('1'),
-				context.deployer,
-				(await time.latest()).add(new BN('100')),
-			);
-		},
-		spawn: async(main, mainAmount, colAmount, usdpAmount) => {
-			await main.approve(context.vault.address, mainAmount);
-			await context.col.approve(context.vault.address, colAmount);
-			return context.vaultManager.spawn(
-				main.address,
-				mainAmount, // main
-				colAmount, // COL
-				usdpAmount,	// USDP
-				'1', // oracle type: Uniswap
-			);
-		},
-		join: async(main, mainAmount, colAmount, usdpAmount) => {
-			await main.approve(context.vault.address, mainAmount);
-			await context.col.approve(context.vault.address, colAmount);
-			return context.vaultManager.join(
-				main.address,
-				mainAmount, // main
-				colAmount, // COL
-				usdpAmount,	// USDP
-			);
-		},
-		exit: async(main, mainAmount, colAmount, usdpAmount) => {
-			return context.vaultManager.exit(
-				main.address,
-				mainAmount, // main
-				colAmount, // COL
-				usdpAmount,	// USDP
-			);
-		},
-		repayAndWithdraw: async(main, user) => {
-			const mainAmount = await context.vault.collaterals(main.address, user);
-			const colAmount = await context.vault.colToken(main.address, user);
-			return context.vaultManager.repayAll(main.address, mainAmount, colAmount);
-		}
-	}
-}
-
-contract('VaultManager', function([
+contract('Parameters', function([
 	deployer,
-	liquidationSystem,
+	secondAccount,
+	thirdAccount,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
-		this.utils = utils(this);
-		this.deployer = deployer;
-
-		this.col = await DummyToken.new("COL clone", "COL", 18, ether('1000000'));
-		this.dai = await DummyToken.new("DAI clone", "DAI", 18, ether('1000000'));
-		this.usdc = await DummyToken.new("USDC clone", "USDC", 6, String(10000000 * 10 ** 6));
-		this.weth = await WETH.new();
-		this.someCollateral = await DummyToken.new("Example collateral token", "ECT", 18, ether('1000000'));
-
-		await this.weth.deposit({ value: ether('4') });
-		const uniswapFactoryAddr = await deployContractBytecode(UniswapV2FactoryDeployCode, deployer);
-		this.uniswapFactory = await IUniswapV2Factory.at(uniswapFactoryAddr);
-		await this.uniswapFactory.createPair(this.dai.address, this.weth.address);
-		await this.uniswapFactory.createPair(this.usdc.address, this.weth.address);
-
-		this.uniswapOracle = await UniswapOracle.new(
-			this.uniswapFactory.address,
-			this.dai.address,
-			this.usdc.address,
-			this.weth.address,
-		);
-
-		const parametersAddr = calculateAddressAtNonce(deployer, await web3.eth.getTransactionCount(deployer) + 1);
-		this.usdp = await USDP.new(parametersAddr);
-		const vaultAddr = calculateAddressAtNonce(deployer, await web3.eth.getTransactionCount(deployer) + 1);
-		this.parameters = await Parameters.new(vaultAddr);
-		this.vault = await Vault.new(this.parameters.address, this.col.address, this.usdp.address);
-		this.liquidator = await Liquidator.new(this.parameters.address, this.vault.address, this.uniswapOracle.address, this.col.address, liquidationSystem);
-		this.vaultManager = await VaultManager.new(
-			this.vault.address,
-			this.liquidator.address,
-			this.parameters.address,
-			this.uniswapOracle.address,
-			this.col.address
-		);
-
-		this.uniswapRouter = await UniswapV2Router02.new(this.uniswapFactory.address, this.weth.address);
-
-		await this.weth.approve(this.uniswapRouter.address, ether('100'));
-
-		// Add liquidity to DAI/WETH pool; rate = 200 DAI/ETH
-		await this.utils.poolDeposit(this.dai, 200);
-
-		// Add liquidity to USDC/WETH pool
-		await this.utils.poolDeposit(this.usdc, 300, 6);
-
-		// Add liquidity to COL/WETH pool; rate = 250 COL/WETH; 1 COL = 1 USD
-		await this.utils.poolDeposit(this.col, 250);
-
-		// Add liquidity to some token/WETH pool; rate = 125 token/WETH; 1 token = 2 USD
-		await this.utils.poolDeposit(this.someCollateral, 125);
-
-		await this.parameters.setOracleType('1', true);
-		await this.parameters.setVaultAccess(this.vaultManager.address, true);
-		await this.parameters.setCollateral(
-			this.someCollateral.address,
-			'0', // stability fee
-			'0', // liquidation fee
-			'150', // min collateralization
-			ether('100000'), // debt limit
-		);
-		// const tokenPrice = await this.uniswapOracle.tokenToUsd(this.someCollateral.address, '100');
+		this.parameters = await Parameters.new(secondAccount);
 	});
 
-	describe('Test Vault Management', function() {
-		it('Should spawn position', async function () {
-			const mainAmount = ether('100');
-			const colAmount = ether('20');
-			const usdpAmount = ether('20');
+	describe('Optimistic cases', function() {
+		it('Should set another account as manager', async function () {
+			await this.parameters.setManager(thirdAccount, true);
 
-			const { logs } = await this.utils.spawn(this.someCollateral, mainAmount, colAmount, usdpAmount);
-			expectEvent.inLogs(logs, 'Spawn', {
-				collateral: this.someCollateral.address,
-				user: deployer,
-				oracleType: '1',
-			});
+			const isManager = await this.parameters.isManager(thirdAccount);
 
-			const mainAmountInPosition = await this.vault.collaterals(this.someCollateral.address, deployer);
-			const colAmountInPosition = await this.vault.colToken(this.someCollateral.address, deployer);
-			const usdpBalance = await this.usdp.balanceOf(deployer);
-
-			expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount);
-			expect(colAmountInPosition).to.be.bignumber.equal(colAmount);
-			expect(usdpBalance).to.be.bignumber.equal(usdpAmount);
+			expect(isManager).to.equal(true);
 		})
 
-		it('Should close position', async function () {
-			const mainAmount = ether('100');
-			const colAmount = ether('20');
-			const usdpAmount = ether('20');
+		it('Should set token as collateral with specified parameters', async function () {
+			const expectedTokenDebtLimit = ether('1000000');
+			await this.parameters.setCollateral(thirdAccount, 0, 100, 150, expectedTokenDebtLimit);
 
-			await this.utils.spawn(this.someCollateral, mainAmount, colAmount, usdpAmount);
+			const tokenDebtLimit = await this.parameters.tokenDebtLimit(thirdAccount);
 
-			const { logs } = await this.utils.repayAndWithdraw(this.someCollateral, deployer);
-			expectEvent.inLogs(logs, 'Destroy', {
-				collateral: this.someCollateral.address,
-				user: deployer,
-			});
-
-			const mainAmountInPosition = await this.vault.collaterals(this.someCollateral.address, deployer);
-			const colAmountInPosition = await this.vault.colToken(this.someCollateral.address, deployer);
-
-			expect(mainAmountInPosition).to.be.bignumber.equal(new BN(0));
-			expect(colAmountInPosition).to.be.bignumber.equal(new BN(0));
+			expect(tokenDebtLimit).to.be.bignumber.equal(expectedTokenDebtLimit);
 		})
 
-		it('Should deposit collaterals to position and mint USDP', async function () {
-			let mainAmount = ether('100');
-			let colAmount = ether('20');
-			let usdpAmount = ether('20');
+		it('Should set min collateralization percent', async function () {
+			const expectedMinCollateralizationPercent = ether('51615115');
+			await this.parameters.setMinCollateralizationPercent(thirdAccount, expectedMinCollateralizationPercent);
 
-			await this.utils.spawn(this.someCollateral, mainAmount, colAmount, usdpAmount);
+			const minCollateralizationPercent = await this.parameters.minCollateralizationPercent(thirdAccount);
 
-			const { logs } = await this.utils.join(this.someCollateral, mainAmount, colAmount, usdpAmount);
-			expectEvent.inLogs(logs, 'Update', {
-				collateral: this.someCollateral.address,
-				user: deployer,
-			});
-
-			const mainAmountInPosition = await this.vault.collaterals(this.someCollateral.address, deployer);
-			const colAmountInPosition = await this.vault.colToken(this.someCollateral.address, deployer);
-			const usdpBalance = await this.usdp.balanceOf(deployer);
-
-			expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount.mul(new BN(2)));
-			expect(colAmountInPosition).to.be.bignumber.equal(colAmount.mul(new BN(2)));
-			expect(usdpBalance).to.be.bignumber.equal(usdpAmount.mul(new BN(2)));
+			expect(minCollateralizationPercent).to.be.bignumber.equal(expectedMinCollateralizationPercent);
 		})
 
-		it('Should withdraw collaterals from position and repay (burn) USDP', async function () {
-			let mainAmount = ether('100');
-			let colAmount = ether('20');
-			let usdpAmount = ether('20');
+		it('Should set vault access', async function () {
+			await this.parameters.setVaultAccess(thirdAccount, true);
 
-			await this.utils.spawn(this.someCollateral, mainAmount.mul(new BN(2)), colAmount.mul(new BN(2)), usdpAmount.mul(new BN(2)));
+			const hasVaultAccess = await this.parameters.canModifyVault(thirdAccount);
 
-			const usdpSupplyBefore = await this.usdp.totalSupply();
+			expect(hasVaultAccess).to.equal(true);
+		})
 
-			await this.utils.exit(this.someCollateral, mainAmount, colAmount, usdpAmount);
+		it('Should set stability fee', async function () {
+			const expectedStabilityFee = new BN('2000');
+			await this.parameters.setStabilityFee(thirdAccount, expectedStabilityFee);
 
-			const usdpSupplyAfter = await this.usdp.totalSupply();
+			const stabilityFee = await this.parameters.stabilityFee(thirdAccount);
 
-			const mainAmountInPosition = await this.vault.collaterals(this.someCollateral.address, deployer);
-			const colAmountInPosition = await this.vault.colToken(this.someCollateral.address, deployer);
-			const usdpBalance = await this.usdp.balanceOf(deployer);
+			expect(stabilityFee).to.be.bignumber.equal(expectedStabilityFee);
+		})
 
-			expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount);
-			expect(colAmountInPosition).to.be.bignumber.equal(colAmount);
-			expect(usdpBalance).to.be.bignumber.equal(usdpAmount);
-			expect(usdpSupplyAfter).to.be.bignumber.equal(usdpSupplyBefore.sub(usdpAmount));
+		it('Should set liquidation fee', async function () {
+			const expectedLiquidationFee = new BN('1');
+			await this.parameters.setLiquidationFee(thirdAccount, expectedLiquidationFee);
+
+			const liquidationFee = await this.parameters.liquidationFee(thirdAccount);
+
+			expect(liquidationFee).to.be.bignumber.equal(expectedLiquidationFee);
+		})
+
+		it('Should set set COL token part percentage range', async function () {
+			const expectedMinColPartRange = new BN('2');
+			const expectedMaxColPartRange = new BN('10');
+			await this.parameters.setColPartRange(expectedMinColPartRange, expectedMaxColPartRange);
+
+			const minColPercentage = await this.parameters.minColPercent();
+			const maxColPercentage = await this.parameters.maxColPercent();
+
+			expect(minColPercentage).to.be.bignumber.equal(expectedMinColPartRange);
+			expect(maxColPercentage).to.be.bignumber.equal(expectedMaxColPartRange);
+		})
+
+		it('Should set oracle type enabled', async function () {
+			await this.parameters.setOracleType(2, true);
+
+			const isOracleTypeEnabled = await this.parameters.isOracleTypeEnabled(2);
+
+			expect(isOracleTypeEnabled).to.equal(true);
+		})
+
+		it('Should set token debt limit', async function () {
+			const expectedTokenDebtLimit = new BN('123456');
+			await this.parameters.setTokenDebtLimit(thirdAccount, expectedTokenDebtLimit);
+
+			const tokenDebtLimit = await this.parameters.tokenDebtLimit(thirdAccount);
+
+			expect(tokenDebtLimit).to.be.bignumber.equal(expectedTokenDebtLimit);
 		})
 	});
 });
