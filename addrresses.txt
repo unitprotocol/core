@@ -1,0 +1,18 @@
+// KOVAN
+
+COL                             0xC6b2b080F3A5CB523215B8f9c2ccD01Fb4E867Be // 1COL = 1$ initially (250 COL/WETH)
+DAI                             0x5E50b7eA67c72CfE11000A2cc35bAc6d77aaf6ad // 200 DAI/WETH
+USDC                            0x6567f36f64de9398F63C0E9a36F6A826284DfdaA // 300 USDC/WETH
+WETH                            0xd0A1E359811322d97991E03f863a0C30C2cF029C
+Example collateral token        0xeEe5Aa43586846E5D270dd378C927e6D2F61187e // 1ECT = 2$ initially (125 ECT/WETH)
+
+UniswapFactory                  0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
+UniswapOracle                   0x4482F44e815b6d7D9248e0e7E53D69eA2aab45b1
+UniswapV2Router02               0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
+
+USDP                            0xDa70b9b4E420aA9401CdFA7F2E9f653582FCf5eC
+
+Parameters                      0x441E8474571Cf08d2Fd316EF5B02E696d833d436
+Vault                           0xF8C96409108cc78209d8a4F806A6E70a253593E1
+Liquidator                      0xa5C1AA0431E411b17B69D35d5C74d6C903A6811A
+VaultManager                    0x15fAcE46eC996eea1D4210df9fb441e5CAfe43BD

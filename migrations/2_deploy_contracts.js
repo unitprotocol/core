@@ -11,7 +11,6 @@ const Liquidator = artifacts.require('Liquidator');
 const { ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce } = require('../test/helpers/deployUtils');
 const BN = web3.utils.BN;
-const { time } = require('openzeppelin-test-helpers');
 
 const getUtils = context => {
   return {
@@ -37,7 +36,7 @@ const getUtils = context => {
   }
 };
 
-module.exports = async function(deployer, network, accounts) {
+module.exports = async function(deployer, network) {
   const utils = getUtils(this);
 
   if (network !== 'ropsten-fork') {
@@ -52,7 +51,7 @@ module.exports = async function(deployer, network, accounts) {
   const col = await deployer.deploy(DummyToken, "COL testnet", "COL", 18, ether('1000000'));
   const dai = await deployer.deploy(DummyToken, "DAI testnet", "DAI", 18, ether('1000000'));
   const usdc = await deployer.deploy(DummyToken, "USDC testnet", "USDC", 6, String(10000000 * 10 ** 6));
-  this.weth = await WETH.at('0xc778417E063141139Fce010982780140Aa0cD5Ab');
+  this.weth = await WETH.at('0xd0A1E359811322d97991E03f863a0C30C2cF029C');
   // this.weth = await WETH.at('0x348E004B789D5C6BBC65cEaaDE84f7Fad897EBB8');
   const someCollateral = await deployer.deploy(DummyToken, "Example collateral token", "ECT", 18, ether('1000000'));
 

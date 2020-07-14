@@ -45,7 +45,23 @@ module.exports = {
 			},
 			gasPrice: 1000000000,
 			gas: 6700000
-		}
+		},
+		rinkeby: {
+			network_id: "4",
+			provider: function() {
+				return getWalletProvider("rinkeby");
+			},
+			gasPrice: 1000000000,
+			gas: 6700000
+		},
+		kovan: {
+			network_id: "42",
+			provider: function() {
+				return getWalletProvider("kovan");
+			},
+			gasPrice: 1000000000,
+			gas: 6700000
+		},
 	},
 	mocha: {
 		reporter: 'eth-gas-reporter',
