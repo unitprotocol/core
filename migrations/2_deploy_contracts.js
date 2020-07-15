@@ -40,7 +40,7 @@ module.exports = async function(deployer, network) {
   const utils = getUtils(this);
 
   if (network !== 'ropsten-fork') {
-    console.log(`Incorrect network: ${network}`);
+    console.log(`Contracts will not be deployed on this network: ${network}`);
     return;
   }
 

@@ -5,7 +5,8 @@
   "author": "@bcngod",
   "license": "MIT",
   "scripts": {
-    "test" : "truffle test"
+    "test" : "truffle test",
+    "build" : "rm -r build && truffle compile"
   },
   "dependencies": {
     "@truffle/hdwallet-provider": "^1.0.38-next.2",
