@@ -95,7 +95,7 @@ contract VaultManager is Auth {
     function join(address token, uint mainAmount, uint colAmount, uint usdpAmount) external {
 
         // check the existence of a position
-        require(vault.getDebt(token, msg.sender) > 0);
+        require(vault.getDebt(token, msg.sender) > 0, "USDP: POSITION_DOES_NOT_EXIST");
 
         // USDP minting triggers the update of a position
         if (usdpAmount > 0)
@@ -119,7 +119,12 @@ contract VaultManager is Auth {
             uint newMainUsd = uniswapOracle.tokenToUsd(token, vault.collaterals(token, msg.sender).add(mainAmount));
 
             // USD limit of a position's main collateral utilization
-            uint mainUsdLimit = newColUsd * (100 - parameters.minColPercent()) / parameters.minColPercent();
+            uint mainUsdLimit;
+            if (parameters.minColPercent() == 0) {
+                mainUsdLimit = newMainUsd;
+            } else {
+                mainUsdLimit = newColUsd * (100 - parameters.minColPercent()) / parameters.minColPercent();
+            }
 
             // USD limit of a position's COL collateral utilization
             uint colUsdLimit;
