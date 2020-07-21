@@ -6,6 +6,7 @@ const balance = require('./helpers/balances');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
 const utils = require('./helpers/utils');
+const { expectRevert } = require('openzeppelin-test-helpers');
 
 contract('VaultManager', function([
 	deployer,
@@ -18,6 +19,7 @@ contract('VaultManager', function([
 		this.liquidationSystem = liquidationSystem;
 		await this.utils.deploy();
 		// const tokenPrice = await this.uniswapOracle.tokenToUsd(this.someCollateral.address, '100');
+		// console.log(tokenPrice.toString());
 	});
 
 	describe('Optimistic cases', function() {
@@ -107,4 +109,151 @@ contract('VaultManager', function([
 			expect(usdpSupplyAfter).to.be.bignumber.equal(usdpSupplyBefore.sub(usdpAmount));
 		})
 	});
+
+	describe('Pessimistic cases', function() {
+		describe('Spawn', function() {
+			it('Reverts pre-existent position', async function() {
+				const mainAmount = ether('100');
+				const colAmount = ether('20');
+				const usdpAmount = ether('20');
+
+				await this.utils.spawn(this.someCollateral, mainAmount, colAmount, usdpAmount);
+				await this.utils.approveCollaterals(this.someCollateral, mainAmount, colAmount);
+				const tx = this.vaultManager.spawn(
+					this.someCollateral.address,
+					mainAmount, // main
+					colAmount, // COL
+					usdpAmount,	// USDP
+					'1', // oracle type: Uniswap
+				);
+				await this.utils.expectRevert(tx, "USDP: SPAWNED_POSITION");
+			})
+
+			it('Reverts wrong oracle type', async function() {
+				const mainAmount = ether('100');
+				const colAmount = ether('20');
+				const usdpAmount = ether('20');
+
+				await this.utils.approveCollaterals(this.someCollateral, mainAmount, colAmount);
+				const tx = this.vaultManager.spawn(
+					this.someCollateral.address,
+					mainAmount, // main
+					colAmount, // COL
+					usdpAmount,	// USDP
+					'2', // wrong oracle type
+				);
+				await this.utils.expectRevert(tx, "USDP: WRONG_ORACLE_TYPE");
+			})
+
+			it('Reverts non valuable tx', async function() {
+				const mainAmount = ether('0');
+				const colAmount = ether('0');
+				const usdpAmount = ether('0');
+
+				await this.utils.approveCollaterals(this.someCollateral, mainAmount, colAmount);
+				const tx = this.vaultManager.spawn(
+					this.someCollateral.address,
+					mainAmount, // main
+					colAmount, // COL
+					usdpAmount,	// USDP
+					'1', // oracle type: Uniswap
+				);
+				await this.utils.expectRevert(tx, "USDP: USELESS_TX");
+			})
+
+			it('Reverts when collateralization is incorrect', async function() {
+				const mainAmount = ether('100');
+				const colAmount = ether('0');
+				const usdpAmount = ether('20');
+
+				await this.utils.approveCollaterals(this.someCollateral, mainAmount, colAmount);
+				const tx = this.vaultManager.spawn(
+					this.someCollateral.address,
+					mainAmount, // main
+					colAmount, // COL
+					usdpAmount,	// USDP
+					'1', // oracle type: Uniswap
+				);
+				await this.utils.expectRevert(tx, "USDP: INCORRECT_COLLATERALIZATION");
+			})
+
+			it('Reverts when main collateral is not approved', async function() {
+				const mainAmount = ether('100');
+				const colAmount = ether('20');
+				const usdpAmount = ether('20');
+
+				const tx = this.vaultManager.spawn(
+					this.someCollateral.address,
+					mainAmount, // main
+					colAmount, // COL
+					usdpAmount,	// USDP
+					'1', // oracle type: Uniswap
+				);
+				await this.utils.expectRevert(tx, "TRANSFER_FAILURE");
+			})
+
+			it('Reverts when COL token is not approved', async function() {
+				const mainAmount = ether('100');
+				const colAmount = ether('20');
+				const usdpAmount = ether('20');
+
+				await this.someCollateral.approve(this.vault.address, mainAmount);
+
+				const tx = this.vaultManager.spawn(
+					this.someCollateral.address,
+					mainAmount, // main
+					colAmount, // COL
+					usdpAmount,	// USDP
+					'1', // oracle type: Uniswap
+				);
+				await this.utils.expectRevert(tx, "TRANSFER_FAILURE");
+			})
+		})
+
+		describe('Join', function () {
+			it('Reverts non-existent position', async function() {
+				const mainAmount = ether('100');
+				const colAmount = ether('20');
+				const usdpAmount = ether('20');
+
+				const tx = this.vaultManager.join(this.someCollateral.address, mainAmount, colAmount, usdpAmount);
+				await this.utils.expectRevert(tx, "USDP: POSITION_DOES_NOT_EXIST");
+			})
+		})
+
+		describe('Exit', function () {
+			it('Reverts non valuable tx', async function() {
+				const mainAmount = ether('100');
+				const colAmount = ether('20');
+				const usdpAmount = ether('20');
+
+				await this.utils.spawn(this.someCollateral, mainAmount, colAmount, usdpAmount);
+
+				const tx = this.utils.exit(this.someCollateral, 0, 0, 0);
+				await this.utils.expectRevert(tx, "USDP: USELESS_TX");
+			})
+
+			it('Reverts when specified repayment amount is more than the accumulated debt', async function() {
+				const mainAmount = ether('100');
+				const colAmount = ether('20');
+				const usdpAmount = ether('20');
+
+				await this.utils.spawn(this.someCollateral, mainAmount, colAmount, usdpAmount);
+
+				const tx = this.utils.exit(this.someCollateral, mainAmount, colAmount, usdpAmount.add(new BN(1)));
+				await expectRevert.unspecified(tx);
+			})
+
+			it('Reverts when position becomes undercollateralized', async function() {
+				const mainAmount = ether('100');
+				const colAmount = ether('20');
+				const usdpAmount = ether('20');
+
+				await this.utils.spawn(this.someCollateral, mainAmount, colAmount, usdpAmount);
+
+				const tx = this.utils.exit(this.someCollateral, mainAmount, 0, 0);
+				await this.utils.expectRevert(tx, "USDP: UNDERCOLLATERALIZED_POSITION");
+			})
+		})
+	})
 });
