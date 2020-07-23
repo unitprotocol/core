@@ -45,8 +45,11 @@ contract Parameters is Auth {
     // map token to stability fee percentage; 3 decimals
     mapping(address => uint) public stabilityFee;
 
-    // map token to minimum collateralization percentage; 0 decimals
-    mapping(address => uint) public minCollateralizationPercent;
+    // map token to initial collateralization ratio; 0 decimals
+    mapping(address => uint) public initialCollateralRatio;
+
+    // map token to liquidation ratio; 0 decimals
+    mapping(address => uint) public liquidationRatio;
 
     // map token to liquidation fee percentage, 0 decimals
     mapping(address => uint) public liquidationFee;
@@ -95,31 +98,45 @@ contract Parameters is Auth {
      * @param token The address of a token
      * @param stabilityFeeValue The percentage of the year stability fee (3 decimals)
      * @param liquidationFeeValue The liquidation fee percentage (0 decimals)
-     * @param minCollateralizationPercentValue The minimum percentage of the collateral ratio
+     * @param initialCollateralRatioValue The initial collateralization ratio
+     * @param liquidationRatioValue The liquidation ratio
      * @param usdpLimit The USDP token issue limit
      **/
     function setCollateral(
         address token,
         uint stabilityFeeValue,
         uint liquidationFeeValue,
-        uint minCollateralizationPercentValue,
+        uint initialCollateralRatioValue,
+        uint liquidationRatioValue,
         uint usdpLimit
     ) external onlyManager {
         setStabilityFee(token, stabilityFeeValue);
         setLiquidationFee(token, liquidationFeeValue);
-        setMinCollateralizationPercent(token, minCollateralizationPercentValue);
+        setInitialCollateralRatio(token, initialCollateralRatioValue);
+        setLiquidationRatio(token, liquidationRatioValue);
         setTokenDebtLimit(token, usdpLimit);
     }
 
     /**
      * notice Only manager is able to call this function
-     * @dev Sets the minimum percentage of the collateral ratio
+     * @dev Sets the initial collateral ratio
      * @param token The address of a token
-     * @param newValue The percentage with 3 decimals
+     * @param newValue The collateralization ratio with 3 decimals
      **/
-    function setMinCollateralizationPercent(address token, uint newValue) public onlyManager {
+    function setInitialCollateralRatio(address token, uint newValue) public onlyManager {
         require(newValue >= 100, "USDP: INCORRECT_COLLATERALIZATION_VALUE");
-        minCollateralizationPercent[token] = newValue;
+        initialCollateralRatio[token] = newValue;
+    }
+
+    /**
+     * notice Only manager is able to call this function
+     * @dev Sets the liquidation ratio
+     * @param token The address of a token
+     * @param newValue The liquidation ratio with 3 decimals
+     **/
+    function setLiquidationRatio(address token, uint newValue) public onlyManager {
+        require(newValue >= 100 && newValue <= initialCollateralRatio[token], "USDP: INCORRECT_COLLATERALIZATION_VALUE");
+        liquidationRatio[token] = newValue;
     }
 
     /**

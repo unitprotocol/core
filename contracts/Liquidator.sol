@@ -57,16 +57,36 @@ contract Liquidator {
     }
 
     /**
-     * @dev Determines whether a position is safe
+     * @dev Determines whether a position is liquidatable
      * @param token The address of the main collateral token of a position
      * @param user The owner of a position
-     * @return boolean value, whether a position is safe
+     * @return boolean value, whether a position is liquidatable
+     **/
+    function isLiquidatablePosition(address token, address user) public view returns (bool) {
+        return getCollateralizationRatio(token, user) <= parameters.liquidationRatio(token);
+    }
+
+    /**
+     * @dev Determines whether a position is sufficiently collateralized
+     * @param token The address of the main collateral token of a position
+     * @param user The owner of a position
+     * @return boolean value, whether a position is sufficiently collateralized
      **/
     function isSafePosition(address token, address user) public view returns (bool) {
+        return getCollateralizationRatio(token, user) >= parameters.initialCollateralRatio(token);
+    }
+
+    /**
+     * @dev Calculates position's collateral ratio
+     * @param token The address of the main collateral token of a position
+     * @param user The owner of a position
+     * @return collateralization ratio of a position
+     **/
+    function getCollateralizationRatio(address token, address user) public view returns (uint) {
         uint debt = vault.getDebt(token, user);
 
-        // position is safe if there is no debt
-        if (debt == 0) return true;
+        // position is collateralized if there is no debt
+        if (debt == 0) return parameters.initialCollateralRatio(token);
 
         OracleLike _usingOracle;
 
@@ -81,7 +101,7 @@ contract Liquidator {
         // USD value of the COL amount of a position
         uint colTokenUsd = _usingOracle.tokenToUsd(COL, vault.colToken(token, user));
 
-        return mainCollateralUsd.add(colTokenUsd).mul(100).div(debt) >= parameters.minCollateralizationPercent(token);
+        return mainCollateralUsd.add(colTokenUsd).mul(100).div(debt);
     }
 
     /**
@@ -93,7 +113,7 @@ contract Liquidator {
     function liquidate(address token, address user) external {
 
         // reverts if a position is safe
-        require(!isSafePosition(token, user), "USDP: SAFE_POSITION");
+        require(isLiquidatablePosition(token, user), "USDP: SAFE_POSITION");
 
         // sends liquidation command to the Vault
         vault.liquidate(token, user, liquidationSystem);

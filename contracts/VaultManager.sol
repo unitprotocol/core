@@ -138,7 +138,7 @@ contract VaultManager is Auth {
             uint collateralUsdLimit = Math.min(newColUsd, colUsdLimit) + Math.min(newMainUsd, mainUsdLimit);
 
             // USD withdrawable limit
-            uint usdLimit = collateralUsdLimit * 100 / parameters.minCollateralizationPercent(token);
+            uint usdLimit = collateralUsdLimit * 100 / parameters.initialCollateralRatio(token);
 
             // Ensure collateralization & collateral partition
             require(usdpDebt.add(usdpAmount) <= usdLimit, "USDP: INCORRECT_COLLATERALIZATION");
@@ -205,7 +205,7 @@ contract VaultManager is Auth {
     }
 
 
-    // update position parameters to the current ones
+    // update position parameters to current
     function _updatePosition(address token) internal {
         vault.update(token, msg.sender);
 
