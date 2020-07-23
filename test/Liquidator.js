@@ -21,13 +21,31 @@ contract('Liquidator', function([
 	describe('Optimistic cases', function() {
 		it('Should liquidate undercollateralized position', async function () {
 			const mainAmount = ether('50');
-			const colAmount = ether('50');
-			const usdpAmount = ether('100');
+			const colAmount = ether('5');
+			const usdpAmount = ether('70');
 
+			/*
+			 * Spawned position params:
+			 * collateral value = 50 * 2 + 5 = 105$
+			 * collateralization percent = 105 / 70 = 150%
+			 */
 			await this.utils.spawn(this.someCollateral, mainAmount, colAmount, usdpAmount);
 
+			/*
+			 * Some collateral/WETH pool params before swap:
+			 * Some collateral reserve = 125e+12
+			 * WETH reserve = 1e+12
+			 * 1 some collateral = 1/125 ETH = 2$ (because 1 ETH = 250$)
+			 */
 			const swapAmount = new BN(10).pow(new BN(14))
 			await this.someCollateral.approve(this.uniswapRouter.address, swapAmount);
+
+			/*
+			 * Some collateral/WETH pool params after swap:
+			 * Some collateral reserve = 125e+12 + 100e+10 = 225e+12
+			 * WETH reserve = 1e+12 - (100e+10 * 997 * 1e+12) / (125e+12 * 1000 + 100e+10 * 997) = 992087113185
+			 * 1 some collateral = ~0.0044 ETH = ~ 1.10$
+			 */
 			await this.uniswapRouter.swapExactTokensForTokens(
 				swapAmount,
 				'1',
@@ -36,6 +54,11 @@ contract('Liquidator', function([
 				'9999999999999999',
 			);
 
+			/*
+			 * Position params after price change:
+			 * collateral value = 50 * 1.10 + 5 = 60.12$
+			 * collateralization percent = 60.12 / 70 = 85.9%
+			 */
 			const { logs } = await this.utils.liquidate(this.someCollateral, deployer);
 			expectEvent.inLogs(logs, 'Liquidation', {
 				token: this.someCollateral.address,

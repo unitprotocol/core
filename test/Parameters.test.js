@@ -33,7 +33,7 @@ contract('Parameters', function([
 
 		it('Should set token as collateral with specified parameters', async function () {
 			const expectedTokenDebtLimit = ether('1000000');
-			await this.parameters.setCollateral(thirdAccount, 0, 100, 150, expectedTokenDebtLimit);
+			await this.parameters.setCollateral(thirdAccount, 0, 100, 150, 150, expectedTokenDebtLimit);
 
 			const tokenDebtLimit = await this.parameters.tokenDebtLimit(thirdAccount);
 
@@ -41,12 +41,12 @@ contract('Parameters', function([
 		})
 
 		it('Should set min collateralization percent', async function () {
-			const expectedMinCollateralizationPercent = ether('51615115');
-			await this.parameters.setMinCollateralizationPercent(thirdAccount, expectedMinCollateralizationPercent);
+			const expectedInitialCollateralRatio = ether('51615115');
+			await this.parameters.setInitialCollateralRatio(thirdAccount, expectedInitialCollateralRatio);
 
-			const minCollateralizationPercent = await this.parameters.minCollateralizationPercent(thirdAccount);
+			const initialCollateralRatio = await this.parameters.initialCollateralRatio(thirdAccount);
 
-			expect(minCollateralizationPercent).to.be.bignumber.equal(expectedMinCollateralizationPercent);
+			expect(initialCollateralRatio).to.be.bignumber.equal(expectedInitialCollateralRatio);
 		})
 
 		it('Should set vault access', async function () {

@@ -142,16 +142,16 @@ module.exports = context =>
 		await context.weth.approve(context.uniswapRouter.address, ether('100'));
 
 		// Add liquidity to DAI/WETH pool; rate = 200 DAI/ETH
-		await context.utils.poolDeposit(context.dai, 200);
+		await poolDeposit(context.dai, 200);
 
 		// Add liquidity to USDC/WETH pool
-		await context.utils.poolDeposit(context.usdc, 300, 6);
+		await poolDeposit(context.usdc, 300, 6);
 
 		// Add liquidity to COL/WETH pool; rate = 250 COL/WETH; 1 COL = 1 USD
-		await context.utils.poolDeposit(context.col, 250);
+		await poolDeposit(context.col, 250);
 
 		// Add liquidity to some token/WETH pool; rate = 125 token/WETH; 1 token = 2 USD
-		await context.utils.poolDeposit(context.someCollateral, 125);
+		await poolDeposit(context.someCollateral, 125);
 
 		await context.parameters.setOracleType('1', true);
 		await context.parameters.setVaultAccess(context.vaultManager.address, true);
@@ -160,7 +160,8 @@ module.exports = context =>
 			context.someCollateral.address,
 			'0', // stability fee
 			'0', // liquidation fee
-			'150', // min collateralization
+			'150', // initial collateralization
+			'150', // liquidation ratio
 			ether('100000'), // debt limit
 		);
 	};
