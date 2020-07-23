@@ -131,7 +131,7 @@ contract VaultManager is Auth {
             if (parameters.maxColPercent() == 100) {
                 colUsdLimit = newColUsd;
             } else {
-                colUsdLimit = newMainUsd * (100 - parameters.maxColPercent()) / 100;
+                colUsdLimit = newMainUsd * parameters.maxColPercent() / (100 - parameters.maxColPercent());
             }
 
             // total collateral utilization limit in USD
