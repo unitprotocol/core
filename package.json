@@ -5,8 +5,9 @@
   "author": "@bcngod",
   "license": "MIT",
   "scripts": {
-    "test" : "truffle test",
-    "build" : "rm -r build && truffle compile"
+    "test": "truffle test",
+    "build": "rm -rf build && truffle compile",
+    "coverage": "truffle run coverage"
   },
   "dependencies": {
     "@truffle/hdwallet-provider": "^1.0.38-next.2",
@@ -19,5 +20,8 @@
     "truffle": "^5.1.34",
     "truffle-hdwallet-provider": "^1.0.17",
     "truffle-privatekey-provider": "^1.3.0"
+  },
+  "devDependencies": {
+    "solidity-coverage": "^0.7.9"
   }
 }

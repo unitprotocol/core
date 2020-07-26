@@ -67,7 +67,8 @@ module.exports = {
 		reporter: 'eth-gas-reporter',
 		reporterOptions: {
 			currency: 'USD',
-			gasPrice: 39
+			currency: 'eth-gas-reporter',
+			gasPrice: 90
 		}
 	},
 	solc: {
@@ -76,7 +77,7 @@ module.exports = {
 			runs: 200
 		}
 	},
-	plugins: ['truffle-security'],
+	plugins: ["solidity-coverage"],
 	compilers: {
 		solc: {
 			version: '0.6.10'
