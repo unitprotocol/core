@@ -63,7 +63,7 @@ contract Liquidator {
      * @return boolean value, whether a position is liquidatable
      **/
     function isLiquidatablePosition(address token, address user) public view returns (bool) {
-        return getCollateralizationRatio(token, user) <= parameters.liquidationRatio(token);
+        return getCollateralizationRatio(token, user) >= parameters.liquidationRatio(token);
     }
 
     /**
@@ -73,7 +73,7 @@ contract Liquidator {
      * @return boolean value, whether a position is sufficiently collateralized
      **/
     function isSafePosition(address token, address user) public view returns (bool) {
-        return getCollateralizationRatio(token, user) >= parameters.initialCollateralRatio(token);
+        return getCollateralizationRatio(token, user) <= parameters.initialCollateralRatio(token);
     }
 
     /**
@@ -101,7 +101,7 @@ contract Liquidator {
         // USD value of the COL amount of a position
         uint colTokenUsd = _usingOracle.tokenToUsd(COL, vault.colToken(token, user));
 
-        return mainCollateralUsd.add(colTokenUsd).mul(100).div(debt);
+        return debt.mul(100).div(mainCollateralUsd.add(colTokenUsd));
     }
 
     /**

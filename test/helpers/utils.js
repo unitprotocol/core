@@ -160,8 +160,8 @@ module.exports = context =>
 			context.someCollateral.address,
 			'0', // stability fee
 			'0', // liquidation fee
-			'150', // initial collateralization
-			'150', // liquidation ratio
+			'67', // initial collateralization
+			'68', // liquidation ratio
 			ether('100000'), // debt limit
 		);
 	};

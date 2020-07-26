@@ -121,10 +121,10 @@ contract Parameters is Auth {
      * notice Only manager is able to call this function
      * @dev Sets the initial collateral ratio
      * @param token The address of a token
-     * @param newValue The collateralization ratio with 3 decimals
+     * @param newValue The collateralization ratio (0 decimals)
      **/
     function setInitialCollateralRatio(address token, uint newValue) public onlyManager {
-        require(newValue >= 100, "USDP: INCORRECT_COLLATERALIZATION_VALUE");
+        require(newValue > 0 && newValue <= 100, "USDP: INCORRECT_COLLATERALIZATION_VALUE");
         initialCollateralRatio[token] = newValue;
     }
 
@@ -132,10 +132,10 @@ contract Parameters is Auth {
      * notice Only manager is able to call this function
      * @dev Sets the liquidation ratio
      * @param token The address of a token
-     * @param newValue The liquidation ratio with 3 decimals
+     * @param newValue The liquidation ratio (0 decimals)
      **/
     function setLiquidationRatio(address token, uint newValue) public onlyManager {
-        require(newValue >= 100 && newValue <= initialCollateralRatio[token], "USDP: INCORRECT_COLLATERALIZATION_VALUE");
+        require(newValue > 0 && newValue >= initialCollateralRatio[token], "USDP: INCORRECT_COLLATERALIZATION_VALUE");
         liquidationRatio[token] = newValue;
     }
 

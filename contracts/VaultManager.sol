@@ -135,10 +135,10 @@ contract VaultManager is Auth {
             }
 
             // total collateral utilization limit in USD
-            uint collateralUsdLimit = Math.min(newColUsd, colUsdLimit) + Math.min(newMainUsd, mainUsdLimit);
+            uint collateralUsdUtilized = Math.min(newColUsd, colUsdLimit) + Math.min(newMainUsd, mainUsdLimit);
 
             // USD withdrawable limit
-            uint usdLimit = collateralUsdLimit * 100 / parameters.initialCollateralRatio(token);
+            uint usdLimit = collateralUsdUtilized * parameters.initialCollateralRatio(token) / 100;
 
             // Ensure collateralization & collateral partition
             require(usdpDebt.add(usdpAmount) <= usdLimit, "USDP: INCORRECT_COLLATERALIZATION");
