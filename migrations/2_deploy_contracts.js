@@ -8,8 +8,10 @@ const IUniswapV2Factory = artifacts.require('IUniswapV2Factory');
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const VaultManager = artifacts.require('VaultManager');
 const Liquidator = artifacts.require('Liquidator');
+const { constants : { ZERO_ADDRESS } } = require('openzeppelin-test-helpers');
 const { ether } = require('openzeppelin-test-helpers');
-const { calculateAddressAtNonce } = require('../test/helpers/deployUtils');
+const { calculateAddressAtNonce, deployContractBytecode } = require('../test/helpers/deployUtils');
+const UniswapV2FactoryDeployCode = require('../test/helpers/UniswapV2DeployCode');
 const BN = web3.utils.BN;
 
 const getUtils = context => {
@@ -39,10 +41,10 @@ const getUtils = context => {
 module.exports = async function(deployer, network) {
   const utils = getUtils(this);
 
-  if (network !== 'ropsten-fork') {
-    console.log(`Contracts will not be deployed on this network: ${network}`);
-    return;
-  }
+  // if (network !== 'ropsten-fork') {
+  //   console.log(`Contracts will not be deployed on this network: ${network}`);
+  //   return;
+  // }
 
   await deployer;
 
@@ -51,13 +53,15 @@ module.exports = async function(deployer, network) {
   const col = await deployer.deploy(DummyToken, "COL testnet", "COL", 18, ether('1000000'));
   const dai = await deployer.deploy(DummyToken, "DAI testnet", "DAI", 18, ether('1000000'));
   const usdc = await deployer.deploy(DummyToken, "USDC testnet", "USDC", 6, String(10000000 * 10 ** 6));
-  this.weth = await WETH.at('0xd0A1E359811322d97991E03f863a0C30C2cF029C');
+  this.weth = await deployer.deploy(WETH);
+  // this.weth = await WETH.at('0xd0A1E359811322d97991E03f863a0C30C2cF029C');
   // this.weth = await WETH.at('0x348E004B789D5C6BBC65cEaaDE84f7Fad897EBB8');
-  const someCollateral = await deployer.deploy(DummyToken, "Example collateral token", "ECT", 18, ether('1000000'));
+  const mainCollateral = await deployer.deploy(DummyToken, "STAKE", "STAKE", 18, ether('1000000'));
 
   await this.weth.deposit({ value: ether('1') });
 
-  const uniswapFactory = await IUniswapV2Factory.at('0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f');
+  const uniswapFactoryAddr = await deployContractBytecode(UniswapV2FactoryDeployCode, this.deployer, web3);
+  const uniswapFactory = await IUniswapV2Factory.at(uniswapFactoryAddr);
   // const uniswapFactory = await IUniswapV2Factory.at('0xbcFBC1DF1e886B8835098EFD8971fDf89F9aeFF1');
   await uniswapFactory.createPair(dai.address, this.weth.address);
   await uniswapFactory.createPair(usdc.address, this.weth.address);
@@ -83,7 +87,7 @@ module.exports = async function(deployer, network) {
     col.address
   );
 
-  this.uniswapRouter = await UniswapV2Router02.at('0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D');
+  this.uniswapRouter = await deployer.deploy(UniswapV2Router02, uniswapFactoryAddr, ZERO_ADDRESS);
   // this.uniswapRouter = await UniswapV2Router02.at('0x5695C483B22bd5018416B5A5118236306d438C85');
 
   await this.weth.approve(this.uniswapRouter.address, ether('100'));
@@ -98,15 +102,16 @@ module.exports = async function(deployer, network) {
   await utils.poolDeposit(col, 250);
 
   // Add liquidity to some token/WETH pool; rate = 125 token/WETH; 1 token = 2 USD
-  await utils.poolDeposit(someCollateral, 125);
+  await utils.poolDeposit(mainCollateral, 125);
 
   await parameters.setOracleType('1', true);
   await parameters.setVaultAccess(vaultManager.address, true);
   await parameters.setCollateral(
-    someCollateral.address,
+    mainCollateral.address,
     '0', // stability fee
-    '100', // liquidation fee
-    '150', // min collateralization
+    '0', // liquidation fee
+    '67', // initial collateralization
+    '68', // liquidation ratio
     ether('100000'), // debt limit
   );
 };
