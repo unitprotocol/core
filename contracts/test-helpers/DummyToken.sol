@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-only
 
 pragma solidity ^0.6.6;
 
@@ -22,32 +22,4 @@ contract DummyToken is EmptyToken {
     public
     {
     }
-
-    function setBalance(
-        address _target,
-        uint _value
-    )
-    public
-    {
-        uint currBalance = balanceOf(_target);
-        if (_value < currBalance) {
-            totalSupply_ = totalSupply_.sub(currBalance.sub(_value));
-        } else {
-            totalSupply_ = totalSupply_.add(_value.sub(currBalance));
-        }
-        balances[_target] = _value;
-    }
-
-    function addBalance(
-        address _target,
-        uint _value
-    )
-    public
-    {
-        uint currBalance = balanceOf(_target);
-        require(_value + currBalance >= currBalance, "INVALID_VALUE");
-        totalSupply_ = totalSupply_.add(_value);
-        balances[_target] = currBalance.add(_value);
-    }
-
 }
