@@ -31,6 +31,16 @@ contract VaultManager is Auth {
     event Update(address indexed collateral, address indexed user);
 
     /**
+     * @dev Trigger when params joins are happened
+    **/
+    event Join(address indexed collateral, address indexed user, uint main, uint col, uint usdp);
+
+    /**
+     * @dev Trigger when params exits are happened
+    **/
+    event Exit(address indexed collateral, address indexed user, uint main, uint col, uint usdp);
+
+    /**
      * @dev Trigger when destroying is happened
     **/
     event Destroy(address indexed collateral, address indexed user);
@@ -108,41 +118,9 @@ contract VaultManager is Auth {
 
         // check utility of tx
         require(mainAmount.add(colAmount) > 0 || usdpAmount > 0, "USDP: USELESS_TX");
-        uint usdpDebt = vault.getDebt(token, msg.sender);
+
 
         if (usdpAmount > 0) {
-
-            // COL token value of a changed position in USD
-            uint newColUsd = uniswapOracle.tokenToUsd(COL, vault.colToken(token, msg.sender).add(colAmount));
-
-            // main token value of a changed position in USD
-            uint newMainUsd = uniswapOracle.tokenToUsd(token, vault.collaterals(token, msg.sender).add(mainAmount));
-
-            // USD limit of a position's main collateral utilization
-            uint mainUsdLimit;
-            if (parameters.minColPercent() == 0) {
-                mainUsdLimit = newMainUsd;
-            } else {
-                mainUsdLimit = newColUsd * (100 - parameters.minColPercent()) / parameters.minColPercent();
-            }
-
-            // USD limit of a position's COL collateral utilization
-            uint colUsdLimit;
-            if (parameters.maxColPercent() == 100) {
-                colUsdLimit = newColUsd;
-            } else {
-                colUsdLimit = newMainUsd * parameters.maxColPercent() / (100 - parameters.maxColPercent());
-            }
-
-            // total collateral utilization limit in USD
-            uint collateralUsdUtilized = Math.min(newColUsd, colUsdLimit) + Math.min(newMainUsd, mainUsdLimit);
-
-            // USD withdrawable limit
-            uint usdLimit = collateralUsdUtilized * parameters.initialCollateralRatio(token) / 100;
-
-            // Ensure collateralization & collateral partition
-            require(usdpDebt.add(usdpAmount) <= usdLimit, "USDP: INCORRECT_COLLATERALIZATION");
-
             // mint USDP to user
             vault.addDebt(token, msg.sender, usdpAmount);
         }
@@ -152,6 +130,11 @@ contract VaultManager is Auth {
 
         if (colAmount > 0)
             vault.addColToken(token, msg.sender, colAmount);
+
+        ensureCollateralProportion(token, msg.sender);
+
+        // fire an event
+        emit Join(token, msg.sender, mainAmount, colAmount, usdpAmount);
     }
 
     /**
@@ -200,8 +183,12 @@ contract VaultManager is Auth {
             // fire an event
             emit Destroy(token, msg.sender);
         }
-        else if (mainAmount > 0 || colAmount > 0)
+        else if (mainAmount > 0 || colAmount > 0) {
+            ensureCollateralProportion(token, msg.sender);
             _updatePosition(token);
+        }
+
+        emit Exit(token, msg.sender, mainAmount, colAmount, usdpAmount);
     }
 
 
@@ -211,5 +198,38 @@ contract VaultManager is Auth {
 
         // fire an event
         emit Update(token, msg.sender);
+    }
+
+    function ensureCollateralProportion(address token, address user) internal {
+
+        // COL token value of the position in USD
+        uint colUsd = uniswapOracle.tokenToUsd(COL, vault.colToken(token, user));
+
+        // main collateral value of the position in USD
+        uint mainUsd = uniswapOracle.tokenToUsd(token, vault.collaterals(token, user));
+
+        // USD limit of main collateral in position
+        uint mainUsdLimit;
+        if (parameters.minColPercent() == 0) {
+            mainUsdLimit = mainUsd;
+        } else {
+            mainUsdLimit = colUsd * (100 - parameters.minColPercent()) / parameters.minColPercent();
+            require(mainUsd <= mainUsdLimit, "USDP: INCORRECT_COLLATERALIZATION");
+        }
+
+        // USD limit of COL in position
+        uint colUsdLimit;
+        if (parameters.maxColPercent() == 100) {
+            colUsdLimit = colUsd;
+        } else {
+            colUsdLimit = mainUsd * parameters.maxColPercent() / (100 - parameters.maxColPercent());
+            require(colUsd <= colUsdLimit, "USDP: INCORRECT_COLLATERALIZATION");
+        }
+
+        // USD withdrawable limit
+        uint usdLimit = colUsd.add(mainUsd).mul(parameters.initialCollateralRatio(token)).div(100);
+
+        // Ensure collateralization & collateral partition
+        require(vault.getDebt(token, user) <= usdLimit, "USDP: INCORRECT_COLLATERALIZATION");
     }
 }
