@@ -12,6 +12,11 @@ Compiles all the contracts and saves artifacts.<br />
 
 Runs the test for the contracts and screens gas usage.<br />
 
+### `yarn coverage`
+
+
+Runs the test for the contracts and generates test coverage.<br />
+
 
 ### Gas estimation
 
