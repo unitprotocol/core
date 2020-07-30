@@ -1,18 +1,18 @@
 // KOVAN
 
-COL                             0xC6b2b080F3A5CB523215B8f9c2ccD01Fb4E867Be // 1COL = 1$ initially (250 COL/WETH)
-DAI                             0x5E50b7eA67c72CfE11000A2cc35bAc6d77aaf6ad // 200 DAI/WETH
-USDC                            0x6567f36f64de9398F63C0E9a36F6A826284DfdaA // 300 USDC/WETH
+COL                             0x0F235462cA4a41EA92Fca6b7c4d67dAe0DA8d1D6 // 1COL = 1$ initially (250 COL/WETH)
+DAI                             0xeED5B67BEf854D8Cb7FCa3e8220c54b3b48C461B // 200 DAI/WETH
+USDC                            0xcC703190202734c7C75F05E60f246aFd56b2f5f1 // 300 USDC/WETH
+STAKE                           0xD1789f872a723F629B81D2F3B45bD5748Ad71f99 // 1STAKE = 2$ initially (125 STAKE/WETH)
 WETH                            0xd0A1E359811322d97991E03f863a0C30C2cF029C
-Example collateral token        0xeEe5Aa43586846E5D270dd378C927e6D2F61187e // 1ECT = 2$ initially (125 ECT/WETH)
 
 UniswapFactory                  0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
-UniswapOracle                   0x4482F44e815b6d7D9248e0e7E53D69eA2aab45b1
+UniswapOracle                   0x27B488abDC95d626a1016612eBB8591bB9f4C6a8
 UniswapV2Router02               0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
 
-USDP                            0xDa70b9b4E420aA9401CdFA7F2E9f653582FCf5eC
+USDP                            0xe4d2dA8170971468A817Db273848952C31b5A3cd
 
-Parameters                      0x441E8474571Cf08d2Fd316EF5B02E696d833d436
-Vault                           0xF8C96409108cc78209d8a4F806A6E70a253593E1
-Liquidator                      0xa5C1AA0431E411b17B69D35d5C74d6C903A6811A
-VaultManager                    0x15fAcE46eC996eea1D4210df9fb441e5CAfe43BD
+Parameters                      0x011cB9445af3111fEFC2A4A493A28dFB943fb2f4
+Vault                           0x207b35aB1600C134De19Fd03D88F968A9913489B
+Liquidator                      0x9b6cb5B784698bE18b679074dA54F186A009D05D
+VaultManager                    0x1040c17C64EAE0B386A66378f6ebE8b81F3faf21
