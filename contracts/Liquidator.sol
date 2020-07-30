@@ -12,6 +12,7 @@ import "./helpers/ERC20Like.sol";
 // interface for interaction with oracles
 interface OracleLike {
     function tokenToUsd(address, uint) external view returns(uint);
+    function usdToToken(address, uint) external view returns(uint);
 }
 
 /**
