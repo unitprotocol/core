@@ -107,10 +107,10 @@ module.exports = context =>
 		context.dai = await DummyToken.new("DAI clone", "DAI", 18, ether('1000000'));
 		context.usdc = await DummyToken.new("USDC clone", "USDC", 6, String(10000000 * 10 ** 6));
 		context.weth = await WETH.new();
-		context.someCollateral = await DummyToken.new("Example collateral token", "ECT", 18, ether('1000000'));
+		context.mainCollateral = await DummyToken.new("STAKE", "STAKE", 18, ether('1000000'));
 
 		await context.weth.deposit({ value: ether('4') });
-		const uniswapFactoryAddr = await deployContractBytecode(UniswapV2FactoryDeployCode, context.deployer);
+		const uniswapFactoryAddr = await deployContractBytecode(UniswapV2FactoryDeployCode, context.deployer, web3);
 		context.uniswapFactory = await IUniswapV2Factory.at(uniswapFactoryAddr);
 
 		await context.uniswapFactory.createPair(context.dai.address, context.weth.address);
@@ -151,13 +151,13 @@ module.exports = context =>
 		await poolDeposit(context.col, 250);
 
 		// Add liquidity to some token/WETH pool; rate = 125 token/WETH; 1 token = 2 USD
-		await poolDeposit(context.someCollateral, 125);
+		await poolDeposit(context.mainCollateral, 125);
 
 		await context.parameters.setOracleType('1', true);
 		await context.parameters.setVaultAccess(context.vaultManager.address, true);
 		await context.parameters.setVaultAccess(context.liquidator.address, true);
 		await context.parameters.setCollateral(
-			context.someCollateral.address,
+			context.mainCollateral.address,
 			'0', // stability fee
 			'0', // liquidation fee
 			'67', // initial collateralization

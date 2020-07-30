@@ -10,7 +10,7 @@ async function buildDeployFn(deployer, contract) {
 	};
 }
 
-async function deployContractBytecode(bytecode, deployer) {
+async function deployContractBytecode(bytecode, deployer, web3) {
 	const gasLimit = 7000000;
 	const gasPrice = Number(await web3.eth.getGasPrice());
 
