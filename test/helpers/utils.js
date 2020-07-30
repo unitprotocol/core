@@ -103,7 +103,7 @@ module.exports = context =>
 	};
 
 	const deploy = async() => {
-		context.col = await DummyToken.new("COL clone", "COL", 18, ether('1000000'));
+		context.col = await DummyToken.new("Unit Protocol Token", "COL", 18, ether('1000000'));
 		context.dai = await DummyToken.new("DAI clone", "DAI", 18, ether('1000000'));
 		context.usdc = await DummyToken.new("USDC clone", "USDC", 6, String(10000000 * 10 ** 6));
 		context.weth = await WETH.new();
