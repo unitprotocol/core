@@ -14,7 +14,7 @@ contract USDP is Auth {
     using SafeMath for uint;
 
     // name of the token
-    string public constant name = "USD ThePay.cash Stablecoin";
+    string public constant name = "Unit protocol stablecoin";
 
     // symbol of the token
     string public constant symbol = "USDP";

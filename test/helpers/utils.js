@@ -107,7 +107,7 @@ module.exports = context =>
 		context.dai = await DummyToken.new("DAI clone", "DAI", 18, ether('1000000'));
 		context.usdc = await DummyToken.new("USDC clone", "USDC", 6, String(10000000 * 10 ** 6));
 		context.weth = await WETH.new();
-		context.mainCollateral = await DummyToken.new("STAKE", "STAKE", 18, ether('1000000'));
+		context.mainCollateral = await DummyToken.new("STAKE clone", "STAKE", 18, ether('1000000'));
 
 		await context.weth.deposit({ value: ether('4') });
 		const uniswapFactoryAddr = await deployContractBytecode(UniswapV2FactoryDeployCode, context.deployer, web3);
