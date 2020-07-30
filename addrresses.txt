@@ -1,18 +1,18 @@
 // KOVAN
 
-COL                             0x0F235462cA4a41EA92Fca6b7c4d67dAe0DA8d1D6 // 1COL = 1$ initially (250 COL/WETH)
-DAI                             0xeED5B67BEf854D8Cb7FCa3e8220c54b3b48C461B // 200 DAI/WETH
-USDC                            0xcC703190202734c7C75F05E60f246aFd56b2f5f1 // 300 USDC/WETH
-STAKE                           0xD1789f872a723F629B81D2F3B45bD5748Ad71f99 // 1STAKE = 2$ initially (125 STAKE/WETH)
+COL                             0x37Ff0bF4383A8b24E760edb0383ab39c01e87045 // 1COL = 1$ initially (250 COL/WETH)
+DAI                             0x9f403f383307bF905015a7e2fC326D30617A3CAD // 200 DAI/WETH
+USDC                            0x9e73805616dE0945a2CD37176DE80Fe69277fc63 // 300 USDC/WETH
+STAKE                           0x399B652bAD9Ba61eD2562eAeFa398A14EDD1597f // 1STAKE = 2$ initially (125 STAKE/WETH)
 WETH                            0xd0A1E359811322d97991E03f863a0C30C2cF029C
 
 UniswapFactory                  0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
-UniswapOracle                   0x27B488abDC95d626a1016612eBB8591bB9f4C6a8
+UniswapOracle                   0x35721c5DDDD3562B8501Ccc78EAFD7c316472b42
 UniswapV2Router02               0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
 
-USDP                            0xe4d2dA8170971468A817Db273848952C31b5A3cd
+USDP                            0x01981997ab46c7E5b0728888d5670EAab2aA2a8C
 
-Parameters                      0x011cB9445af3111fEFC2A4A493A28dFB943fb2f4
-Vault                           0x207b35aB1600C134De19Fd03D88F968A9913489B
-Liquidator                      0x9b6cb5B784698bE18b679074dA54F186A009D05D
-VaultManager                    0x1040c17C64EAE0B386A66378f6ebE8b81F3faf21
+Parameters                      0x3399deB4D1569b7Fa900B93377da64Fe750a43Da
+Vault                           0x5B0Dded476573612C81A2A3F72F6d774d7d962B5
+Liquidator                      0xad9621c534797CCe0a7c84B6F5916CF2466240B1
+VaultManager                    0x1832ddD74B468A460dC50BB11ACea575b5Ea5fc3
