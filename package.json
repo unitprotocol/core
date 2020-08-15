@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "main": "index.js",
   "author": "@bcngod",
-  "license": "GPL-3.0",
+  "license": "Business Source License 1.1",
   "scripts": {
     "test": "truffle test",
     "build": "rm -rf build && truffle compile",

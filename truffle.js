@@ -80,7 +80,7 @@ module.exports = {
 	plugins: ["solidity-coverage"],
 	compilers: {
 		solc: {
-			version: '0.6.10'
+			version: '0.6.12'
 		}
 	}
 };

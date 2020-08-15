@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.6.6;
+/*
+  Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
+*/
+pragma solidity ^0.6.8;
 
 // helper methods for interacting with ERC20 tokens and sending ETH that do not consistently return true/false
 library TransferHelper {

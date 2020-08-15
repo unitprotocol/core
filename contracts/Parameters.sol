@@ -1,11 +1,19 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: bsl-1.1
 
-pragma solidity ^0.6.6;
+/*
+  Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
+*/
+pragma solidity ^0.6.8;
 
 import "./helpers/ERC20Like.sol";
+import "./helpers/USDPLib.sol";
 
 
-// Manages USDP's system access
+/**
+ * @title Auth
+ * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
+ * @dev Manages USDP's system access
+ **/
 contract Auth {
 
     // address of the the contract with parameters
@@ -34,13 +42,18 @@ contract Auth {
     }
 }
 
+
+/**
+ * @title Parameters
+ * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
+ **/
 contract Parameters is Auth {
 
     // determines the minimum percentage of COL token part in collateral, 0 decimals
-    uint public minColPercent;
+    mapping(address => uint) public minColPercent;
 
     // determines the maximum percentage of COL token part in collateral, 0 decimals
-    uint public maxColPercent;
+    mapping(address => uint) public maxColPercent;
 
     // map token to stability fee percentage; 3 decimals
     mapping(address => uint) public stabilityFee;
@@ -64,10 +77,13 @@ contract Parameters is Auth {
     mapping(address => bool) public isManager;
 
     // enabled oracle types for position spawn
-    mapping(uint => bool) public isOracleTypeEnabled;
+    mapping(USDPLib.Oracle => mapping (address => bool)) public isOracleTypeEnabled;
 
     // address of the Vault
     address public vault;
+
+    // COL token address
+    address public COL;
 
     /**
      * The address for an Ethereum contract is deterministically computed from the address of its creator (sender)
@@ -75,11 +91,10 @@ contract Parameters is Auth {
      * hashed with Keccak-256.
      * Therefore, the Vault address can be pre-computed and passed as an argument before deployment.
     **/
-    constructor(address _vault) public Auth(address(this)) {
+    constructor(address _vault, address _col) public Auth(address(this)) {
         isManager[msg.sender] = true;
-        minColPercent = 1; // 1%
-        maxColPercent = 5; // 5%
         vault = _vault;
+        COL = _col;
     }
 
     /**
@@ -108,13 +123,21 @@ contract Parameters is Auth {
         uint liquidationFeeValue,
         uint initialCollateralRatioValue,
         uint liquidationRatioValue,
-        uint usdpLimit
+        uint usdpLimit,
+        USDPLib.Oracle[] calldata oracles,
+        uint minColP,
+        uint maxColP
     ) external onlyManager {
         setStabilityFee(token, stabilityFeeValue);
         setLiquidationFee(token, liquidationFeeValue);
         setInitialCollateralRatio(token, initialCollateralRatioValue);
         setLiquidationRatio(token, liquidationRatioValue);
         setTokenDebtLimit(token, usdpLimit);
+        for (uint i=0; i < oracles.length; i++) {
+            setOracleType(oracles[i], token, true);
+        }
+
+        setColPartRange(token, minColP, maxColP);
     }
 
     /**
@@ -171,24 +194,26 @@ contract Parameters is Auth {
 
     /**
      * notice Only manager is able to call this function
-     * @dev Sets the percentage range of the COL token part in collateral
+     * @dev Sets the percentage range of the COL token part for specific collateral token
+     * @param min The address of collateral token
      * @param min The min percentage (0 decimals)
      * @param max The max percentage (0 decimals)
      **/
-    function setColPartRange(uint min, uint max) public onlyManager {
+    function setColPartRange(address token, uint min, uint max) public onlyManager {
         require(max <= 100 && min <= max, "USDP: WRONG_RANGE");
-        minColPercent = min;
-        maxColPercent = max;
+        minColPercent[token] = min;
+        maxColPercent[token] = max;
     }
 
     /**
      * notice Only manager is able to call this function
      * @dev Enables/disables oracle types
      * @param _type The type of the oracle
+     * @param asset The address of the main collateral
      * @param enabled The control flag
      **/
-    function setOracleType(uint _type, bool enabled) public onlyManager {
-        isOracleTypeEnabled[_type] = enabled;
+    function setOracleType(USDPLib.Oracle _type, address asset, bool enabled) public onlyManager {
+        isOracleTypeEnabled[_type][asset] = enabled;
     }
 
     /**

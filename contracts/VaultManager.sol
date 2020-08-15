@@ -1,61 +1,62 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: bsl-1.1
 
-pragma solidity ^0.6.6;
+/*
+  Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
+*/
+pragma solidity ^0.6.8;
+pragma experimental ABIEncoderV2;
 
-import "./helpers/ERC20SafeTransfer.sol";
-import "./helpers/SafeMath.sol";
 import "./Vault.sol";
-import "./Parameters.sol";
-import "./UniswapOracle.sol";
-import "./Liquidator.sol";
+import "./oracle/ChainlinkedUniswapOracle.sol";
 import "./helpers/Math.sol";
 
 
+/**
+ * @title VaultManager
+ * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
+ **/
 contract VaultManager is Auth {
     using ERC20SafeTransfer for address;
     using SafeMath for uint;
 
     Vault public vault;
-    OracleLike public uniswapOracle;
-    Liquidator public liquidator;
+    ChainlinkedUniswapOracle public uniswapOracle;
     address public COL;
-
-    /**
-     * @dev Trigger when spawns are happened
-    **/
-    event Spawn(address indexed collateral, address indexed user, uint oracleType);
-
-    /**
-     * @dev Trigger when params updates are happened
-    **/
-    event Update(address indexed collateral, address indexed user);
 
     /**
      * @dev Trigger when params joins are happened
     **/
-    event Join(address indexed collateral, address indexed user, uint main, uint col, uint usdp);
+    event Join(address indexed asset, address indexed user, uint main, uint col, uint usdp);
 
     /**
      * @dev Trigger when params exits are happened
     **/
-    event Exit(address indexed collateral, address indexed user, uint main, uint col, uint usdp);
+    event Exit(address indexed asset, address indexed user, uint main, uint col, uint usdp);
 
-    /**
-     * @dev Trigger when destroying is happened
-    **/
-    event Destroy(address indexed collateral, address indexed user);
+    modifier spawned(address asset, address user) {
+
+        // check the existence of a position
+        require(vault.getDebt(asset, user) > 0, "USDP: NOT_SPAWNED_POSITION");
+        _;
+    }
 
     /**
      * @param _vault The address of the Vault
-     * @param _liquidator The liquidator contract address
      * @param _parameters The address of the contract with system parameters
      * @param _uniswapOracle The address of Uniswap-based Oracle
      * @param _col COL token address
      **/
-    constructor(address _vault, address _liquidator, address _parameters, address _uniswapOracle, address _col) Auth(_parameters) public {
+    constructor(
+        address _vault,
+        address _parameters,
+        ChainlinkedUniswapOracle _uniswapOracle,
+        address _col
+    )
+        Auth(_parameters)
+        public
+    {
         vault = Vault(_vault);
-        liquidator = Liquidator(_liquidator);
-        uniswapOracle = OracleLike(_uniswapOracle);
+        uniswapOracle = _uniswapOracle;
         COL = _col;
     }
 
@@ -66,170 +67,291 @@ contract VaultManager is Auth {
       * @dev Spawns new positions
       * @dev Adds collaterals to non-spawned positions
       * @notice position actually spawns when usdpAmount > 0
-      * @param token The address of token using as main collateral
+      * @param asset The address of token using as main collateral
       * @param mainAmount The amount of main collateral to deposit
       * @param colAmount The amount of COL token to deposit
       * @param usdpAmount The amount of USDP token to borrow
       * @param oracleType The type of an oracle. Initially, only Uniswap is possible (1)
       **/
-    function spawn(address token, uint mainAmount, uint colAmount, uint usdpAmount, uint oracleType) external {
+    function spawn(
+        address asset,
+        address user,
+        uint mainAmount,
+        uint colAmount,
+        uint usdpAmount,
+        USDPLib.Oracle oracleType,
+        USDPLib.ProofData memory mainPriceProof,
+        USDPLib.ProofData memory colPriceProof
+    )
+        public
+    {
+        require(usdpAmount > 0, "USDP: ZERO_BORROWING");
+
         // check whether the position is spawned
-        require(vault.getDebt(token, msg.sender) == 0, "USDP: SPAWNED_POSITION");
+        require(vault.getDebt(asset, user) == 0, "USDP: SPAWNED_POSITION");
+
+        // oracle availability check
+        require(parameters.isOracleTypeEnabled(oracleType, asset), "USDP: WRONG_ORACLE_TYPE");
 
         // USDP minting triggers the spawn of a position
-        if (usdpAmount > 0) {
+        vault.spawn(asset, user, oracleType);
 
-            // oracle availability check
-            require(parameters.isOracleTypeEnabled(oracleType), "USDP: WRONG_ORACLE_TYPE");
+        _depositAndBorrow(asset, user, mainAmount, colAmount, usdpAmount, mainPriceProof, colPriceProof);
 
-            vault.spawn(token, msg.sender, oracleType);
-
-            // fire an event
-            emit Spawn(token, msg.sender, oracleType);
-        }
-
-        _join(token, mainAmount, colAmount, usdpAmount);
+        // fire an event
+        emit Join(asset, user, mainAmount, colAmount, usdpAmount);
     }
 
     /**
-     * @notice Position should be spawned (USDP minted) to call this method
+     * @notice Depositing tokens must be pre-approved to vault address
+     * @notice Token using as main collateral must be whitelisted
+     * @dev Deposits collaterals
+     * @param asset The address of token using as main collateral
+     * @param mainAmount The amount of main collateral to deposit
+     * @param colAmount The amount of COL token to deposit
+     **/
+    function deposit(address asset, address user, uint mainAmount, uint colAmount) public {
+
+        // check usefulness of tx
+        require(mainAmount > 0 || colAmount > 0, "USDP: USELESS_TX");
+
+        // deposit collaterals if needed
+        _deposit(asset, user, mainAmount, colAmount);
+
+        // fire an event
+        emit Join(asset, user, mainAmount, colAmount, 0);
+    }
+
+    /**
+     * @notice Position should be spawned (USDP borrowed from position) to call this method
      * @notice Depositing tokens must be pre-approved to vault address
      * @notice Token using as main collateral must be whitelisted
      * @dev Deposits collaterals to spawned positions
      * @dev Borrows USDP
-     * @param token The address of token using as main collateral
+     * @param asset The address of token using as main collateral
      * @param mainAmount The amount of main collateral to deposit
      * @param colAmount The amount of COL token to deposit
      * @param usdpAmount The amount of USDP token to borrow
      **/
-    function join(address token, uint mainAmount, uint colAmount, uint usdpAmount) external {
+    function depositAndBorrow(
+        address asset,
+        address user,
+        uint mainAmount,
+        uint colAmount,
+        uint usdpAmount,
+        USDPLib.ProofData memory mainPriceProof,
+        USDPLib.ProofData memory colPriceProof
+    )
+        public
+        spawned(asset, user)
+    {
+        require(usdpAmount > 0, "USDP: ZERO_BORROWING");
 
-        // check the existence of a position
-        require(vault.getDebt(token, msg.sender) > 0, "USDP: POSITION_DOES_NOT_EXIST");
-
-        // USDP minting triggers the update of a position
-        if (usdpAmount > 0)
-            _updatePosition(token);
-
-        _join(token, mainAmount, colAmount, usdpAmount);
-    }
-
-    function _join(address token, uint mainAmount, uint colAmount, uint usdpAmount) internal {
-
-        // check utility of tx
-        require(mainAmount.add(colAmount) > 0 || usdpAmount > 0, "USDP: USELESS_TX");
-
-
-        if (usdpAmount > 0) {
-            // mint USDP to user
-            vault.addDebt(token, msg.sender, usdpAmount);
-        }
-
-        if (mainAmount > 0)
-            vault.addMainCollateral(token, msg.sender, mainAmount);
-
-        if (colAmount > 0)
-            vault.addColToken(token, msg.sender, colAmount);
-
-        ensureCollateralProportion(token, msg.sender);
+        _depositAndBorrow(asset, user, mainAmount, colAmount, usdpAmount, mainPriceProof, colPriceProof);
 
         // fire an event
-        emit Join(token, msg.sender, mainAmount, colAmount, usdpAmount);
+        emit Join(asset, user, mainAmount, colAmount, usdpAmount);
+    }
+
+    /**
+      * @notice Tx sender must have a sufficient USDP balance to pay the debt
+      * @dev Repays specified amount of debt
+      * @param asset The address of token using as main collateral
+      * @param usdpAmount The amount of USDP token to repay
+      **/
+    function repay(address asset, address user, uint usdpAmount) public {
+
+        // check usefulness of tx
+        require(usdpAmount > 0, "USDP: USELESS_TX");
+
+        _repay(asset, user, usdpAmount);
+
+        // fire an event
+        emit Exit(asset, user, 0, 0, usdpAmount);
     }
 
     /**
       * @notice Tx sender must have a sufficient USDP balance to pay the debt
       * @notice Token approwal is NOT needed
+      * @notice Merkle proofs are NOT needed since we don't need to check collateralization (cause there is no debt yet)
       * @dev Repays total debt and withdraws collaterals
-      * @param token The address of token using as main collateral
+      * @param asset The address of token using as main collateral
       * @param mainAmount The amount of main collateral token to withdraw
       * @param colAmount The amount of COL token to withdraw
       **/
-    function repayAll(address token, uint mainAmount, uint colAmount) external {
-        uint usdpAmount = vault.getDebt(token, msg.sender);
-        exit(token, mainAmount, colAmount, usdpAmount);
+    function repayAllAndWithdraw(
+        address asset,
+        address user,
+        uint mainAmount,
+        uint colAmount
+    )
+        external
+    {
+        uint debtAmount = vault.getDebt(asset, user);
+
+        if (mainAmount == 0 && colAmount == 0) {
+            // just repay the debt
+            return repay(asset, user, debtAmount);
+        }
+
+        if (mainAmount > 0) {
+            // withdraw main collateral to the user address
+            vault.withdrawMain(asset, user, mainAmount);
+        }
+
+        if (colAmount > 0) {
+            // withdraw COL tokens to the user's address
+            vault.withdrawCol(asset, user, colAmount);
+        }
+
+        if (debtAmount > 0) {
+            // burn USDP from the user's address
+            _repay(asset, user, debtAmount);
+        }
+
+        // fire an event
+        emit Exit(asset, user, mainAmount, colAmount, debtAmount);
     }
 
     /**
       * @notice Tx sender must have a sufficient USDP balance to pay the debt
       * @dev Withdraws collateral
       * @dev Repays specified amount of debt
-      * @param token The address of token using as main collateral
+      * @param asset The address of token using as main collateral
       * @param mainAmount The amount of main collateral token to withdraw
       * @param colAmount The amount of COL token to withdraw
       * @param usdpAmount The amount of USDP token to repay
+      * @param mainPriceProof The merkle proof of the main collateral price at given block
+      * @param colPriceProof The merkle proof of the COL token price at given block
       **/
-    function exit(address token, uint mainAmount, uint colAmount, uint usdpAmount) public {
-        require(mainAmount.add(colAmount) > 0 || usdpAmount > 0, "USDP: USELESS_TX");
+    function withdrawAndRepay(
+        address asset,
+        address user,
+        uint mainAmount,
+        uint colAmount,
+        uint usdpAmount,
+        USDPLib.ProofData memory mainPriceProof,
+        USDPLib.ProofData memory colPriceProof
+    )
+        public
+        spawned(asset, user)
+    {
+        // check usefulness of tx
+        require(mainAmount > 0 || colAmount > 0, "USDP: USELESS_TX");
 
-        if (mainAmount > 0)
-            // withdraws main collateral to user address
-            vault.subMainCollateral(token, msg.sender, mainAmount);
+        uint debt = vault.getDebt(asset, user);
+        require(debt > 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
 
-        if (colAmount > 0)
-            // withdraws COL tokens to user's address
-            vault.subColToken(token, msg.sender, colAmount);
+        vault.update(asset, user);
 
-        if (usdpAmount > 0)
-            // burns USDP from user's balance
-            vault.subDebt(token, msg.sender, usdpAmount);
-
-        // revert if the position is undercollateralized
-        require(liquidator.isSafePosition(token, msg.sender), "USDP: UNDERCOLLATERALIZED_POSITION");
-
-        if (vault.getDebt(token, msg.sender) == 0) {
-            // clear unused storage
-            vault.destroy(token, msg.sender);
-            // fire an event
-            emit Destroy(token, msg.sender);
-        }
-        else if (mainAmount > 0 || colAmount > 0) {
-            ensureCollateralProportion(token, msg.sender);
-            _updatePosition(token);
+        if (mainAmount > 0) {
+            // withdraw main collateral to the user address
+            vault.withdrawMain(asset, user, mainAmount);
         }
 
-        emit Exit(token, msg.sender, mainAmount, colAmount, usdpAmount);
-    }
+        if (colAmount > 0) {
+            // withdraw COL tokens to the user's address
+            vault.withdrawCol(asset, user, colAmount);
+        }
 
+        if (usdpAmount > 0) {
+            _repay(asset, user, usdpAmount);
+        }
 
-    // update position parameters to current
-    function _updatePosition(address token) internal {
-        vault.update(token, msg.sender);
+        _ensureCollateralization(asset, user, mainPriceProof, colPriceProof);
 
         // fire an event
-        emit Update(token, msg.sender);
+        emit Exit(asset, user, mainAmount, colAmount, usdpAmount);
     }
 
-    function ensureCollateralProportion(address token, address user) internal {
+    // decreases debt
+    function _repay(address asset, address user, uint usdpAmount) internal returns(uint) {
 
+        // burn USDP from the user's balance
+        uint debtAfter = vault.repay(asset, user, usdpAmount);
+        if (debtAfter == 0) {
+            // clear unused storage
+            vault.destroy(asset, user);
+        }
+
+        return debtAfter;
+    }
+
+    function _depositAndBorrow(
+        address asset,
+        address user,
+        uint mainAmount,
+        uint colAmount,
+        uint usdpAmount,
+        USDPLib.ProofData memory mainPriceProof,
+        USDPLib.ProofData memory colPriceProof
+    )
+        internal
+    {
+        // deposit collaterals if needed
+        _deposit(asset, user, mainAmount, colAmount);
+
+        // mint USDP to user
+        vault.borrow(asset, user, usdpAmount);
+
+        // check collateralization
+        _ensureCollateralization(asset, user, mainPriceProof, colPriceProof);
+    }
+
+    function _deposit(address asset, address user, uint mainAmount, uint colAmount) internal {
+        if (mainAmount > 0) {
+            vault.depositMain(asset, user, mainAmount);
+        }
+
+        if (colAmount > 0) {
+            vault.depositCol(asset, user, colAmount);
+        }
+    }
+
+    // ensures that borrowed value is in desired range
+    function _ensureCollateralization(
+        address asset,
+        address user,
+        USDPLib.ProofData memory mainPriceProof,
+        USDPLib.ProofData memory colPriceProof
+    )
+        internal
+        view
+    {
         // COL token value of the position in USD
-        uint colUsd = uniswapOracle.tokenToUsd(COL, vault.colToken(token, user));
+        uint colUsdValue = uniswapOracle.assetToUsd(COL, vault.colToken(asset, user), colPriceProof);
 
         // main collateral value of the position in USD
-        uint mainUsd = uniswapOracle.tokenToUsd(token, vault.collaterals(token, user));
+        uint mainUsdValue = uniswapOracle.assetToUsd(asset, vault.collaterals(asset, user), mainPriceProof);
 
-        // USD limit of main collateral in position
-        uint mainUsdLimit;
-        if (parameters.minColPercent() == 0) {
-            mainUsdLimit = mainUsd;
+        uint mainUsdUtilized;
+        uint colUsdUtilized;
+
+        uint minColPercent = parameters.minColPercent(asset);
+        if (minColPercent > 0) {
+            // main limit by COL
+            uint mainUsdLimit = colUsdValue * (100 - minColPercent) / minColPercent;
+            mainUsdUtilized = Math.min(mainUsdValue, mainUsdLimit);
         } else {
-            mainUsdLimit = colUsd * (100 - parameters.minColPercent()) / parameters.minColPercent();
-            require(mainUsd <= mainUsdLimit, "USDP: INCORRECT_COLLATERALIZATION");
+            mainUsdUtilized = mainUsdValue;
         }
 
-        // USD limit of COL in position
-        uint colUsdLimit;
-        if (parameters.maxColPercent() == 100) {
-            colUsdLimit = colUsd;
+        uint maxColPercent = parameters.maxColPercent(asset);
+        if (maxColPercent < 100) {
+            // COL limit by main
+            uint colUsdLimit = mainUsdValue * maxColPercent / (100 - maxColPercent);
+            colUsdUtilized = Math.min(colUsdValue, colUsdLimit);
         } else {
-            colUsdLimit = mainUsd * parameters.maxColPercent() / (100 - parameters.maxColPercent());
-            require(colUsd <= colUsdLimit, "USDP: INCORRECT_COLLATERALIZATION");
+            colUsdUtilized = colUsdValue;
         }
 
-        // USD withdrawable limit
-        uint usdLimit = colUsd.add(mainUsd).mul(parameters.initialCollateralRatio(token)).div(100);
+        uint mainICR = parameters.initialCollateralRatio(asset);
+        uint colICR = parameters.initialCollateralRatio(COL);
 
-        // Ensure collateralization & collateral partition
-        require(vault.getDebt(token, user) <= usdLimit, "USDP: INCORRECT_COLLATERALIZATION");
+        // USD limit of the position
+        uint usdLimit = (mainUsdUtilized * mainICR + colUsdUtilized * colICR) / 100;
+
+        // revert if collateralization is not enough
+        require(vault.getDebt(asset, user) <= usdLimit, "USDP: UNDERCOLLATERALIZED");
     }
 }

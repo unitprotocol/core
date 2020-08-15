@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: bsl-1.1
 
-pragma solidity ^0.6.6;
+
+pragma solidity ^0.6.8;
 
 contract Migrations {
   address public owner;

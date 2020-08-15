@@ -1,6 +1,9 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: bsl-1.1
 
-pragma solidity ^0.6.6;
+/*
+  Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
+*/
+pragma solidity ^0.6.8;
 
 import "./Parameters.sol";
 import "./helpers/SafeMath.sol";
@@ -8,8 +11,9 @@ import "./helpers/SafeMath.sol";
 
 /**
  * @title USDP token implementation
+ * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev ERC20 token
- */
+ **/
 contract USDP is Auth {
     using SafeMath for uint;
 
@@ -106,6 +110,7 @@ contract USDP is Auth {
         require(balanceOf[from] >= amount, "USDP: INSUFFICIENT_BALANCE");
 
         if (from != msg.sender) {
+            require(allowance[from][msg.sender] >= amount, "USDP: INSUFFICIENT_ALLOWANCE");
             _approve(from, msg.sender, allowance[from][msg.sender].sub(amount));
         }
         balanceOf[from] = balanceOf[from].sub(amount);
