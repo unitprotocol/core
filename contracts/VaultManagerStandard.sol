@@ -31,13 +31,6 @@ contract VaultManagerStandard is Auth {
     **/
     event Exit(address indexed asset, address indexed user, uint main, uint col, uint usdp);
 
-    modifier spawned(address asset, address user) {
-
-        // check the existence of a position
-        require(vault.getDebt(asset, user) > 0, "USDP: NOT_SPAWNED_POSITION");
-        _;
-    }
-
     /**
      * @param _vault The address of the Vault
      * @param _parameters The address of the contract with system parameters
