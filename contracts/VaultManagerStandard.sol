@@ -134,7 +134,7 @@ contract VaultManagerStandard is Auth {
     }
 
     // decreases debt
-    function _repay(address asset, address user, uint usdpAmount) internal returns(uint) {
+    function _repay(address asset, address user, uint usdpAmount) internal {
 
         // burn USDP from the user's balance
         uint debtAfter = vault.repay(asset, user, usdpAmount);
@@ -142,7 +142,5 @@ contract VaultManagerStandard is Auth {
             // clear unused storage
             vault.destroy(asset, user);
         }
-
-        return debtAfter;
     }
 }
