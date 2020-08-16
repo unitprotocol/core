@@ -6,8 +6,8 @@ const DummyToken = artifacts.require('DummyToken');
 const UniswapOracle = artifacts.require('UniswapOracle');
 const IUniswapV2Factory = artifacts.require('IUniswapV2Factory');
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
-const VaultManager = artifacts.require('VaultManager');
-const Liquidator = artifacts.require('Liquidator');
+const VaultManager = artifacts.require('VaultManagerUniswap');
+const Liquidator = artifacts.require('LiquidatorUniswap');
 const { constants : { ZERO_ADDRESS } } = require('openzeppelin-test-helpers');
 const { ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce, deployContractBytecode } = require('../test/helpers/deployUtils');
@@ -76,12 +76,11 @@ module.exports = async function(deployer, network) {
   const parametersAddr = calculateAddressAtNonce(this.deployer, await web3.eth.getTransactionCount(this.deployer) + 1, web3);
   const usdp = await deployer.deploy(USDP, parametersAddr);
   const vaultAddr = calculateAddressAtNonce(this.deployer, await web3.eth.getTransactionCount(this.deployer) + 1, web3);
-  const parameters = await deployer.deploy(Parameters, vaultAddr);
+  const parameters = await deployer.deploy(Parameters, vaultAddr, col.address);
   const vault = await deployer.deploy(Vault, parameters.address, col.address, usdp.address);
   const liquidator = await deployer.deploy(Liquidator, parameters.address, vault.address, uniswapOracle.address, col.address, this.deployer);
   const vaultManager = await deployer.deploy(VaultManager,
     vault.address,
-    liquidator.address,
     parameters.address,
     uniswapOracle.address,
     col.address
@@ -104,7 +103,7 @@ module.exports = async function(deployer, network) {
   // Add liquidity to some token/WETH pool; rate = 125 token/WETH; 1 token = 2 USD
   await utils.poolDeposit(mainCollateral, 125);
 
-  await parameters.setOracleType('1', true);
+  await parameters.setOracleType('0', mainCollateral.address, true);
   await parameters.setVaultAccess(vaultManager.address, true);
   await parameters.setCollateral(
     mainCollateral.address,
@@ -113,5 +112,8 @@ module.exports = async function(deployer, network) {
     '67', // initial collateralization
     '68', // liquidation ratio
     ether('100000'), // debt limit
+    [0], // enabled oracles
+    3,
+    5,
   );
 };
