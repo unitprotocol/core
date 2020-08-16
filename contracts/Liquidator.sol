@@ -16,7 +16,7 @@ import "./helpers/ERC20Like.sol";
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Manages liquidation process
  **/
-contract Liquidator {
+contract LiquidatorUniswap {
     using SafeMath for uint;
 
     // system parameters contract address
@@ -56,12 +56,12 @@ contract Liquidator {
 
     /**
      * @dev Determines whether a position is liquidatable
-     * @param token The address of the main collateral token of a position
+     * @param asset The address of the main collateral token of a position
      * @param user The owner of a position
      * @return boolean value, whether a position is liquidatable
      **/
-    function isLiquidatablePosition(address token, address user, USDPLib.ProofData memory mainPriceProof, USDPLib.ProofData memory colPriceProof) public view returns (bool) {
-        uint debt = vault.getDebt(token, user);
+    function isLiquidatablePosition(address asset, address user, USDPLib.ProofData memory mainPriceProof, USDPLib.ProofData memory colPriceProof) public view returns (bool) {
+        uint debt = vault.getDebt(asset, user);
 
         // position is collateralized if there is no debt
         if (debt == 0) return false;
@@ -69,37 +69,35 @@ contract Liquidator {
         ChainlinkedUniswapOracle _usingOracle;
 
         // initially, only Uniswap is possible
-        if (vault.oracleType(token, user) == USDPLib.Oracle.UNISWAP) {
+        if (vault.oracleType(asset, user) == 1) {
             _usingOracle = uniswapOracle;
         } else revert("USDP: WRONG_ORACLE_TYPE");
 
         // USD value of the main collateral
-        uint mainUsdValue = _usingOracle.assetToUsd(token, vault.collaterals(token, user), mainPriceProof);
+        uint mainUsdValue = _usingOracle.assetToUsd(asset, vault.collaterals(asset, user), mainPriceProof);
 
         // USD value of the COL amount of a position
-        uint colUsdValue = _usingOracle.assetToUsd(COL, vault.colToken(token, user), colPriceProof);
+        uint colUsdValue = _usingOracle.assetToUsd(COL, vault.colToken(asset, user), colPriceProof);
 
-        return
-            CR(mainUsdValue, colUsdValue, debt) >=
-            LR(token, mainUsdValue, colUsdValue);
+        return CR(mainUsdValue, colUsdValue, debt) >= LR(asset, mainUsdValue, colUsdValue);
     }
 
     /**
      * @notice Funds transfers directly to the liquidation system's address
      * @dev Triggers liquidation process
-     * @param token The address of the main collateral token of a position
+     * @param asset The address of the main collateral token of a position
      * @param user The owner of a position
      **/
-    function liquidate(address token, address user, USDPLib.ProofData memory mainPriceProof, USDPLib.ProofData memory colPriceProof) public {
+    function liquidate(address asset, address user, USDPLib.ProofData memory mainPriceProof, USDPLib.ProofData memory colPriceProof) public {
 
         // reverts if a position is safe
-        require(isLiquidatablePosition(token, user, mainPriceProof, colPriceProof), "USDP: SAFE_POSITION");
+        require(isLiquidatablePosition(asset, user, mainPriceProof, colPriceProof), "USDP: SAFE_POSITION");
 
         // sends liquidation command to the Vault
-        vault.liquidate(token, user, liquidationSystem);
+        vault.liquidate(asset, user, liquidationSystem);
 
         // fire an liquidation event
-        emit Liquidation(token, user);
+        emit Liquidation(asset, user);
     }
 
     /**
@@ -113,8 +111,15 @@ contract Liquidator {
         return debt.mul(100).div(mainUsdValue.add(colUsdValue));
     }
 
-    function LR(address token, uint mainUsdValue, uint colUsdValue) public view returns(uint) {
-        uint lrMain = parameters.liquidationRatio(token);
+    /**
+     * @dev Calculates position's liquidation ratio based on collateral proportion
+     * @param asset The address of the main collateral token of a position
+     * @param mainUsdValue USD value of main collateral in position
+     * @param colUsdValue USD value of COL amount in position
+     * @return liquidation ratio of a position
+     **/
+    function LR(address asset, uint mainUsdValue, uint colUsdValue) public view returns(uint) {
+        uint lrMain = parameters.liquidationRatio(asset);
         uint lrCol = parameters.liquidationRatio(parameters.COL());
 
         return lrMain.mul(mainUsdValue).add(lrCol.mul(colUsdValue)).div(mainUsdValue.add(colUsdValue)).div(2);

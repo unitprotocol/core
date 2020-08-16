@@ -23,6 +23,4 @@ library USDPLib {
 		bytes reserveAndTimestampProofNodesRlp;
 		bytes priceAccumulatorProofNodesRlp;
 	}
-
-	enum Oracle { UNISWAP }
 }

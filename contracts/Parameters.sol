@@ -77,7 +77,7 @@ contract Parameters is Auth {
     mapping(address => bool) public isManager;
 
     // enabled oracle types for position spawn
-    mapping(USDPLib.Oracle => mapping (address => bool)) public isOracleTypeEnabled;
+    mapping(uint => mapping (address => bool)) public isOracleTypeEnabled;
 
     // address of the Vault
     address public vault;
@@ -110,7 +110,7 @@ contract Parameters is Auth {
     /**
      * notice Only manager is able to call this function
      * @dev Sets ability to use token as the main collateral
-     * @param token The address of a token
+     * @param asset The address of the main collateral token
      * @param stabilityFeeValue The percentage of the year stability fee (3 decimals)
      * @param liquidationFeeValue The liquidation fee percentage (0 decimals)
      * @param initialCollateralRatioValue The initial collateralization ratio
@@ -118,48 +118,48 @@ contract Parameters is Auth {
      * @param usdpLimit The USDP token issue limit
      **/
     function setCollateral(
-        address token,
+        address asset,
         uint stabilityFeeValue,
         uint liquidationFeeValue,
         uint initialCollateralRatioValue,
         uint liquidationRatioValue,
         uint usdpLimit,
-        USDPLib.Oracle[] calldata oracles,
+        uint[] calldata oracles,
         uint minColP,
         uint maxColP
     ) external onlyManager {
-        setStabilityFee(token, stabilityFeeValue);
-        setLiquidationFee(token, liquidationFeeValue);
-        setInitialCollateralRatio(token, initialCollateralRatioValue);
-        setLiquidationRatio(token, liquidationRatioValue);
-        setTokenDebtLimit(token, usdpLimit);
+        setStabilityFee(asset, stabilityFeeValue);
+        setLiquidationFee(asset, liquidationFeeValue);
+        setInitialCollateralRatio(asset, initialCollateralRatioValue);
+        setLiquidationRatio(asset, liquidationRatioValue);
+        setTokenDebtLimit(asset, usdpLimit);
         for (uint i=0; i < oracles.length; i++) {
-            setOracleType(oracles[i], token, true);
+            setOracleType(oracles[i], asset, true);
         }
 
-        setColPartRange(token, minColP, maxColP);
+        setColPartRange(asset, minColP, maxColP);
     }
 
     /**
      * notice Only manager is able to call this function
      * @dev Sets the initial collateral ratio
-     * @param token The address of a token
+     * @param asset The address of the main collateral token
      * @param newValue The collateralization ratio (0 decimals)
      **/
-    function setInitialCollateralRatio(address token, uint newValue) public onlyManager {
+    function setInitialCollateralRatio(address asset, uint newValue) public onlyManager {
         require(newValue > 0 && newValue <= 100, "USDP: INCORRECT_COLLATERALIZATION_VALUE");
-        initialCollateralRatio[token] = newValue;
+        initialCollateralRatio[asset] = newValue;
     }
 
     /**
      * notice Only manager is able to call this function
      * @dev Sets the liquidation ratio
-     * @param token The address of a token
+     * @param asset The address of the main collateral token
      * @param newValue The liquidation ratio (0 decimals)
      **/
-    function setLiquidationRatio(address token, uint newValue) public onlyManager {
-        require(newValue > 0 && newValue >= initialCollateralRatio[token], "USDP: INCORRECT_COLLATERALIZATION_VALUE");
-        liquidationRatio[token] = newValue;
+    function setLiquidationRatio(address asset, uint newValue) public onlyManager {
+        require(newValue > 0 && newValue >= initialCollateralRatio[asset], "USDP: INCORRECT_COLLATERALIZATION_VALUE");
+        liquidationRatio[asset] = newValue;
     }
 
     /**
@@ -175,54 +175,54 @@ contract Parameters is Auth {
     /**
      * notice Only manager is able to call this function
      * @dev Sets the percentage of the year stability fee for a particular collateral
-     * @param token The token address
+     * @param asset The address of the main collateral token
      * @param newValue The stability fee percentage (3 decimals)
      **/
-    function setStabilityFee(address token, uint newValue) public onlyManager {
-        stabilityFee[token] = newValue;
+    function setStabilityFee(address asset, uint newValue) public onlyManager {
+        stabilityFee[asset] = newValue;
     }
 
     /**
      * notice Only manager is able to call this function
      * @dev Sets the percentage of the liquidation fee for a particular collateral
-     * @param token The token address
+     * @param asset The address of the main collateral token
      * @param newValue The liquidation fee percentage (0 decimals)
      **/
-    function setLiquidationFee(address token, uint newValue) public onlyManager {
-        liquidationFee[token] = newValue;
+    function setLiquidationFee(address asset, uint newValue) public onlyManager {
+        liquidationFee[asset] = newValue;
     }
 
     /**
      * notice Only manager is able to call this function
      * @dev Sets the percentage range of the COL token part for specific collateral token
-     * @param min The address of collateral token
+     * @param asset The address of the main collateral token
      * @param min The min percentage (0 decimals)
      * @param max The max percentage (0 decimals)
      **/
-    function setColPartRange(address token, uint min, uint max) public onlyManager {
+    function setColPartRange(address asset, uint min, uint max) public onlyManager {
         require(max <= 100 && min <= max, "USDP: WRONG_RANGE");
-        minColPercent[token] = min;
-        maxColPercent[token] = max;
+        minColPercent[asset] = min;
+        maxColPercent[asset] = max;
     }
 
     /**
      * notice Only manager is able to call this function
      * @dev Enables/disables oracle types
      * @param _type The type of the oracle
-     * @param asset The address of the main collateral
+     * @param asset The address of the main collateral token
      * @param enabled The control flag
      **/
-    function setOracleType(USDPLib.Oracle _type, address asset, bool enabled) public onlyManager {
+    function setOracleType(uint _type, address asset, bool enabled) public onlyManager {
         isOracleTypeEnabled[_type][asset] = enabled;
     }
 
     /**
      * notice Only manager is able to call this function
      * @dev Sets USDP limit for a specific collateral
-     * @param token The token address
+     * @param asset The address of the main collateral token
      * @param limit The limit number
      **/
-    function setTokenDebtLimit(address token, uint limit) public onlyManager {
-        tokenDebtLimit[token] = limit;
+    function setTokenDebtLimit(address asset, uint limit) public onlyManager {
+        tokenDebtLimit[asset] = limit;
     }
 }
