@@ -122,6 +122,6 @@ contract LiquidatorUniswap {
         uint lrMain = parameters.liquidationRatio(asset);
         uint lrCol = parameters.liquidationRatio(parameters.COL());
 
-        return lrMain.mul(mainUsdValue).add(lrCol.mul(colUsdValue)).div(mainUsdValue.add(colUsdValue)).div(2);
+        return lrMain.mul(mainUsdValue).add(lrCol.mul(colUsdValue)).div(mainUsdValue.add(colUsdValue));
     }
 }
