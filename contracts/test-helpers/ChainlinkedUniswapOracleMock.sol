@@ -50,6 +50,11 @@ contract ChainlinkedUniswapOracleMock {
     // override to old mechanics
     // only for tests
     function assetToUsd(address asset, uint amount, USDPLib.ProofData memory proofData) public view returns (uint) {
+
+        if (asset == WETH) {
+            return ethToUsd(amount);
+        }
+
         address uniswapPair = uniswapFactory.getPair(asset, WETH);
         require(uniswapPair != address(0), "USDP: UNISWAP_PAIR_DOES_NOT_EXIST");
 

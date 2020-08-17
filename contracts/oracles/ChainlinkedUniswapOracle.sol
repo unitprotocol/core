@@ -58,6 +58,9 @@ contract ChainlinkedUniswapOracle is UniswapOracle {
      * @return price of tokens in USD
      **/
     function assetToUsd(address asset, uint amount, USDPLib.ProofData memory proofData) public view returns (uint) {
+        if (asset == WETH) {
+            return ethToUsd(amount);
+        }
         IUniswapV2Pair pair = IUniswapV2Pair(uniswapFactory.getPair(asset, WETH));
         require(address(pair) != address(0), "USDP: UNISWAP_PAIR_DOES_NOT_EXIST");
         (uint priceInEth, ) = getPrice(pair, WETH, MIN_BLOCKS_BACK, MAX_BLOCKS_BACK, proofData);
