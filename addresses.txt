@@ -16,3 +16,23 @@ Parameters                      0x3399deB4D1569b7Fa900B93377da64Fe750a43Da
 Vault                           0x5B0Dded476573612C81A2A3F72F6d774d7d962B5
 Liquidator                      0xad9621c534797CCe0a7c84B6F5916CF2466240B1
 VaultManager                    0x1832ddD74B468A460dC50BB11ACea575b5Ea5fc3
+
+
+// RINKEBY // Deployed at 18.08
+
+COL                             0x0F235462cA4a41EA92Fca6b7c4d67dAe0DA8d1D6 // 1COL = 1$ initially (250 COL/WETH)
+STAKE                           0xeED5B67BEf854D8Cb7FCa3e8220c54b3b48C461B // 1STAKE = 2$ initially (125 STAKE/WETH)
+WETH                            0xc778417e063141139fce010982780140aa0cd5ab
+
+UniswapFactory                  0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
+ChainlinkAggregaor mock         0x8692e13F484e10b0A6e3Cc97BB87a8eceA6EB9AE
+ChainLinkedUniswapOracle        0xD1789f872a723F629B81D2F3B45bD5748Ad71f99
+UniswapV2Router02               0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
+
+USDP                            0x63D1A6FAD6B7890613Afab038d7ec08776947725
+
+Parameters                      0xcc703190202734c7c75f05e60f246afd56b2f5f1
+Vault                           0xa2EF74ed839e8B3ea0f9efff3dBCCF4469162Cb1
+Liquidator                      0xc5da235574474b0F08E95A8E9941350ee756Ef38
+VaultManagerUniswap             0x30Ec90Bad6597110d9DB9b4E063D6Ecf4730a1a1
+VaultManagerStandard            0x92FffB0f3252247d09Fe8398532493c0deaE3747
