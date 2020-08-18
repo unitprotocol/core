@@ -7,7 +7,7 @@ const { expect } = require('chai');
 
 contract('USDP', function ([deployer, owner, recipient, anotherAccount]) {
     beforeEach(async function () {
-        const parameters = await Parameters.new(deployer);
+        const parameters = await Parameters.new(deployer, anotherAccount);
         await parameters.setVaultAccess(deployer, true);
         this.token = await USDP.new(parameters.address);
         await this.token.mint(owner, new BN(100));
@@ -218,7 +218,7 @@ contract('USDP', function ([deployer, owner, recipient, anotherAccount]) {
                     const amount = new BN(100);
 
                     it('asserts', async function () {
-                        await expectRevert.assertion(this.token.transferFrom(owner, to, amount, { from: spender }));
+                        await expectRevert.unspecified(this.token.transferFrom(owner, to, amount, { from: spender }));
                     });
                 });
 

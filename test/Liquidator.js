@@ -20,14 +20,14 @@ contract('Liquidator', function([
 
 	describe('Optimistic cases', function() {
 		it('Should liquidate undercollateralized position', async function () {
-			const mainAmount = ether('50');
+			const mainAmount = ether('60');
 			const colAmount = ether('5');
 			const usdpAmount = ether('70');
 
 			/*
 			 * Spawned position params:
-			 * collateral value = 50 * 2 + 5 = 105$
-			 * collateralization percent = 105 / 70 = 150%
+			 * collateral value = 60 * 2 + 5 = 125$
+			 * utilization percent = 70 / 125 = 56%
 			 */
 			await this.utils.spawn(this.mainCollateral, mainAmount, colAmount, usdpAmount);
 
@@ -56,8 +56,8 @@ contract('Liquidator', function([
 
 			/*
 			 * Position params after price change:
-			 * collateral value = 50 * 1.10 + 5 = 60.12$
-			 * collateralization percent = 60.12 / 70 = 85.9%
+			 * collateral value = 60 * 1.10 + 5 = 71$
+			 * utilization percent = 70 / 71 = 98.5%
 			 */
 			const { logs } = await this.utils.liquidate(this.mainCollateral, deployer);
 			expectEvent.inLogs(logs, 'Liquidation', {

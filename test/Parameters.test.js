@@ -19,7 +19,7 @@ contract('Parameters', function([
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
-		this.parameters = await Parameters.new(secondAccount);
+		this.parameters = await Parameters.new(secondAccount, thirdAccount);
 	});
 
 	describe('Optimistic cases', function() {
@@ -33,7 +33,17 @@ contract('Parameters', function([
 
 		it('Should set token as collateral with specified parameters', async function () {
 			const expectedTokenDebtLimit = ether('1000000');
-			await this.parameters.setCollateral(thirdAccount, 0, 100, 67, 68, expectedTokenDebtLimit);
+			await this.parameters.setCollateral(
+				thirdAccount,
+				0,
+				100,
+				67,
+				68,
+				expectedTokenDebtLimit,
+				[1], // enabled oracles
+				3,
+				5,
+			);
 
 			const tokenDebtLimit = await this.parameters.tokenDebtLimit(thirdAccount);
 
@@ -87,19 +97,22 @@ contract('Parameters', function([
 		it('Should set set COL token part percentage range', async function () {
 			const expectedMinColPartRange = new BN('2');
 			const expectedMaxColPartRange = new BN('10');
-			await this.parameters.setColPartRange(expectedMinColPartRange, expectedMaxColPartRange);
+			const asset = thirdAccount;
 
-			const minColPercentage = await this.parameters.minColPercent();
-			const maxColPercentage = await this.parameters.maxColPercent();
+			await this.parameters.setColPartRange(asset, expectedMinColPartRange, expectedMaxColPartRange);
+
+			const minColPercentage = await this.parameters.minColPercent(asset);
+			const maxColPercentage = await this.parameters.maxColPercent(asset);
 
 			expect(minColPercentage).to.be.bignumber.equal(expectedMinColPartRange);
 			expect(maxColPercentage).to.be.bignumber.equal(expectedMaxColPartRange);
 		})
 
 		it('Should set oracle type enabled', async function () {
-			await this.parameters.setOracleType(2, true);
+			const asset = thirdAccount;
+			await this.parameters.setOracleType(0, asset, true);
 
-			const isOracleTypeEnabled = await this.parameters.isOracleTypeEnabled(2);
+			const isOracleTypeEnabled = await this.parameters.isOracleTypeEnabled(0, asset);
 
 			expect(isOracleTypeEnabled).to.equal(true);
 		})

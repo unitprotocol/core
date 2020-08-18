@@ -4,7 +4,6 @@ const USDP = artifacts.require('USDP');
 const WETH = artifacts.require('WETH');
 const DummyToken = artifacts.require('DummyToken');
 const UniswapOracle = artifacts.require('ChainlinkedUniswapOracleMock');
-const USDPLibrary = artifacts.require('USDPLib');
 const ChainlinkAggregator = artifacts.require('ChainlinkAggregatorMock');
 const UniswapV2FactoryDeployCode = require('./UniswapV2DeployCode');
 const IUniswapV2Factory = artifacts.require('IUniswapV2Factory');
@@ -117,8 +116,6 @@ module.exports = context =>
 
 	const deploy = async() => {
 		context.col = await DummyToken.new("Unit Protocol Token", "COL", 18, ether('1000000'));
-		context.dai = await DummyToken.new("DAI clone", "DAI", 18, ether('1000000'));
-		context.usdc = await DummyToken.new("USDC clone", "USDC", 6, String(10000000 * 10 ** 6));
 		context.weth = await WETH.new();
 		context.mainCollateral = await DummyToken.new("STAKE clone", "STAKE", 18, ether('1000000'));
 
@@ -126,11 +123,7 @@ module.exports = context =>
 		const uniswapFactoryAddr = await deployContractBytecode(UniswapV2FactoryDeployCode, context.deployer, web3);
 		context.uniswapFactory = await IUniswapV2Factory.at(uniswapFactoryAddr);
 
-		await context.uniswapFactory.createPair(context.dai.address, context.weth.address);
-		await context.uniswapFactory.createPair(context.usdc.address, context.weth.address);
-
 		const chainlinkAggregator = await ChainlinkAggregator.new();
-		await USDPLibrary.new();
 
 		context.uniswapOracle = await UniswapOracle.new(
 			context.uniswapFactory.address,
@@ -160,12 +153,6 @@ module.exports = context =>
 
 		await context.weth.approve(context.uniswapRouter.address, ether('100'));
 
-		// Add liquidity to DAI/WETH pool; rate = 200 DAI/ETH
-		await poolDeposit(context.dai, 200);
-
-		// Add liquidity to USDC/WETH pool
-		await poolDeposit(context.usdc, 300, 6);
-
 		// Add liquidity to COL/WETH pool; rate = 250 COL/WETH; 1 COL = 1 USD
 		await poolDeposit(context.col, 250);
 
@@ -186,6 +173,9 @@ module.exports = context =>
 			3,
 			5,
 		);
+
+		await context.parameters.setInitialCollateralRatio(context.col.address, 67);
+		await context.parameters.setLiquidationRatio(context.col.address, 68);
 	};
 
 	return {
