@@ -6,11 +6,21 @@
 pragma solidity ^0.6.8;
 
 import "./helpers/SafeMath.sol";
-import "./helpers/USDPLib.sol";
 import "./Parameters.sol";
 import "./helpers/ERC20SafeTransfer.sol";
 import "./USDP.sol";
 
+
+interface LiquidationSystem{
+    function liquidate(
+        address asset,
+        address user,
+        uint mainAmount,
+        uint colAmount,
+        uint debt,
+        uint liquidationFee
+    ) external;
+}
 
 /**
  * @title Vault
@@ -198,6 +208,18 @@ contract Vault is Auth {
 
         COL.safeTransferAndVerify(liquidationSystem, colToken[asset][user]);
         asset.safeTransferAndVerify(liquidationSystem, collaterals[asset][user]);
+
+        if (isContract(liquidationSystem)) {
+            LiquidationSystem(liquidationSystem).liquidate(
+                asset,
+                user,
+                collaterals[asset][user],
+                colToken[asset][user],
+                debts[asset][user],
+                liquidationFee[asset][user]
+            );
+        }
+
         tokenDebts[asset] = tokenDebts[asset].sub(debts[asset][user]);
         delete debts[asset][user];
         delete collaterals[asset][user];
@@ -228,5 +250,16 @@ contract Vault is Auth {
 
         uint fee = amount.mul(sFeePercent).mul(secondsPast).div(365 days).div(FEE_DENOMINATOR);
         return amount.add(fee);
+    }
+
+    function isContract(address account) internal view returns (bool) {
+        // This method relies in extcodesize, which returns 0 for contracts in
+        // construction, since the code is only stored at the end of the
+        // constructor execution.
+
+        uint256 size;
+        // solhint-disable-next-line no-inline-assembly
+        assembly { size := extcodesize(account) }
+        return size > 0;
     }
 }

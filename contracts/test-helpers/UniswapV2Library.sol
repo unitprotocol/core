@@ -5,8 +5,8 @@
 */
 pragma solidity ^0.6.8;
 
-import '../helpers/IUniswapV2Pair.sol';
 import "../helpers/SafeMath.sol";
+import "../helpers/IUniswapV2PairFull.sol";
 
 library UniswapV2Library {
     using SafeMath for uint;
@@ -32,7 +32,7 @@ library UniswapV2Library {
     // fetches and sorts the reserves for a pair
     function getReserves(address factory, address tokenA, address tokenB) internal view returns (uint reserveA, uint reserveB) {
         (address token0,) = sortTokens(tokenA, tokenB);
-        (uint reserve0, uint reserve1,) = IUniswapV2Pair(pairFor(factory, tokenA, tokenB)).getReserves();
+        (uint reserve0, uint reserve1,) = IUniswapV2PairFull(pairFor(factory, tokenA, tokenB)).getReserves();
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
 

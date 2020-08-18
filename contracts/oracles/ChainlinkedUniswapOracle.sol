@@ -7,9 +7,10 @@ pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
 import "../helpers/SafeMath.sol";
-import "../helpers/UniswapOracle.sol";
+import { UniswapOracle, IUniswapV2Pair } from  '../../node_modules/@keydonix/uniswap-oracle-contracts/source/UniswapOracle.sol';
 import "../helpers/AggregatorInterface.sol";
 import "../helpers/IUniswapV2Factory.sol";
+
 
 /**
  * @title ChainlinkedUniswapOracle
@@ -40,7 +41,7 @@ contract ChainlinkedUniswapOracle is UniswapOracle {
     )
         public
     {
-        require(address(uniswapFactory) != address(0), "USDP: ZERO_ADDRESS");
+        require(address(uniFactory) != address(0), "USDP: ZERO_ADDRESS");
         require(weth != address(0), "USDP: ZERO_ADDRESS");
         require(address(chainlinkAggregator) != address(0), "USDP: ZERO_ADDRESS");
 
@@ -57,7 +58,7 @@ contract ChainlinkedUniswapOracle is UniswapOracle {
      * @param amount Amount of tokens
      * @return price of tokens in USD
      **/
-    function assetToUsd(address asset, uint amount, USDPLib.ProofData memory proofData) public view returns (uint) {
+    function assetToUsd(address asset, uint amount, ProofData memory proofData) public view returns (uint) {
         if (asset == WETH) {
             return ethToUsd(amount);
         }

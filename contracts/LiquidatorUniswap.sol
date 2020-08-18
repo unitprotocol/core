@@ -60,7 +60,7 @@ contract LiquidatorUniswap {
      * @param user The owner of a position
      * @return boolean value, whether a position is liquidatable
      **/
-    function isLiquidatablePosition(address asset, address user, USDPLib.ProofData memory mainPriceProof, USDPLib.ProofData memory colPriceProof) public view returns (bool) {
+    function isLiquidatablePosition(address asset, address user, UniswapOracle.ProofData memory mainPriceProof, UniswapOracle.ProofData memory colPriceProof) public view returns (bool) {
         uint debt = vault.getDebt(asset, user);
 
         // position is collateralized if there is no debt
@@ -88,7 +88,7 @@ contract LiquidatorUniswap {
      * @param asset The address of the main collateral token of a position
      * @param user The owner of a position
      **/
-    function liquidate(address asset, address user, USDPLib.ProofData memory mainPriceProof, USDPLib.ProofData memory colPriceProof) public {
+    function liquidate(address asset, address user, UniswapOracle.ProofData memory mainPriceProof, UniswapOracle.ProofData memory colPriceProof) public {
 
         // reverts if a position is safe
         require(isLiquidatablePosition(asset, user, mainPriceProof, colPriceProof), "USDP: SAFE_POSITION");

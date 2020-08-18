@@ -6,7 +6,6 @@
 pragma solidity ^0.6.8;
 
 import "./helpers/ERC20Like.sol";
-import "./helpers/USDPLib.sol";
 
 
 /**

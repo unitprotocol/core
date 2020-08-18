@@ -79,8 +79,8 @@ contract VaultManagerUniswap is Auth {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        USDPLib.ProofData memory mainPriceProof,
-        USDPLib.ProofData memory colPriceProof
+        UniswapOracle.ProofData memory mainPriceProof,
+        UniswapOracle.ProofData memory colPriceProof
     )
         public
     {
@@ -118,8 +118,8 @@ contract VaultManagerUniswap is Auth {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        USDPLib.ProofData memory mainPriceProof,
-        USDPLib.ProofData memory colPriceProof
+        UniswapOracle.ProofData memory mainPriceProof,
+        UniswapOracle.ProofData memory colPriceProof
     )
         public
         spawned(asset, user)
@@ -149,8 +149,8 @@ contract VaultManagerUniswap is Auth {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        USDPLib.ProofData memory mainPriceProof,
-        USDPLib.ProofData memory colPriceProof
+        UniswapOracle.ProofData memory mainPriceProof,
+        UniswapOracle.ProofData memory colPriceProof
     )
         public
         spawned(asset, user)
@@ -193,8 +193,8 @@ contract VaultManagerUniswap is Auth {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        USDPLib.ProofData memory mainPriceProof,
-        USDPLib.ProofData memory colPriceProof
+        UniswapOracle.ProofData memory mainPriceProof,
+        UniswapOracle.ProofData memory colPriceProof
     )
         internal
     {
@@ -217,8 +217,8 @@ contract VaultManagerUniswap is Auth {
     function _ensureCollateralization(
         address asset,
         address user,
-        USDPLib.ProofData memory mainPriceProof,
-        USDPLib.ProofData memory colPriceProof
+        UniswapOracle.ProofData memory mainPriceProof,
+        UniswapOracle.ProofData memory colPriceProof
     )
         internal
         view
