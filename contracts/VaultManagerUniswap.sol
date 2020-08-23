@@ -224,7 +224,8 @@ contract VaultManagerUniswap is Auth {
         view
     {
         // COL token value of the position in USD
-        uint colUsdValue = uniswapOracle.assetToUsd(COL, vault.colToken(asset, user), colPriceProof);
+        uint colUsdValueQ112 = uniswapOracle.assetToUsd(COL, vault.colToken(asset, user), colPriceProof);
+        uint colUsdValue = colUsdValueQ112.div(uniswapOracle.Q112());
 
         // main collateral value of the position in USD
         uint mainUsdValue = uniswapOracle.assetToUsd(asset, vault.collaterals(asset, user), mainPriceProof);
@@ -235,7 +236,7 @@ contract VaultManagerUniswap is Auth {
         uint minColPercent = parameters.minColPercent(asset);
         if (minColPercent > 0) {
             // main limit by COL
-            uint mainUsdLimit = colUsdValue * (100 - minColPercent) / minColPercent;
+            uint mainUsdLimit = colUsdValueQ112 * (100 - minColPercent) / minColPercent / uniswapOracle.Q112();
             mainUsdUtilized = Math.min(mainUsdValue, mainUsdLimit);
         } else {
             mainUsdUtilized = mainUsdValue;
@@ -250,11 +251,11 @@ contract VaultManagerUniswap is Auth {
             colUsdUtilized = colUsdValue;
         }
 
-        uint mainICR = parameters.initialCollateralRatio(asset);
-        uint colICR = parameters.initialCollateralRatio(COL);
-
         // USD limit of the position
-        uint usdLimit = (mainUsdUtilized * mainICR + colUsdUtilized * colICR) / 100;
+        uint usdLimit = (
+            mainUsdUtilized * parameters.initialCollateralRatio(asset) +
+            colUsdUtilized * parameters.initialCollateralRatio(COL)
+        ) / 100;
 
         // revert if collateralization is not enough
         require(vault.getDebt(asset, user) <= usdLimit, "USDP: UNDERCOLLATERALIZED");

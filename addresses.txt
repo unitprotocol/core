@@ -26,7 +26,7 @@ WETH                            0xc778417e063141139fce010982780140aa0cd5ab
 
 UniswapFactory                  0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
 ChainlinkAggregaor mock         0x8692e13F484e10b0A6e3Cc97BB87a8eceA6EB9AE
-ChainLinkedUniswapOracle        0xD1789f872a723F629B81D2F3B45bD5748Ad71f99
+ChainLinkedUniswapOracle        0xD1789f872a723F629B81D2F3B45bD5748Ad71f99 // with assetToEth 0x4186933e02aB98c14E9eDD2573F586Fa40CeB90D
 UniswapV2Router02               0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
 
 USDP                            0x63D1A6FAD6B7890613Afab038d7ec08776947725

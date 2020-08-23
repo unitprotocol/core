@@ -107,8 +107,8 @@ contract LiquidatorUniswap {
      * @param debt USDP borrowed
      * @return collateralization ratio of a position
      **/
-    function CR(uint mainUsdValue, uint colUsdValue, uint debt) public pure returns (uint) {
-        return debt.mul(100).div(mainUsdValue.add(colUsdValue));
+    function CR(uint mainUsdValue, uint colUsdValue, uint debt) public view returns (uint) {
+        return debt.mul(100).mul(uniswapOracle.Q112()).div(mainUsdValue.add(colUsdValue));
     }
 
     /**
