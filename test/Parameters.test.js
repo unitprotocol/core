@@ -19,7 +19,7 @@ contract('Parameters', function([
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
-		this.parameters = await Parameters.new(secondAccount, thirdAccount);
+		this.parameters = await Parameters.new(secondAccount, thirdAccount, deployer);
 	});
 
 	describe('Optimistic cases', function() {

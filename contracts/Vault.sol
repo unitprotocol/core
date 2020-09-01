@@ -35,7 +35,7 @@ contract Vault is Auth {
     using SafeMath for uint;
 
     // COL token address
-    address public COL;
+    address public col;
 
     uint public constant FEE_DENOMINATOR = 100000;
 
@@ -49,7 +49,7 @@ contract Vault is Auth {
     mapping(address => mapping(address => uint)) public colToken;
 
     // user debts
-    mapping(address => mapping(address => uint)) internal debts;
+    mapping(address => mapping(address => uint)) public debts;
 
     // debts of tokens
     mapping(address => uint) public tokenDebts;
@@ -72,7 +72,7 @@ contract Vault is Auth {
      * @param _usdp USDP token address
      **/
     constructor(address _parameters, address _col, USDP _usdp) public Auth(_parameters) {
-        COL = _col;
+        col = _col;
         usdp = _usdp;
     }
 
@@ -84,13 +84,13 @@ contract Vault is Auth {
     function update(address asset, address user) public hasVaultAccess {
 
         // calculate fee using stored stability fee
-        uint debtWithFee = getDebt(asset, user);
+        uint debtWithFee = getTotalDebt(asset, user);
         tokenDebts[asset] = tokenDebts[asset].sub(debts[asset][user]).add(debtWithFee);
         debts[asset][user] = debtWithFee;
 
         stabilityFee[asset][user] = parameters.stabilityFee(asset);
         liquidationFee[asset][user] = parameters.liquidationFee(asset);
-        lastUpdate[asset][user] = now;
+        lastUpdate[asset][user] = block.timestamp;
     }
 
     /**
@@ -146,7 +146,7 @@ contract Vault is Auth {
      **/
     function depositCol(address asset, address user, uint amount) external hasVaultAccess {
         colToken[asset][user] = colToken[asset][user].add(amount);
-        COL.safeTransferFromAndVerify(user, address(this), amount);
+        col.safeTransferFromAndVerify(user, address(this), amount);
     }
 
     /**
@@ -156,7 +156,7 @@ contract Vault is Auth {
      * @param amount The amount of tokens to withdraw
      **/
     function withdrawCol(address asset, address user, uint amount) external hasVaultAccess {
-        COL.safeTransferAndVerify(user, amount);
+        col.safeTransferAndVerify(user, amount);
         colToken[asset][user] = colToken[asset][user].sub(amount);
     }
 
@@ -184,15 +184,27 @@ contract Vault is Auth {
      * @param asset The address of the main collateral token
      * @param user The address of a position's owner
      * @param amount The amount of USDP to repay
+     * @return updated debt of a position
      **/
     function repay(address asset, address user, uint amount) external hasVaultAccess returns(uint) {
         uint debt = debts[asset][user];
-        uint debtWithFee = getDebt(asset, user);
-        debts[asset][user] = debtWithFee.sub(amount);
-        tokenDebts[asset] = tokenDebts[asset].sub(amount).add(debtWithFee.sub(debt));
+        debts[asset][user] = debt.sub(amount);
+        tokenDebts[asset] = tokenDebts[asset].sub(amount);
         usdp.burn(user, amount);
 
         return debts[asset][user];
+    }
+
+    /**
+     * @dev Transfers fee to foundation
+     * @param asset The address of the fee asset
+     * @param user The address to transfer funds from
+     * @param amount The amount of asset to transfer
+     **/
+    function chargeFee(address asset, address user, uint amount) external hasVaultAccess {
+        if (amount > 0) {
+            asset.safeTransferFromAndVerify(user, parameters.foundation(), amount);
+        }
     }
 
     /**
@@ -206,7 +218,7 @@ contract Vault is Auth {
         // reverts if oracle type is disabled
         require(parameters.isOracleTypeEnabled(oracleType[asset][user], asset), "USDP: WRONG_ORACLE_TYPE");
 
-        COL.safeTransferAndVerify(liquidationSystem, colToken[asset][user]);
+        col.safeTransferAndVerify(liquidationSystem, colToken[asset][user]);
         asset.safeTransferAndVerify(liquidationSystem, collaterals[asset][user]);
 
         if (isContract(liquidationSystem)) {
@@ -238,20 +250,6 @@ contract Vault is Auth {
         oracleType[asset][user] = newOracleType;
     }
 
-    /**
-     * @dev Calculates the amount of debt based on elapsed time
-     * @param asset The address of the main collateral token
-     * @param user The address of a position's owner
-     **/
-    function getDebt(address asset, address user) public view returns (uint) {
-        uint sFeePercent = stabilityFee[asset][user];
-        uint amount = debts[asset][user];
-        uint secondsPast = now - lastUpdate[asset][user];
-
-        uint fee = amount.mul(sFeePercent).mul(secondsPast).div(365 days).div(FEE_DENOMINATOR);
-        return amount.add(fee);
-    }
-
     function isContract(address account) internal view returns (bool) {
         // This method relies in extcodesize, which returns 0 for contracts in
         // construction, since the code is only stored at the end of the
@@ -261,5 +259,31 @@ contract Vault is Auth {
         // solhint-disable-next-line no-inline-assembly
         assembly { size := extcodesize(account) }
         return size > 0;
+    }
+
+    /**
+     * @dev Calculates the total amount of position's debt based on elapsed time
+     * @param asset The address of the main collateral token
+     * @param user The address of a position's owner
+     * @return user debt of a position plus accumulated fee
+     **/
+    function getTotalDebt(address asset, address user) public view returns (uint) {
+        uint debt = debts[asset][user];
+        uint fee = calculateFee(asset, user, debt);
+        return debt.add(fee);
+    }
+
+    /**
+     * @dev Calculates the amount of fee based on elapsed time and repayment amount
+     * @param asset The address of the main collateral token
+     * @param user The address of a position's owner
+     * @param amount The repayment amount
+     * @return fee amount
+     **/
+    function calculateFee(address asset, address user, uint amount) public view returns (uint) {
+        uint sFeePercent = stabilityFee[asset][user];
+        uint timePast = block.timestamp.sub(lastUpdate[asset][user]);
+
+        return amount.mul(sFeePercent).mul(timePast).div(365 days).div(FEE_DENOMINATOR);
     }
 }

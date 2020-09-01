@@ -6,7 +6,7 @@ const DummyToken = artifacts.require('DummyToken');
 const UniswapOracle = artifacts.require('UniswapOracle');
 const IUniswapV2Factory = artifacts.require('IUniswapV2Factory');
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
-const VaultManager = artifacts.require('VaultManagerUniswap');
+const VaultManagerUniswap = artifacts.require('VaultManagerUniswap');
 const Liquidator = artifacts.require('LiquidatorUniswap');
 const { constants : { ZERO_ADDRESS } } = require('openzeppelin-test-helpers');
 const { ether } = require('openzeppelin-test-helpers');
@@ -54,8 +54,6 @@ module.exports = async function(deployer, network) {
   const dai = await deployer.deploy(DummyToken, "DAI testnet", "DAI", 18, ether('1000000'));
   const usdc = await deployer.deploy(DummyToken, "USDC testnet", "USDC", 6, String(10000000 * 10 ** 6));
   this.weth = await deployer.deploy(WETH);
-  // this.weth = await WETH.at('0xd0A1E359811322d97991E03f863a0C30C2cF029C');
-  // this.weth = await WETH.at('0x348E004B789D5C6BBC65cEaaDE84f7Fad897EBB8');
   const mainCollateral = await deployer.deploy(DummyToken, "STAKE", "STAKE", 18, ether('1000000'));
 
   await this.weth.deposit({ value: ether('1') });
@@ -76,14 +74,14 @@ module.exports = async function(deployer, network) {
   const parametersAddr = calculateAddressAtNonce(this.deployer, await web3.eth.getTransactionCount(this.deployer) + 1, web3);
   const usdp = await deployer.deploy(USDP, parametersAddr);
   const vaultAddr = calculateAddressAtNonce(this.deployer, await web3.eth.getTransactionCount(this.deployer) + 1, web3);
-  const parameters = await deployer.deploy(Parameters, vaultAddr, col.address);
+  const parameters = await deployer.deploy(Parameters, vaultAddr, col.address, this.deployer);
   const vault = await deployer.deploy(Vault, parameters.address, col.address, usdp.address);
   const liquidator = await deployer.deploy(Liquidator, parameters.address, vault.address, uniswapOracle.address, col.address, this.deployer);
-  const vaultManager = await deployer.deploy(VaultManager,
+  const vaultManager = await deployer.deploy(
+    VaultManagerUniswap,
     vault.address,
     parameters.address,
     uniswapOracle.address,
-    col.address
   );
 
   this.uniswapRouter = await deployer.deploy(UniswapV2Router02, uniswapFactoryAddr, ZERO_ADDRESS);

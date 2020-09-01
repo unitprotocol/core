@@ -47,7 +47,7 @@ contract ChainlinkedUniswapOracleMock {
         ethUsdChainlinkAggregator = chainlinkAggregator;
     }
 
-    // override to old mechanics
+    // override with old-style mechanics realization
     // only for tests
     function assetToUsd(address asset, uint amount, UniswapOracle.ProofData memory proofData) public view returns (uint) {
 
@@ -81,6 +81,6 @@ contract ChainlinkedUniswapOracleMock {
     function ethToUsd(uint ethAmount) public view returns (uint) {
         require(ethUsdChainlinkAggregator.latestTimestamp() > now - 6 hours, "USDP: OUTDATED_CHAINLINK_PRICE");
         uint ethUsdPrice = uint(ethUsdChainlinkAggregator.latestAnswer());
-        return ethAmount.mul(ethUsdPrice).div(ETH_USD_DENOMINATOR);
+        return ethAmount.mul(Q112).mul(ethUsdPrice).div(ETH_USD_DENOMINATOR);
     }
 }

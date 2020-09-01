@@ -6,13 +6,13 @@
 pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
-import "./Vault.sol";
-import "./oracles/ChainlinkedUniswapOracle.sol";
-import "./helpers/ERC20Like.sol";
+import "../Vault.sol";
+import "../oracles/ChainlinkedUniswapOracle.sol";
+import "../helpers/ERC20Like.sol";
 
 
 /**
- * @title Liquidator
+ * @title LiquidatorUniswap
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Manages liquidation process
  **/
@@ -61,23 +61,18 @@ contract LiquidatorUniswap {
      * @return boolean value, whether a position is liquidatable
      **/
     function isLiquidatablePosition(address asset, address user, UniswapOracle.ProofData memory mainPriceProof, UniswapOracle.ProofData memory colPriceProof) public view returns (bool) {
-        uint debt = vault.getDebt(asset, user);
+        uint debt = vault.getTotalDebt(asset, user);
 
         // position is collateralized if there is no debt
         if (debt == 0) return false;
 
-        ChainlinkedUniswapOracle _usingOracle;
-
-        // initially, only Uniswap is possible
-        if (vault.oracleType(asset, user) == 1) {
-            _usingOracle = uniswapOracle;
-        } else revert("USDP: WRONG_ORACLE_TYPE");
+        require(vault.oracleType(asset, user) == 1, "USDP: INCORRECT_ORACLE_TYPE");
 
         // USD value of the main collateral
-        uint mainUsdValue = _usingOracle.assetToUsd(asset, vault.collaterals(asset, user), mainPriceProof);
+        uint mainUsdValue = uniswapOracle.assetToUsd(asset, vault.collaterals(asset, user), mainPriceProof);
 
         // USD value of the COL amount of a position
-        uint colUsdValue = _usingOracle.assetToUsd(COL, vault.colToken(asset, user), colPriceProof);
+        uint colUsdValue = uniswapOracle.assetToUsd(COL, vault.colToken(asset, user), colPriceProof);
 
         return CR(mainUsdValue, colUsdValue, debt) >= LR(asset, mainUsdValue, colUsdValue);
     }

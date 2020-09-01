@@ -6,12 +6,12 @@
 pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
-import "./Vault.sol";
-import "./helpers/Math.sol";
+import "../Vault.sol";
+import "../helpers/Math.sol";
 
 
 /**
- * @title VaultManager
+ * @title VaultManagerStandard
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
 contract VaultManagerStandard is Auth {
@@ -19,7 +19,6 @@ contract VaultManagerStandard is Auth {
     using SafeMath for uint;
 
     Vault public vault;
-    address public COL;
 
     /**
      * @dev Trigger when params joins are happened
@@ -34,18 +33,9 @@ contract VaultManagerStandard is Auth {
     /**
      * @param _vault The address of the Vault
      * @param _parameters The address of the contract with system parameters
-     * @param _col COL token address
      **/
-    constructor(
-        address _vault,
-        address _parameters,
-        address _col
-    )
-        Auth(_parameters)
-        public
-    {
+    constructor(address _vault, address _parameters) Auth(_parameters) public {
         vault = Vault(_vault);
-        COL = _col;
     }
 
     /**
@@ -107,7 +97,7 @@ contract VaultManagerStandard is Auth {
     )
         external
     {
-        uint debtAmount = vault.getDebt(asset, user);
+        uint debtAmount = vault.debts(asset, user);
 
         if (mainAmount == 0 && colAmount == 0) {
             // just repay the debt
@@ -135,6 +125,8 @@ contract VaultManagerStandard is Auth {
 
     // decreases debt
     function _repay(address asset, address user, uint usdpAmount) internal {
+        uint fee = vault.calculateFee(asset, user, usdpAmount);
+        vault.chargeFee(address(vault.usdp()), user, fee);
 
         // burn USDP from the user's balance
         uint debtAfter = vault.repay(asset, user, usdpAmount);

@@ -60,8 +60,7 @@ contract ChainlinkedUniswapOracle is UniswapOracle {
      **/
     function assetToUsd(address asset, uint amount, ProofData memory proofData) public view returns (uint) {
         uint priceInEth = assetToEth(asset, amount, proofData);
-        uint q112result = ethToUsd(priceInEth);
-        return q112result / Q112;
+        return ethToUsd(priceInEth);
     }
 
     /**

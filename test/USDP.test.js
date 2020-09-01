@@ -7,7 +7,7 @@ const { expect } = require('chai');
 
 contract('USDP', function ([deployer, owner, recipient, anotherAccount]) {
     beforeEach(async function () {
-        const parameters = await Parameters.new(deployer, anotherAccount);
+        const parameters = await Parameters.new(deployer, anotherAccount, deployer);
         await parameters.setVaultAccess(deployer, true);
         this.token = await USDP.new(parameters.address);
         await this.token.mint(owner, new BN(100));
