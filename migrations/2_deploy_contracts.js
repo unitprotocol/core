@@ -8,8 +8,7 @@ const IUniswapV2Factory = artifacts.require('IUniswapV2Factory');
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const VaultManagerUniswap = artifacts.require('VaultManagerUniswap');
 const Liquidator = artifacts.require('LiquidatorUniswap');
-const { constants : { ZERO_ADDRESS } } = require('openzeppelin-test-helpers');
-const { ether } = require('openzeppelin-test-helpers');
+const { constants : { ZERO_ADDRESS }, ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce, deployContractBytecode } = require('../test/helpers/deployUtils');
 const UniswapV2FactoryDeployCode = require('../test/helpers/UniswapV2DeployCode');
 const BN = web3.utils.BN;
@@ -76,7 +75,7 @@ module.exports = async function(deployer, network) {
   const vaultAddr = calculateAddressAtNonce(this.deployer, await web3.eth.getTransactionCount(this.deployer) + 1, web3);
   const parameters = await deployer.deploy(Parameters, vaultAddr, col.address, this.deployer);
   const vault = await deployer.deploy(Vault, parameters.address, col.address, usdp.address);
-  const liquidator = await deployer.deploy(Liquidator, parameters.address, vault.address, uniswapOracle.address, col.address, this.deployer);
+  const liquidator = await deployer.deploy(Liquidator, vault.address, uniswapOracle.address, this.deployer);
   const vaultManager = await deployer.deploy(
     VaultManagerUniswap,
     vault.address,

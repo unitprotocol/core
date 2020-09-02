@@ -7,16 +7,16 @@ pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
-import "../oracles/ChainlinkedUniswapOracle.sol";
+import "../oracles/ChainlinkedUniswapOracleLP.sol";
 import "../helpers/ERC20Like.sol";
 
 
 /**
- * @title LiquidatorUniswap
+ * @title LiquidatorUniswapLP
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Manages liquidation process
  **/
-contract LiquidatorUniswap {
+contract LiquidatorUniswapLP {
     using SafeMath for uint;
 
     // system parameters contract address
@@ -26,7 +26,7 @@ contract LiquidatorUniswap {
     Vault public vault;
 
     // uniswap-based oracle contract
-    ChainlinkedUniswapOracle public uniswapOracle;
+    ChainlinkedUniswapOracleLP public uniswapLPOracle;
 
     // liquidation system address
     address public liquidationSystem;
@@ -38,7 +38,7 @@ contract LiquidatorUniswap {
 
     /**
      * @param _vault The address of the Vault
-     * @param _uniswapOracle The address of Uniswap-based Oracle
+     * @param _uniswapOracle The address of Uniswap-based Oracle for LP tokens
      * @param _liquidationSystem The liquidation system's address
      **/
     constructor(
@@ -50,7 +50,7 @@ contract LiquidatorUniswap {
     {
         vault = Vault(_vault);
         parameters = vault.parameters();
-        uniswapOracle = ChainlinkedUniswapOracle(_uniswapOracle);
+        uniswapLPOracle = ChainlinkedUniswapOracleLP(_uniswapOracle);
         liquidationSystem = _liquidationSystem;
     }
 
@@ -58,14 +58,14 @@ contract LiquidatorUniswap {
      * @dev Determines whether a position is liquidatable
      * @param asset The address of the main collateral token of a position
      * @param user The owner of a position
-     * @param mainProof The proof data of main collateral token price
+     * @param underlyingProof The proof data of underlying token price
      * @param colProof The proof data of COL token price
      * @return boolean value, whether a position is liquidatable
      **/
     function isLiquidatablePosition(
         address asset,
         address user,
-        UniswapOracle.ProofData memory mainProof,
+        UniswapOracle.ProofData memory underlyingProof,
         UniswapOracle.ProofData memory colProof
     )
         public
@@ -77,13 +77,13 @@ contract LiquidatorUniswap {
         // position is collateralized if there is no debt
         if (debt == 0) return false;
 
-        require(vault.oracleType(asset, user) == 1, "USDP: INCORRECT_ORACLE_TYPE");
+        require(vault.oracleType(asset, user) == 2, "USDP: INCORRECT_ORACLE_TYPE");
 
         // USD value of the main collateral
-        uint mainUsdValue = uniswapOracle.assetToUsd(asset, vault.collaterals(asset, user), mainProof);
+        uint mainUsdValue = uniswapLPOracle.assetToUsd(asset, vault.collaterals(asset, user), underlyingProof);
 
         // USD value of the COL amount of a position
-        uint colUsdValue = uniswapOracle.assetToUsd(vault.col(), vault.colToken(asset, user), colProof);
+        uint colUsdValue = uniswapLPOracle.chainlinkedUniswapOracle().assetToUsd(vault.col(), vault.colToken(asset, user), colProof);
 
         return CR(mainUsdValue, colUsdValue, debt) >= LR(asset, mainUsdValue, colUsdValue);
     }
@@ -92,20 +92,20 @@ contract LiquidatorUniswap {
      * @notice Funds transfers directly to the liquidation system's address
      * @dev Triggers liquidation process
      * @param asset The address of the main collateral token of a position
-     * @param mainProof The proof data of main collateral token price
+     * @param underlyingProof The proof data of underlying token price
      * @param colProof The proof data of COL token price
      * @param user The owner of a position
      **/
     function liquidate(
         address asset,
         address user,
-        UniswapOracle.ProofData memory mainProof,
+        UniswapOracle.ProofData memory underlyingProof,
         UniswapOracle.ProofData memory colProof
     )
         public
     {
         // reverts if a position is safe
-        require(isLiquidatablePosition(asset, user, mainProof, colProof), "USDP: SAFE_POSITION");
+        require(isLiquidatablePosition(asset, user, underlyingProof, colProof), "USDP: SAFE_POSITION");
 
         // sends liquidation command to the Vault
         vault.liquidate(asset, user, liquidationSystem);
@@ -122,7 +122,7 @@ contract LiquidatorUniswap {
      * @return collateralization ratio of a position
      **/
     function CR(uint mainUsdValue, uint colUsdValue, uint debt) public view returns (uint) {
-        return debt.mul(100).mul(uniswapOracle.Q112()).div(mainUsdValue.add(colUsdValue));
+        return debt.mul(100).mul(uniswapLPOracle.Q112()).div(mainUsdValue.add(colUsdValue));
     }
 
     /**

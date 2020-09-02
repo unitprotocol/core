@@ -32,9 +32,18 @@ contract ChainlinkedUniswapOracleLP {
      * @notice Pair must be registered on Uniswap
      * @param asset The LP token address
      * @param amount Amount of asset
+     * @param proofData The proof data of underlying token price
      * @return Q112 encoded price of asset in USD
      **/
-    function assetToUsd(address asset, uint amount, UniswapOracle.ProofData memory proofData) public view returns (uint) {
+    function assetToUsd(
+        address asset,
+        uint amount,
+        UniswapOracle.ProofData memory proofData
+    )
+        public
+        view
+        returns (uint)
+    {
         IUniswapV2PairFull pair = IUniswapV2PairFull(asset);
         address underlyingAsset;
         if (pair.token0() == chainlinkedUniswapOracle.WETH()) {

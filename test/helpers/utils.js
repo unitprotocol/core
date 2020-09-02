@@ -136,7 +136,7 @@ module.exports = context =>
 		const vaultAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
 		context.parameters = await Parameters.new(vaultAddr, context.col.address, context.deployer);
 		context.vault = await Vault.new(context.parameters.address, context.col.address, context.usdp.address);
-		context.liquidator = await Liquidator.new(context.parameters.address, context.vault.address, context.uniswapOracle.address, context.col.address, context.liquidationSystem);
+		context.liquidator = await Liquidator.new(context.vault.address, context.uniswapOracle.address, context.liquidationSystem);
 		context.vaultManagerUniswap = await VaultManagerUniswap.new(
 			context.vault.address,
 			context.parameters.address,
