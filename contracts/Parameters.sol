@@ -84,16 +84,24 @@ contract Parameters is Auth {
     // COL token address
     address public COL;
 
+    // The foundation address
+    address public foundation;
+
     /**
      * The address for an Ethereum contract is deterministically computed from the address of its creator (sender)
      * and how many transactions the creator has sent (nonce). The sender and nonce are RLP encoded and then
      * hashed with Keccak-256.
      * Therefore, the Vault address can be pre-computed and passed as an argument before deployment.
     **/
-    constructor(address _vault, address _col) public Auth(address(this)) {
+    constructor(address _vault, address _col, address _foundation) public Auth(address(this)) {
+        require(_vault != address(0), "USDP: ZERO_ADDRESS");
+        require(_col != address(0), "USDP: ZERO_ADDRESS");
+        require(_foundation != address(0), "USDP: ZERO_ADDRESS");
+
         isManager[msg.sender] = true;
         vault = _vault;
         COL = _col;
+        foundation = _foundation;
     }
 
     /**
@@ -104,6 +112,16 @@ contract Parameters is Auth {
      **/
     function setManager(address who, bool permit) external onlyManager {
         isManager[who] = permit;
+    }
+
+    /**
+     * notice Only manager is able to call this function
+     * @dev Sets the foundation address
+     * @param newFoundation The new foundation address
+     **/
+    function setFoundation(address newFoundation) external onlyManager {
+        require(newFoundation != address(0), "USDP: ZERO_ADDRESS");
+        foundation = newFoundation;
     }
 
     /**

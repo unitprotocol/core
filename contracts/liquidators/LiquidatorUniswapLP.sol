@@ -6,17 +6,17 @@
 pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
-import "./Vault.sol";
-import "./oracles/ChainlinkedUniswapOracle.sol";
-import "./helpers/ERC20Like.sol";
+import "../Vault.sol";
+import "../oracles/ChainlinkedUniswapOracleLP.sol";
+import "../helpers/ERC20Like.sol";
 
 
 /**
- * @title Liquidator
+ * @title LiquidatorUniswapLP
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Manages liquidation process
  **/
-contract LiquidatorUniswap {
+contract LiquidatorUniswapLP {
     using SafeMath for uint;
 
     // system parameters contract address
@@ -26,10 +26,7 @@ contract LiquidatorUniswap {
     Vault public vault;
 
     // uniswap-based oracle contract
-    ChainlinkedUniswapOracle public uniswapOracle;
-
-    // COL token address
-    address public COL;
+    ChainlinkedUniswapOracleLP public uniswapLPOracle;
 
     // liquidation system address
     address public liquidationSystem;
@@ -40,17 +37,20 @@ contract LiquidatorUniswap {
     event Liquidation(address indexed token, address indexed user);
 
     /**
-     * @param _parameters The address of the system parameters
      * @param _vault The address of the Vault
-     * @param _uniswapOracle The address of Uniswap-based Oracle
-     * @param _col COL token address
+     * @param _uniswapOracle The address of Uniswap-based Oracle for LP tokens
      * @param _liquidationSystem The liquidation system's address
      **/
-    constructor(address _parameters, address _vault, address _uniswapOracle, address _col, address _liquidationSystem) public {
-        parameters = Parameters(_parameters);
+    constructor(
+        address _vault,
+        address _uniswapOracle,
+        address _liquidationSystem
+    )
+        public
+    {
         vault = Vault(_vault);
-        uniswapOracle = ChainlinkedUniswapOracle(_uniswapOracle);
-        COL = _col;
+        parameters = vault.parameters();
+        uniswapLPOracle = ChainlinkedUniswapOracleLP(_uniswapOracle);
         liquidationSystem = _liquidationSystem;
     }
 
@@ -58,26 +58,32 @@ contract LiquidatorUniswap {
      * @dev Determines whether a position is liquidatable
      * @param asset The address of the main collateral token of a position
      * @param user The owner of a position
+     * @param underlyingProof The proof data of underlying token price
+     * @param colProof The proof data of COL token price
      * @return boolean value, whether a position is liquidatable
      **/
-    function isLiquidatablePosition(address asset, address user, UniswapOracle.ProofData memory mainPriceProof, UniswapOracle.ProofData memory colPriceProof) public view returns (bool) {
-        uint debt = vault.getDebt(asset, user);
+    function isLiquidatablePosition(
+        address asset,
+        address user,
+        UniswapOracle.ProofData memory underlyingProof,
+        UniswapOracle.ProofData memory colProof
+    )
+        public
+        view
+        returns (bool)
+    {
+        uint debt = vault.getTotalDebt(asset, user);
 
         // position is collateralized if there is no debt
         if (debt == 0) return false;
 
-        ChainlinkedUniswapOracle _usingOracle;
-
-        // initially, only Uniswap is possible
-        if (vault.oracleType(asset, user) == 1) {
-            _usingOracle = uniswapOracle;
-        } else revert("USDP: WRONG_ORACLE_TYPE");
+        require(vault.oracleType(asset, user) == 2, "USDP: INCORRECT_ORACLE_TYPE");
 
         // USD value of the main collateral
-        uint mainUsdValue = _usingOracle.assetToUsd(asset, vault.collaterals(asset, user), mainPriceProof);
+        uint mainUsdValue = uniswapLPOracle.assetToUsd(asset, vault.collaterals(asset, user), underlyingProof);
 
         // USD value of the COL amount of a position
-        uint colUsdValue = _usingOracle.assetToUsd(COL, vault.colToken(asset, user), colPriceProof);
+        uint colUsdValue = uniswapLPOracle.chainlinkedUniswapOracle().assetToUsd(vault.col(), vault.colToken(asset, user), colProof);
 
         return CR(mainUsdValue, colUsdValue, debt) >= LR(asset, mainUsdValue, colUsdValue);
     }
@@ -86,12 +92,20 @@ contract LiquidatorUniswap {
      * @notice Funds transfers directly to the liquidation system's address
      * @dev Triggers liquidation process
      * @param asset The address of the main collateral token of a position
+     * @param underlyingProof The proof data of underlying token price
+     * @param colProof The proof data of COL token price
      * @param user The owner of a position
      **/
-    function liquidate(address asset, address user, UniswapOracle.ProofData memory mainPriceProof, UniswapOracle.ProofData memory colPriceProof) public {
-
+    function liquidate(
+        address asset,
+        address user,
+        UniswapOracle.ProofData memory underlyingProof,
+        UniswapOracle.ProofData memory colProof
+    )
+        public
+    {
         // reverts if a position is safe
-        require(isLiquidatablePosition(asset, user, mainPriceProof, colPriceProof), "USDP: SAFE_POSITION");
+        require(isLiquidatablePosition(asset, user, underlyingProof, colProof), "USDP: SAFE_POSITION");
 
         // sends liquidation command to the Vault
         vault.liquidate(asset, user, liquidationSystem);
@@ -107,8 +121,8 @@ contract LiquidatorUniswap {
      * @param debt USDP borrowed
      * @return collateralization ratio of a position
      **/
-    function CR(uint mainUsdValue, uint colUsdValue, uint debt) public pure returns (uint) {
-        return debt.mul(100).div(mainUsdValue.add(colUsdValue));
+    function CR(uint mainUsdValue, uint colUsdValue, uint debt) public view returns (uint) {
+        return debt.mul(100).mul(uniswapLPOracle.Q112()).div(mainUsdValue.add(colUsdValue));
     }
 
     /**
@@ -120,7 +134,7 @@ contract LiquidatorUniswap {
      **/
     function LR(address asset, uint mainUsdValue, uint colUsdValue) public view returns(uint) {
         uint lrMain = parameters.liquidationRatio(asset);
-        uint lrCol = parameters.liquidationRatio(parameters.COL());
+        uint lrCol = parameters.liquidationRatio(vault.col());
 
         return lrMain.mul(mainUsdValue).add(lrCol.mul(colUsdValue)).div(mainUsdValue.add(colUsdValue));
     }

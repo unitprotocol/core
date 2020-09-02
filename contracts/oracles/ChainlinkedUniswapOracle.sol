@@ -56,17 +56,29 @@ contract ChainlinkedUniswapOracle is UniswapOracle {
      * @notice {Token}/WETH pair must be registered on Uniswap
      * @param asset The token address
      * @param amount Amount of tokens
-     * @return price of tokens in USD
+     * @return Q112 encoded price of tokens in USD
      **/
     function assetToUsd(address asset, uint amount, ProofData memory proofData) public view returns (uint) {
+        uint priceInEth = assetToEth(asset, amount, proofData);
+        return ethToUsd(priceInEth);
+    }
+
+    /**
+     * @notice USD token's rate is UniswapV2 Token/WETH pool's average price between proof's blockNumber and current block number
+     * @notice Merkle proof must be in range [MIN_BLOCKS_BACK ... MAX_BLOCKS_BACK] blocks ago
+     * @notice {Token}/WETH pair must be registered on Uniswap
+     * @param asset The token address
+     * @param amount Amount of tokens
+     * @return Q112 encoded price of asset in ETH
+     **/
+    function assetToEth(address asset, uint amount, ProofData memory proofData) public view returns (uint) {
         if (asset == WETH) {
-            return ethToUsd(amount);
+            return amount;
         }
         IUniswapV2Pair pair = IUniswapV2Pair(uniswapFactory.getPair(asset, WETH));
         require(address(pair) != address(0), "USDP: UNISWAP_PAIR_DOES_NOT_EXIST");
         (uint priceInEth, ) = getPrice(pair, WETH, MIN_BLOCKS_BACK, MAX_BLOCKS_BACK, proofData);
-        uint q112result = ethToUsd(priceInEth.mul(amount));
-        return q112result / Q112;
+        return priceInEth.mul(amount);
     }
 
     /**

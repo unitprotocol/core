@@ -67,7 +67,7 @@ contract('Liquidator', function([
 
 			const mainAmountInPosition = await this.vault.collaterals(this.mainCollateral.address, deployer);
 			const colAmountInPosition = await this.vault.colToken(this.mainCollateral.address, deployer);
-			const usdpDebt = await this.vault.getDebt(this.mainCollateral.address, deployer);
+			const usdpDebt = await this.vault.getTotalDebt(this.mainCollateral.address, deployer);
 			const usdpBalance = await this.usdp.balanceOf(deployer);
 
 			expect(mainAmountInPosition).to.be.bignumber.equal(new BN('0'));

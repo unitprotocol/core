@@ -1,38 +1,21 @@
-// KOVAN
+// RINKEBY // Deployed at 2.09
 
-COL                             0x37Ff0bF4383A8b24E760edb0383ab39c01e87045 // 1COL = 1$ initially (250 COL/WETH)
-DAI                             0x9f403f383307bF905015a7e2fC326D30617A3CAD // 200 DAI/WETH
-USDC                            0x9e73805616dE0945a2CD37176DE80Fe69277fc63 // 300 USDC/WETH
-STAKE                           0x399B652bAD9Ba61eD2562eAeFa398A14EDD1597f // 1STAKE = 2$ initially (125 STAKE/WETH)
-WETH                            0xd0A1E359811322d97991E03f863a0C30C2cF029C
-
-UniswapFactory                  0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
-UniswapOracle                   0x35721c5DDDD3562B8501Ccc78EAFD7c316472b42
-UniswapV2Router02               0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
-
-USDP                            0x01981997ab46c7E5b0728888d5670EAab2aA2a8C
-
-Parameters                      0x3399deB4D1569b7Fa900B93377da64Fe750a43Da
-Vault                           0x5B0Dded476573612C81A2A3F72F6d774d7d962B5
-Liquidator                      0xad9621c534797CCe0a7c84B6F5916CF2466240B1
-VaultManager                    0x1832ddD74B468A460dC50BB11ACea575b5Ea5fc3
-
-
-// RINKEBY // Deployed at 18.08
-
-COL                             0x0F235462cA4a41EA92Fca6b7c4d67dAe0DA8d1D6 // 1COL = 1$ initially (250 COL/WETH)
-STAKE                           0xeED5B67BEf854D8Cb7FCa3e8220c54b3b48C461B // 1STAKE = 2$ initially (125 STAKE/WETH)
+COL                             0x0F235462cA4a41EA92Fca6b7c4d67dAe0DA8d1D6
+STAKE                           0xeED5B67BEf854D8Cb7FCa3e8220c54b3b48C461B
 WETH                            0xc778417e063141139fce010982780140aa0cd5ab
 
 UniswapFactory                  0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
 ChainlinkAggregaor mock         0x8692e13F484e10b0A6e3Cc97BB87a8eceA6EB9AE
-ChainLinkedUniswapOracle        0xD1789f872a723F629B81D2F3B45bD5748Ad71f99
+ChainLinkedUniswapOracle        0x65905Eb3257fB523774628102b372306B3F65F90
+ChainLinkedUniswapOracleLP      0xC91E97E0C20ae258f06F3EBf1F85Ce177B8D824B
 UniswapV2Router02               0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
 
-USDP                            0x63D1A6FAD6B7890613Afab038d7ec08776947725
+USDP                            0xf60C41456BE4342a52E64225D923Fb824af494f8
 
-Parameters                      0xcc703190202734c7c75f05e60f246afd56b2f5f1
-Vault                           0xa2EF74ed839e8B3ea0f9efff3dBCCF4469162Cb1
-Liquidator                      0xc5da235574474b0F08E95A8E9941350ee756Ef38
+Parameters                      0x8c59A397b88DFb3B951d73BAA05005d0C552fb5E
+Vault                           0x10220BAD3BC23f6046E23dFd1029Ad8afef3B111
+LiquidatorUniswap               0xC09f678965e9AFbCF8D7a6f5d33096d53e6c33b5
+LiquidatorUniswapLP             0xDCd2F4C413e357FD9281eC657425Bd4c37826A20
 VaultManagerUniswap             0x30Ec90Bad6597110d9DB9b4E063D6Ecf4730a1a1
-VaultManagerStandard            0x92FffB0f3252247d09Fe8398532493c0deaE3747
+VaultManagerStandard            0x280baa86e38f3bF3276b42011Ca3C22BEacc35E7
+VaultManagerUniswapLP           0xC8a03cF97c5e1FCc47aEf0FAb94089BEed1D73f5
