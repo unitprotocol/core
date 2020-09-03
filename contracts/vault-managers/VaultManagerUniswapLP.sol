@@ -66,6 +66,8 @@ contract VaultManagerUniswapLP is Auth {
       * @param mainAmount The amount of main collateral to deposit
       * @param colAmount The amount of COL token to deposit
       * @param usdpAmount The amount of USDP token to borrow
+      * @param underlyingProof The merkle proof data of the underlying collateral token price
+      * @param colProof The merkle proof data of the COL token price
       **/
     function spawn(
         address asset,
@@ -73,8 +75,8 @@ contract VaultManagerUniswapLP is Auth {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        UniswapOracle.ProofData memory underlyingProof,
+        UniswapOracle.ProofData memory colProof
     )
         public
     {
@@ -89,7 +91,7 @@ contract VaultManagerUniswapLP is Auth {
         // USDP minting triggers the spawn of a position
         vault.spawn(asset, user, ORACLE_TYPE);
 
-        _depositAndBorrow(asset, user, mainAmount, colAmount, usdpAmount, mainPriceProof, colPriceProof);
+        _depositAndBorrow(asset, user, mainAmount, colAmount, usdpAmount, underlyingProof, colProof);
 
         // fire an event
         emit Join(asset, user, mainAmount, colAmount, usdpAmount);
@@ -207,23 +209,23 @@ contract VaultManagerUniswapLP is Auth {
         {
             // check usefulness of tx
             require(mainAmount > 0 || colAmount > 0, "USDP: USELESS_TX");
-    
+
             uint debt = vault.debts(asset, user);
             require(debt > 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
-    
+
             vault.update(asset, user);
-    
+
             if (mainAmount > 0) {
                 // withdraw main collateral to the user address
                 vault.withdrawMain(asset, user, mainAmount);
             }
-    
+
             if (colAmount > 0) {
                 // withdraw COL tokens to the user's address
                 vault.withdrawCol(asset, user, colAmount);
             }
         }
-        
+
         uint colDeposit = vault.colToken(asset, user);
 
         // main collateral value of the position in USD
