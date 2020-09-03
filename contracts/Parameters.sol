@@ -75,14 +75,11 @@ contract Parameters is Auth {
     // managers
     mapping(address => bool) public isManager;
 
-    // enabled oracle types for position spawn
+    // enabled oracle types
     mapping(uint => mapping (address => bool)) public isOracleTypeEnabled;
 
     // address of the Vault
     address public vault;
-
-    // COL token address
-    address public COL;
 
     // The foundation address
     address public foundation;
@@ -93,14 +90,12 @@ contract Parameters is Auth {
      * hashed with Keccak-256.
      * Therefore, the Vault address can be pre-computed and passed as an argument before deployment.
     **/
-    constructor(address _vault, address _col, address _foundation) public Auth(address(this)) {
+    constructor(address _vault, address _foundation) public Auth(address(this)) {
         require(_vault != address(0), "USDP: ZERO_ADDRESS");
-        require(_col != address(0), "USDP: ZERO_ADDRESS");
         require(_foundation != address(0), "USDP: ZERO_ADDRESS");
 
         isManager[msg.sender] = true;
         vault = _vault;
-        COL = _col;
         foundation = _foundation;
     }
 
@@ -153,7 +148,6 @@ contract Parameters is Auth {
         for (uint i=0; i < oracles.length; i++) {
             setOracleType(oracles[i], asset, true);
         }
-
         setColPartRange(asset, minColP, maxColP);
     }
 
