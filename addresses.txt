@@ -16,6 +16,6 @@ Parameters                      0x8c59A397b88DFb3B951d73BAA05005d0C552fb5E
 Vault                           0x10220BAD3BC23f6046E23dFd1029Ad8afef3B111
 LiquidatorUniswap               0xC09f678965e9AFbCF8D7a6f5d33096d53e6c33b5
 LiquidatorUniswapLP             0xDCd2F4C413e357FD9281eC657425Bd4c37826A20
-VaultManagerUniswap             0x30Ec90Bad6597110d9DB9b4E063D6Ecf4730a1a1
+VaultManagerUniswap             0x0F5CEd729ECc514643D3a72E3B9FAd79d717b629
 VaultManagerStandard            0x280baa86e38f3bF3276b42011Ca3C22BEacc35E7
 VaultManagerUniswapLP           0xC8a03cF97c5e1FCc47aEf0FAb94089BEed1D73f5
