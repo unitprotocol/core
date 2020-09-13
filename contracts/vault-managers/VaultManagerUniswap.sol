@@ -157,8 +157,6 @@ contract VaultManagerUniswap is Auth {
         uint debt = vault.debts(asset, user);
         require(debt > 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
 
-        vault.update(asset, user);
-
         if (mainAmount > 0) {
             // withdraw main collateral to the user address
             vault.withdrawMain(asset, user, mainAmount);
@@ -174,6 +172,8 @@ contract VaultManagerUniswap is Auth {
             vault.chargeFee(address(vault.usdp()), user, fee);
             vault.repay(asset, user, usdpAmount);
         }
+
+        vault.update(asset, user);
 
         _ensureCollateralizationTroughProofs(asset, user, mainPriceProof, colPriceProof);
 
@@ -212,8 +212,6 @@ contract VaultManagerUniswap is Auth {
             uint debt = vault.debts(asset, user);
             require(debt > 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
 
-            vault.update(asset, user);
-
             if (mainAmount > 0) {
                 // withdraw main collateral to the user address
                 vault.withdrawMain(asset, user, mainAmount);
@@ -239,6 +237,8 @@ contract VaultManagerUniswap is Auth {
             vault.chargeFee(vault.col(), user, feeInCol);
             vault.repay(asset, user, usdpAmount);
         }
+
+        vault.update(asset, user);
 
         _ensureCollateralization(asset, user, mainUsdValue_q112, colUsdValue_q112);
 
