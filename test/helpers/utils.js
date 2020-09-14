@@ -35,8 +35,7 @@ async function expectRevert(promise, expectedError) {
 	expect.fail('Expected an exception but none was received');
 }
 
-module.exports = context =>
-{
+module.exports = context => {
 	const poolDeposit = async (token, amount, decimals) => {
 		amount = decimals ? String(amount * 10 ** decimals) : ether(amount.toString());
 		amount = new BN(amount).div(new BN((10 ** 6).toString()));
@@ -64,7 +63,6 @@ module.exports = context =>
 		await approveCollaterals(main, mainAmount, colAmount);
 		return context.vaultManagerUniswap.spawn(
 			main.address,
-			context.deployer,
 			mainAmount, // main
 			colAmount, // COL
 			usdpAmount,	// USDP
@@ -78,7 +76,6 @@ module.exports = context =>
 		await context.col.approve(context.vault.address, colAmount);
 		return context.vaultManagerUniswap.depositAndBorrow(
 			main.address,
-			context.deployer,
 			mainAmount, // main
 			colAmount, // COL
 			usdpAmount,	// USDP
@@ -99,7 +96,6 @@ module.exports = context =>
 	const exit = async(main, mainAmount, colAmount, usdpAmount) => {
 		return context.vaultManagerUniswap.withdrawAndRepay(
 			main.address,
-			context.deployer,
 			mainAmount, // main
 			colAmount, // COL
 			usdpAmount,	// USDP

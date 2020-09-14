@@ -132,7 +132,6 @@ contract('VaultManager', function([
 				await this.utils.approveCollaterals(this.mainCollateral, mainAmount, colAmount);
 				const tx = this.vaultManagerUniswap.spawn(
 					this.mainCollateral.address,
-					this.deployer,
 					mainAmount, // main
 					colAmount, // COL
 					usdpAmount,	// USDP
@@ -150,7 +149,6 @@ contract('VaultManager', function([
 				await this.utils.approveCollaterals(this.mainCollateral, mainAmount, colAmount);
 				const tx = this.vaultManagerUniswap.spawn(
 					this.mainCollateral.address,
-					this.deployer,
 					mainAmount, // main
 					colAmount, // COL
 					usdpAmount,	// USDP
@@ -169,7 +167,6 @@ contract('VaultManager', function([
 					await this.utils.approveCollaterals(this.mainCollateral, mainAmount, colAmount);
 					const tx = this.vaultManagerUniswap.spawn(
 						this.mainCollateral.address,
-						this.deployer,
 						mainAmount, // main
 						colAmount, // COL
 						usdpAmount,	// USDP
@@ -186,7 +183,6 @@ contract('VaultManager', function([
 					await this.utils.approveCollaterals(this.mainCollateral, mainAmount, colAmount);
 					const tx = this.vaultManagerUniswap.spawn(
 						this.mainCollateral.address,
-						this.deployer,
 						mainAmount, // main
 						colAmount, // COL
 						usdpAmount,	// USDP
@@ -203,7 +199,6 @@ contract('VaultManager', function([
 
 					const tx = this.vaultManagerUniswap.spawn(
 						this.mainCollateral.address,
-						this.deployer,
 						mainAmount, // main
 						colAmount, // COL
 						usdpAmount,	// USDP
@@ -222,7 +217,6 @@ contract('VaultManager', function([
 
 					const tx = this.vaultManagerUniswap.spawn(
 						this.mainCollateral.address,
-						this.deployer,
 						mainAmount, // main
 						colAmount, // COL
 						usdpAmount,	// USDP
@@ -242,7 +236,6 @@ contract('VaultManager', function([
 
 				const tx = this.vaultManagerUniswap.depositAndBorrow(
 					this.mainCollateral.address,
-					this.deployer,
 					mainAmount,
 					colAmount,
 					usdpAmount,

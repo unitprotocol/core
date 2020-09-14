@@ -71,7 +71,6 @@ contract VaultManagerUniswapLP is Auth {
       **/
     function spawn(
         address asset,
-        address user,
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
@@ -83,18 +82,18 @@ contract VaultManagerUniswapLP is Auth {
         require(usdpAmount > 0, "USDP: ZERO_BORROWING");
 
         // check whether the position is spawned
-        require(vault.getTotalDebt(asset, user) == 0, "USDP: SPAWNED_POSITION");
+        require(vault.getTotalDebt(asset, msg.sender) == 0, "USDP: SPAWNED_POSITION");
 
         // oracle availability check
         require(parameters.isOracleTypeEnabled(ORACLE_TYPE, asset), "USDP: WRONG_ORACLE_TYPE");
 
         // USDP minting triggers the spawn of a position
-        vault.spawn(asset, user, ORACLE_TYPE);
+        vault.spawn(asset, msg.sender, ORACLE_TYPE);
 
-        _depositAndBorrow(asset, user, mainAmount, colAmount, usdpAmount, underlyingProof, colProof);
+        _depositAndBorrow(asset, msg.sender, mainAmount, colAmount, usdpAmount, underlyingProof, colProof);
 
         // fire an event
-        emit Join(asset, user, mainAmount, colAmount, usdpAmount);
+        emit Join(asset, msg.sender, mainAmount, colAmount, usdpAmount);
     }
 
     /**
@@ -112,7 +111,6 @@ contract VaultManagerUniswapLP is Auth {
      **/
     function depositAndBorrow(
         address asset,
-        address user,
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
@@ -120,14 +118,14 @@ contract VaultManagerUniswapLP is Auth {
         UniswapOracle.ProofData memory colProof
     )
         public
-        spawned(asset, user)
+        spawned(asset, msg.sender)
     {
         require(usdpAmount > 0, "USDP: ZERO_BORROWING");
 
-        _depositAndBorrow(asset, user, mainAmount, colAmount, usdpAmount, underlyingProof, colProof);
+        _depositAndBorrow(asset, msg.sender, mainAmount, colAmount, usdpAmount, underlyingProof, colProof);
 
         // fire an event
-        emit Join(asset, user, mainAmount, colAmount, usdpAmount);
+        emit Join(asset, msg.sender, mainAmount, colAmount, usdpAmount);
     }
 
     /**
@@ -143,7 +141,6 @@ contract VaultManagerUniswapLP is Auth {
       **/
     function withdrawAndRepay(
         address asset,
-        address user,
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
@@ -151,36 +148,36 @@ contract VaultManagerUniswapLP is Auth {
         UniswapOracle.ProofData memory colProof
     )
         public
-        spawned(asset, user)
+        spawned(asset, msg.sender)
     {
         // check usefulness of tx
         require(mainAmount > 0 || colAmount > 0, "USDP: USELESS_TX");
 
-        uint debt = vault.debts(asset, user);
+        uint debt = vault.debts(asset, msg.sender);
         require(debt > 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
 
         if (mainAmount > 0) {
             // withdraw main collateral to the user address
-            vault.withdrawMain(asset, user, mainAmount);
+            vault.withdrawMain(asset, msg.sender, mainAmount);
         }
 
         if (colAmount > 0) {
             // withdraw COL tokens to the user's address
-            vault.withdrawCol(asset, user, colAmount);
+            vault.withdrawCol(asset, msg.sender, colAmount);
         }
 
         if (usdpAmount > 0) {
-            uint fee = vault.calculateFee(asset, user, usdpAmount);
-            vault.chargeFee(address(vault.usdp()), user, fee);
-            vault.repay(asset, user, usdpAmount);
+            uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
+            vault.chargeFee(address(vault.usdp()), msg.sender, fee);
+            vault.repay(asset, msg.sender, usdpAmount);
         }
 
-        vault.update(asset, user);
+        vault.update(asset, msg.sender);
 
-        _ensureCollateralizationTroughProofs(asset, user, underlyingProof, colProof);
+        _ensureCollateralizationTroughProofs(asset, msg.sender, underlyingProof, colProof);
 
         // fire an event
-        emit Exit(asset, user, mainAmount, colAmount, usdpAmount);
+        emit Exit(asset, msg.sender, mainAmount, colAmount, usdpAmount);
     }
 
     /**
@@ -196,7 +193,6 @@ contract VaultManagerUniswapLP is Auth {
       **/
     function withdrawAndRepayUsingCol(
         address asset,
-        address user,
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
@@ -204,47 +200,47 @@ contract VaultManagerUniswapLP is Auth {
         UniswapOracle.ProofData memory colProof
     )
         public
-        spawned(asset, user)
+        spawned(asset, msg.sender)
     {
         {
             // check usefulness of tx
             require(mainAmount > 0 || colAmount > 0, "USDP: USELESS_TX");
 
-            uint debt = vault.debts(asset, user);
+            uint debt = vault.debts(asset, msg.sender);
             require(debt > 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
 
             if (mainAmount > 0) {
                 // withdraw main collateral to the user address
-                vault.withdrawMain(asset, user, mainAmount);
+                vault.withdrawMain(asset, msg.sender, mainAmount);
             }
 
             if (colAmount > 0) {
                 // withdraw COL tokens to the user's address
-                vault.withdrawCol(asset, user, colAmount);
+                vault.withdrawCol(asset, msg.sender, colAmount);
             }
         }
 
-        uint colDeposit = vault.colToken(asset, user);
+        uint colDeposit = vault.colToken(asset, msg.sender);
 
         // main collateral value of the position in USD
-        uint mainUsdValue_q112 = uniswapLPOracle.assetToUsd(asset, vault.collaterals(asset, user), underlyingProof);
+        uint mainUsdValue_q112 = uniswapLPOracle.assetToUsd(asset, vault.collaterals(asset, msg.sender), underlyingProof);
 
         // COL token value of the position in USD
         uint colUsdValue_q112 = uniswapLPOracle.chainlinkedUniswapOracle().assetToUsd(vault.col(), colDeposit, colProof);
 
         if (usdpAmount > 0) {
-            uint fee = vault.calculateFee(asset, user, usdpAmount);
+            uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
             uint feeInCol = fee.mul(uniswapLPOracle.Q112()).mul(colDeposit).div(colUsdValue_q112);
-            vault.chargeFee(address(vault.col()), user, feeInCol);
-            vault.repay(asset, user, usdpAmount);
+            vault.chargeFee(address(vault.col()), msg.sender, feeInCol);
+            vault.repay(asset, msg.sender, usdpAmount);
         }
 
-        vault.update(asset, user);
+        vault.update(asset, msg.sender);
 
-        _ensureCollateralization(asset, user, mainUsdValue_q112, colUsdValue_q112);
+        _ensureCollateralization(asset, msg.sender, mainUsdValue_q112, colUsdValue_q112);
 
         // fire an event
-        emit Exit(asset, user, mainAmount, colAmount, usdpAmount);
+        emit Exit(asset, msg.sender, mainAmount, colAmount, usdpAmount);
     }
 
     function _depositAndBorrow(
