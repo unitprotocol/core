@@ -4,6 +4,13 @@ COL                             0x0F235462cA4a41EA92Fca6b7c4d67dAe0DA8d1D6
 STAKE                           0xeED5B67BEf854D8Cb7FCa3e8220c54b3b48C461B
 WETH                            0xc778417e063141139fce010982780140aa0cd5ab
 
+
+YFI                             0x62289C64a943416205142BDCcF1D752792A687e3
+MKR                             0xC5d9497Fd3fa13549026f2fC8048DbaE11D7114c
+UMA                             0xb34aDe076f9e5B40AaB8bD31694d37aec1C6f12F
+LEND                            0xd070437A0C4c97F4E2FF6EF9010DA2ec4fc830Eb
+WBTC                            0x03f1A5d11cB1C698d865756EBEdeb144898bB319
+
 UniswapFactory                  0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
 ChainlinkAggregaor mock         0x8692e13F484e10b0A6e3Cc97BB87a8eceA6EB9AE
 ChainLinkedUniswapOracle        0x65905Eb3257fB523774628102b372306B3F65F90
