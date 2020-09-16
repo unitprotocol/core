@@ -18,6 +18,13 @@ import "../helpers/IUniswapV2PairFull.sol";
 contract ChainlinkedUniswapOracleLP {
     using SafeMath for uint;
 
+    uint public constant magicNum1 = 9;
+    uint public constant magicNum2 = 3988000;
+    uint public constant magicNum3 = 1997;
+    uint public constant magicNum4 = 2000;
+    uint public constant magicNum5 = 3;
+    uint public constant magicNum6 = 2;
+
     uint public constant Q112 = 2**112;
 
     ChainlinkedUniswapOracle public chainlinkedUniswapOracle;
@@ -72,35 +79,39 @@ contract ChainlinkedUniswapOracleLP {
 
         if (eCurr < eAvg) {
             // flashloan with buying WETH
-            uint sqrtd = ePool.mul((ePool).mul(9).add(
-                aPool.mul(3988000).mul(eAvg).div(Q112)
+            uint sqrtd = ePool.mul((ePool).mul(magicNum1).add(
+                aPool.mul(magicNum2).mul(eAvg).div(Q112)
             ));
-            uint eChange = sqrt(sqrtd).sub(ePool.mul(1997)).div(2000);
+            uint eChange = sqrt(sqrtd).sub(ePool.mul(magicNum3)).div(magicNum4);
             ePoolCalc = ePool.add(eChange);
         } else {
             // flashloan with selling WETH
             uint a = aPool.mul(eAvg);
-            uint b = a.mul(9).div(Q112);
-            uint c = ePool.mul(3988000);
+            uint b = a.mul(magicNum1).div(Q112);
+            uint c = ePool.mul(magicNum2);
             uint sqRoot = sqrt(a.div(Q112).mul(b.add(c)));
-            uint d = a.mul(3).div(Q112);
-            uint eChange = ePool.sub(d.add(sqRoot).div(2000));
+            uint d = a.mul(magicNum5).div(Q112);
+            uint eChange = ePool.sub(d.add(sqRoot).div(magicNum4));
             ePoolCalc = ePool.sub(eChange);
         }
 
-        uint num = ePoolCalc.mul(2).mul(amount).mul(Q112);
+        uint num = ePoolCalc.mul(magicNum6).mul(amount).mul(Q112);
         uint priceInEth = num.div(pair.totalSupply());
 
         return chainlinkedUniswapOracle.ethToUsd(priceInEth);
     }
 
-
     function sqrt(uint x) internal pure returns (uint y) {
-        uint z = (x + 1) / 2;
-        y = x;
-        while (z < y) {
-            y = z;
-            z = (x / z + z) / 2;
+        if (x > 3) {
+            uint z = x / 2 + 1;
+            y = x;
+            while (z < y) {
+                y = z;
+                z = (x / z + z) / 2;
+            }
+        } else if (x != 0) {
+            y = 1;
         }
     }
+
 }

@@ -20,7 +20,7 @@ import "../helpers/IUniswapV2Factory.sol";
 contract ChainlinkedUniswapOracle is UniswapOracle {
     using SafeMath for uint;
 
-    uint8 public MIN_BLOCKS_BACK = uint8(100);
+    uint8 public constant MIN_BLOCKS_BACK = uint8(100);
 
     uint8 public constant MAX_BLOCKS_BACK = uint8(255);
 

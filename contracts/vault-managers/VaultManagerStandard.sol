@@ -49,13 +49,13 @@ contract VaultManagerStandard is Auth {
     function deposit(address asset, address user, uint mainAmount, uint colAmount) public {
 
         // check usefulness of tx
-        require(mainAmount > 0 || colAmount > 0, "USDP: USELESS_TX");
+        require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
 
-        if (mainAmount > 0) {
+        if (mainAmount != 0) {
             vault.depositMain(asset, user, mainAmount);
         }
 
-        if (colAmount > 0) {
+        if (colAmount != 0) {
             vault.depositCol(asset, user, colAmount);
         }
 
@@ -72,7 +72,7 @@ contract VaultManagerStandard is Auth {
     function repay(address asset, address user, uint usdpAmount) public {
 
         // check usefulness of tx
-        require(usdpAmount > 0, "USDP: USELESS_TX");
+        require(usdpAmount != 0, "USDP: USELESS_TX");
 
         _repay(asset, user, usdpAmount);
 
@@ -104,17 +104,17 @@ contract VaultManagerStandard is Auth {
             return repay(asset, user, debtAmount);
         }
 
-        if (mainAmount > 0) {
+        if (mainAmount != 0) {
             // withdraw main collateral to the user address
             vault.withdrawMain(asset, user, mainAmount);
         }
 
-        if (colAmount > 0) {
+        if (colAmount != 0) {
             // withdraw COL tokens to the user's address
             vault.withdrawCol(asset, user, colAmount);
         }
 
-        if (debtAmount > 0) {
+        if (debtAmount != 0) {
             // burn USDP from the user's address
             _repay(asset, user, debtAmount);
         }

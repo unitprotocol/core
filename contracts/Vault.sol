@@ -156,8 +156,8 @@ contract Vault is Auth {
      * @param amount The amount of tokens to withdraw
      **/
     function withdrawCol(address asset, address user, uint amount) external hasVaultAccess {
-        col.safeTransferAndVerify(user, amount);
         colToken[asset][user] = colToken[asset][user].sub(amount);
+        col.safeTransferAndVerify(user, amount);
     }
 
     /**
@@ -202,7 +202,7 @@ contract Vault is Auth {
      * @param amount The amount of asset to transfer
      **/
     function chargeFee(address asset, address user, uint amount) external hasVaultAccess {
-        if (amount > 0) {
+        if (amount != 0) {
             asset.safeTransferFromAndVerify(user, parameters.foundation(), amount);
         }
     }
@@ -214,29 +214,34 @@ contract Vault is Auth {
      * @param liquidationSystem The address of an liquidation system
      **/
     function liquidate(address asset, address user, address liquidationSystem) external hasVaultAccess {
-
         // reverts if oracle type is disabled
         require(parameters.isOracleTypeEnabled(oracleType[asset][user], asset), "USDP: WRONG_ORACLE_TYPE");
 
-        col.safeTransferAndVerify(liquidationSystem, colToken[asset][user]);
-        asset.safeTransferAndVerify(liquidationSystem, collaterals[asset][user]);
+        uint debt = debts[asset][user];
+        uint assetAmount = collaterals[asset][user];
+        uint colAmount = colToken[asset][user];
+        uint fee = liquidationFee[asset][user];
+
+        tokenDebts[asset] = tokenDebts[asset].sub(debt);
+
+        delete debts[asset][user];
+        delete collaterals[asset][user];
+        delete colToken[asset][user];
+        destroy(asset, user);
+
+        col.safeTransferAndVerify(liquidationSystem, colAmount);
+        asset.safeTransferAndVerify(liquidationSystem, assetAmount);
 
         if (isContract(liquidationSystem)) {
             LiquidationSystem(liquidationSystem).liquidate(
                 asset,
                 user,
-                collaterals[asset][user],
-                colToken[asset][user],
-                debts[asset][user],
-                liquidationFee[asset][user]
+                assetAmount,
+                colAmount,
+                debt,
+                fee
             );
         }
-
-        tokenDebts[asset] = tokenDebts[asset].sub(debts[asset][user]);
-        delete debts[asset][user];
-        delete collaterals[asset][user];
-        delete colToken[asset][user];
-        destroy(asset, user);
     }
 
     /**
@@ -258,7 +263,7 @@ contract Vault is Auth {
         uint256 size;
         // solhint-disable-next-line no-inline-assembly
         assembly { size := extcodesize(account) }
-        return size > 0;
+        return size != 0;
     }
 
     /**

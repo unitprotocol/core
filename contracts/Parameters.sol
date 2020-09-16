@@ -158,7 +158,7 @@ contract Parameters is Auth {
      * @param newValue The collateralization ratio (0 decimals)
      **/
     function setInitialCollateralRatio(address asset, uint newValue) public onlyManager {
-        require(newValue > 0 && newValue <= 100, "USDP: INCORRECT_COLLATERALIZATION_VALUE");
+        require(newValue != 0 && newValue <= 100, "USDP: INCORRECT_COLLATERALIZATION_VALUE");
         initialCollateralRatio[asset] = newValue;
     }
 
@@ -169,7 +169,7 @@ contract Parameters is Auth {
      * @param newValue The liquidation ratio (0 decimals)
      **/
     function setLiquidationRatio(address asset, uint newValue) public onlyManager {
-        require(newValue > 0 && newValue >= initialCollateralRatio[asset], "USDP: INCORRECT_COLLATERALIZATION_VALUE");
+        require(newValue != 0 && newValue >= initialCollateralRatio[asset], "USDP: INCORRECT_COLLATERALIZATION_VALUE");
         liquidationRatio[asset] = newValue;
     }
 

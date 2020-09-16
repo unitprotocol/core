@@ -36,7 +36,7 @@ contract VaultManagerUniswapLP is Auth {
     modifier spawned(address asset, address user) {
 
         // check the existence of a position
-        require(vault.getTotalDebt(asset, user) > 0, "USDP: NOT_SPAWNED_POSITION");
+        require(vault.getTotalDebt(asset, user) != 0, "USDP: NOT_SPAWNED_POSITION");
         _;
     }
 
@@ -61,7 +61,7 @@ contract VaultManagerUniswapLP is Auth {
       * @notice Depositing tokens must be pre-approved to vault address
       * @dev Spawns new positions
       * @dev Adds collaterals to non-spawned positions
-      * @notice position actually spawns when usdpAmount > 0
+      * @notice position actually considered as spawned only when usdpAmount > 0
       * @param asset The address of token using as main collateral
       * @param mainAmount The amount of main collateral to deposit
       * @param colAmount The amount of COL token to deposit
@@ -79,7 +79,7 @@ contract VaultManagerUniswapLP is Auth {
     )
         public
     {
-        require(usdpAmount > 0, "USDP: ZERO_BORROWING");
+        require(usdpAmount != 0, "USDP: ZERO_BORROWING");
 
         // check whether the position is spawned
         require(vault.getTotalDebt(asset, msg.sender) == 0, "USDP: SPAWNED_POSITION");
@@ -120,7 +120,7 @@ contract VaultManagerUniswapLP is Auth {
         public
         spawned(asset, msg.sender)
     {
-        require(usdpAmount > 0, "USDP: ZERO_BORROWING");
+        require(usdpAmount != 0, "USDP: ZERO_BORROWING");
 
         _depositAndBorrow(asset, msg.sender, mainAmount, colAmount, usdpAmount, underlyingProof, colProof);
 
@@ -151,22 +151,22 @@ contract VaultManagerUniswapLP is Auth {
         spawned(asset, msg.sender)
     {
         // check usefulness of tx
-        require(mainAmount > 0 || colAmount > 0, "USDP: USELESS_TX");
+        require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
 
         uint debt = vault.debts(asset, msg.sender);
-        require(debt > 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
+        require(debt != 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
 
-        if (mainAmount > 0) {
+        if (mainAmount != 0) {
             // withdraw main collateral to the user address
             vault.withdrawMain(asset, msg.sender, mainAmount);
         }
 
-        if (colAmount > 0) {
+        if (colAmount != 0) {
             // withdraw COL tokens to the user's address
             vault.withdrawCol(asset, msg.sender, colAmount);
         }
 
-        if (usdpAmount > 0) {
+        if (usdpAmount != 0) {
             uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
             vault.chargeFee(address(vault.usdp()), msg.sender, fee);
             vault.repay(asset, msg.sender, usdpAmount);
@@ -204,17 +204,17 @@ contract VaultManagerUniswapLP is Auth {
     {
         {
             // check usefulness of tx
-            require(mainAmount > 0 || colAmount > 0, "USDP: USELESS_TX");
+            require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
 
             uint debt = vault.debts(asset, msg.sender);
-            require(debt > 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
+            require(debt != 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
 
-            if (mainAmount > 0) {
+            if (mainAmount != 0) {
                 // withdraw main collateral to the user address
                 vault.withdrawMain(asset, msg.sender, mainAmount);
             }
 
-            if (colAmount > 0) {
+            if (colAmount != 0) {
                 // withdraw COL tokens to the user's address
                 vault.withdrawCol(asset, msg.sender, colAmount);
             }
@@ -228,7 +228,7 @@ contract VaultManagerUniswapLP is Auth {
         // COL token value of the position in USD
         uint colUsdValue_q112 = uniswapLPOracle.chainlinkedUniswapOracle().assetToUsd(vault.col(), colDeposit, colProof);
 
-        if (usdpAmount > 0) {
+        if (usdpAmount != 0) {
             uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
             uint feeInCol = fee.mul(uniswapLPOracle.Q112()).mul(colDeposit).div(colUsdValue_q112);
             vault.chargeFee(address(vault.col()), msg.sender, feeInCol);
@@ -254,11 +254,11 @@ contract VaultManagerUniswapLP is Auth {
     )
         internal
     {
-        if (mainAmount > 0) {
+        if (mainAmount != 0) {
             vault.depositMain(asset, user, mainAmount);
         }
 
-        if (colAmount > 0) {
+        if (colAmount != 0) {
             vault.depositCol(asset, user, colAmount);
         }
 
@@ -302,7 +302,7 @@ contract VaultManagerUniswapLP is Auth {
         uint colUsdUtilized_q112;
 
         uint minColPercent = parameters.minColPercent(asset);
-        if (minColPercent > 0) {
+        if (minColPercent != 0) {
             // main limit by COL
             uint mainUsdLimit_q112 = colUsdValue_q112 * (100 - minColPercent) / minColPercent;
             mainUsdUtilized_q112 = Math.min(mainUsdValue_q112, mainUsdLimit_q112);

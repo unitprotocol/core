@@ -64,7 +64,7 @@ contract ChainlinkedUniswapOracleMock {
         uint tokenReserve = ERC20Like(asset).balanceOf(uniswapPair);
 
         // revert if there is no liquidity
-        require(tokenReserve > 0, "USDP: UNISWAP_EMPTY_POOL");
+        require(tokenReserve != 0, "USDP: UNISWAP_EMPTY_POOL");
 
         // WETH reserve of {Token}/WETH pool
         uint wethReserve = ERC20Like(WETH).balanceOf(uniswapPair);
