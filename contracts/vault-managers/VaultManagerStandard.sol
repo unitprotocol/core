@@ -46,21 +46,21 @@ contract VaultManagerStandard is Auth {
      * @param mainAmount The amount of main collateral to deposit
      * @param colAmount The amount of COL token to deposit
      **/
-    function deposit(address asset, address user, uint mainAmount, uint colAmount) public {
+    function deposit(address asset, uint mainAmount, uint colAmount) public {
 
         // check usefulness of tx
         require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
 
         if (mainAmount != 0) {
-            vault.depositMain(asset, user, mainAmount);
+            vault.depositMain(asset, msg.sender, mainAmount);
         }
 
         if (colAmount != 0) {
-            vault.depositCol(asset, user, colAmount);
+            vault.depositCol(asset, msg.sender, colAmount);
         }
 
         // fire an event
-        emit Join(asset, user, mainAmount, colAmount, 0);
+        emit Join(asset, msg.sender, mainAmount, colAmount, 0);
     }
 
     /**
@@ -69,15 +69,15 @@ contract VaultManagerStandard is Auth {
       * @param asset The address of token using as main collateral
       * @param usdpAmount The amount of USDP token to repay
       **/
-    function repay(address asset, address user, uint usdpAmount) public {
+    function repay(address asset, uint usdpAmount) public {
 
         // check usefulness of tx
         require(usdpAmount != 0, "USDP: USELESS_TX");
 
-        _repay(asset, user, usdpAmount);
+        _repay(asset, msg.sender, usdpAmount);
 
         // fire an event
-        emit Exit(asset, user, 0, 0, usdpAmount);
+        emit Exit(asset, msg.sender, 0, 0, usdpAmount);
     }
 
     /**
@@ -91,36 +91,35 @@ contract VaultManagerStandard is Auth {
       **/
     function repayAllAndWithdraw(
         address asset,
-        address user,
         uint mainAmount,
         uint colAmount
     )
         external
     {
-        uint debtAmount = vault.debts(asset, user);
+        uint debtAmount = vault.debts(asset, msg.sender);
 
         if (mainAmount == 0 && colAmount == 0) {
             // just repay the debt
-            return repay(asset, user, debtAmount);
+            return repay(asset, debtAmount);
         }
 
         if (mainAmount != 0) {
             // withdraw main collateral to the user address
-            vault.withdrawMain(asset, user, mainAmount);
+            vault.withdrawMain(asset, msg.sender, mainAmount);
         }
 
         if (colAmount != 0) {
             // withdraw COL tokens to the user's address
-            vault.withdrawCol(asset, user, colAmount);
+            vault.withdrawCol(asset, msg.sender, colAmount);
         }
 
         if (debtAmount != 0) {
             // burn USDP from the user's address
-            _repay(asset, user, debtAmount);
+            _repay(asset, msg.sender, debtAmount);
         }
 
         // fire an event
-        emit Exit(asset, user, mainAmount, colAmount, debtAmount);
+        emit Exit(asset, msg.sender, mainAmount, colAmount, debtAmount);
     }
 
     // decreases debt
