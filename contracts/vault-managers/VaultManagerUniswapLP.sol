@@ -45,7 +45,7 @@ contract VaultManagerUniswapLP is Auth {
      * @param _uniswapOracle The address of Uniswap-based Oracle for LP tokens
      **/
     constructor(
-        address _vault,
+        address payable _vault,
         ChainlinkedUniswapOracleLP _uniswapOracle
     )
         Auth(address(Vault(_vault).parameters()))

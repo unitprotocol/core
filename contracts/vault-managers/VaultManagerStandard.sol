@@ -34,7 +34,7 @@ contract VaultManagerStandard is Auth {
      * @param _vault The address of the Vault
      * @param _parameters The address of the contract with system parameters
      **/
-    constructor(address _vault, address _parameters) Auth(_parameters) public {
+    constructor(address payable _vault, address _parameters) Auth(_parameters) public {
         vault = Vault(_vault);
     }
 
@@ -64,6 +64,29 @@ contract VaultManagerStandard is Auth {
     }
 
     /**
+     * @notice COL token must be pre-approved to vault address (if being deposited)
+     * @notice Token using as main collateral must be whitelisted
+     * @dev Deposits collaterals converting ETH to WETH
+     * @param colAmount The amount of COL token to deposit
+     **/
+    function deposit_Eth(uint colAmount) public payable {
+
+        // check usefulness of tx
+        require(msg.value != 0 || colAmount != 0, "USDP: USELESS_TX");
+
+        if (msg.value != 0) {
+            vault.depositEth{value: msg.value}(msg.sender);
+        }
+
+        if (colAmount != 0) {
+            vault.depositCol(vault.weth(), msg.sender, colAmount);
+        }
+
+        // fire an event
+        emit Join(vault.weth(), msg.sender, msg.value, colAmount, 0);
+    }
+
+    /**
       * @notice Tx sender must have a sufficient USDP balance to pay the debt
       * @dev Repays specified amount of debt
       * @param asset The address of token using as main collateral
@@ -83,7 +106,7 @@ contract VaultManagerStandard is Auth {
     /**
       * @notice Tx sender must have a sufficient USDP balance to pay the debt
       * @notice Token approwal is NOT needed
-      * @notice Merkle proofs are NOT needed since we don't need to check collateralization (cause there is no debt yet)
+      * @notice Merkle proofs are NOT needed since we don't need to check collateralization (cause there is no debt)
       * @dev Repays total debt and withdraws collaterals
       * @param asset The address of token using as main collateral
       * @param mainAmount The amount of main collateral token to withdraw
@@ -120,6 +143,46 @@ contract VaultManagerStandard is Auth {
 
         // fire an event
         emit Exit(asset, msg.sender, mainAmount, colAmount, debtAmount);
+    }
+
+    /**
+      * @notice Tx sender must have a sufficient USDP balance to pay the debt
+      * @notice Token approwal is NOT needed
+      * @notice Merkle proofs are NOT needed since we don't need to check collateralization (cause there is no debt)
+      * @dev Repays total debt and withdraws collaterals
+      * @param ethAmount The ETH amount to withdraw
+      * @param colAmount The amount of COL token to withdraw
+      **/
+    function repayAllAndWithdraw_Eth(
+        uint ethAmount,
+        uint colAmount
+    )
+        external
+    {
+        uint debtAmount = vault.debts(vault.weth(), msg.sender);
+
+        if (ethAmount == 0 && colAmount == 0) {
+            // just repay the debt
+            return repay(vault.weth(), debtAmount);
+        }
+
+        if (ethAmount != 0) {
+            // withdraw ETH to the user address
+            vault.withdrawEth(msg.sender, ethAmount);
+        }
+
+        if (colAmount != 0) {
+            // withdraw COL tokens to the user's address
+            vault.withdrawCol(vault.weth(), msg.sender, colAmount);
+        }
+
+        if (debtAmount != 0) {
+            // burn USDP from the user's address
+            _repay(vault.weth(), msg.sender, debtAmount);
+        }
+
+        // fire an event
+        emit Exit(vault.weth(), msg.sender, ethAmount, colAmount, debtAmount);
     }
 
     // decreases debt

@@ -7,7 +7,7 @@ pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
 import "../helpers/SafeMath.sol";
-import { UniswapOracle, IUniswapV2Pair } from  '@keydonix/uniswap-oracle-contracts/source/UniswapOracle.sol';
+import { UniswapOracle, IUniswapV2Pair } from  '../../node_modules/@keydonix/uniswap-oracle-contracts/source/UniswapOracle.sol';
 import "../helpers/AggregatorInterface.sol";
 import "../helpers/IUniswapV2Factory.sol";
 

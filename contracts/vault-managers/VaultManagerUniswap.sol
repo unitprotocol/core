@@ -46,7 +46,7 @@ contract VaultManagerUniswap is Auth {
      * @param _uniswapOracle The address of Uniswap-based Oracle
      **/
     constructor(
-        address _vault,
+        address payable _vault,
         address _parameters,
         ChainlinkedUniswapOracle _uniswapOracle
     )
@@ -61,13 +61,13 @@ contract VaultManagerUniswap is Auth {
       * @notice Cannot be used for already spawned positions
       * @notice Token using as main collateral must be whitelisted
       * @notice Depositing tokens must be pre-approved to vault address
-      * @dev Spawns new positions
-      * @dev Adds collaterals to non-spawned positions
       * @notice position actually considered as spawned only when usdpAmount > 0
+      * @dev Spawns new positions
       * @param asset The address of token using as main collateral
       * @param mainAmount The amount of main collateral to deposit
       * @param colAmount The amount of COL token to deposit
       * @param usdpAmount The amount of USDP token to borrow
+      * @param mainPriceProof The merkle proof of the main collateral price
       **/
     function spawn(
         address asset,
@@ -97,15 +97,50 @@ contract VaultManagerUniswap is Auth {
     }
 
     /**
+      * @notice Cannot be used for already spawned positions
+      * @notice WETH must be whitelisted as collateral
+      * @notice COL must be pre-approved to vault address
+      * @notice position actually considered as spawned only when usdpAmount > 0
+      * @dev Spawns new positions using ETH
+      * @param colAmount The amount of COL token to deposit
+      * @param usdpAmount The amount of USDP token to borrow
+      **/
+    function spawn_Eth(
+        uint colAmount,
+        uint usdpAmount,
+        UniswapOracle.ProofData memory colPriceProof
+    )
+        public
+        payable
+    {
+        require(usdpAmount != 0, "USDP: ZERO_BORROWING");
+
+        // check whether the position is spawned
+        require(vault.getTotalDebt(vault.weth(), msg.sender) == 0, "USDP: SPAWNED_POSITION");
+
+        // oracle availability check
+        require(parameters.isOracleTypeEnabled(ORACLE_TYPE, vault.weth()), "USDP: WRONG_ORACLE_TYPE");
+
+        // USDP minting triggers the spawn of a position
+        vault.spawn(vault.weth(), msg.sender, ORACLE_TYPE);
+
+        _depositAndBorrow_Eth(msg.sender, colAmount, usdpAmount, colPriceProof);
+
+        // fire an event
+        emit Join(vault.weth(), msg.sender, msg.value, colAmount, usdpAmount);
+    }
+
+    /**
      * @notice Position should be spawned (USDP borrowed from position) to call this method
      * @notice Depositing tokens must be pre-approved to vault address
      * @notice Token using as main collateral must be whitelisted
-     * @dev Deposits collaterals to spawned positions
-     * @dev Borrows USDP
+     * @dev Deposits collaterals and borrows USDP to spawned positions simultaneously
      * @param asset The address of token using as main collateral
      * @param mainAmount The amount of main collateral to deposit
      * @param colAmount The amount of COL token to deposit
      * @param usdpAmount The amount of USDP token to borrow
+     * @param mainPriceProof The merkle proof of the main collateral price
+     * @param colPriceProof The merkle proof of the COL token price
      **/
     function depositAndBorrow(
         address asset,
@@ -127,9 +162,34 @@ contract VaultManagerUniswap is Auth {
     }
 
     /**
+     * @notice Position should be spawned (USDP borrowed from position) to call this method
+     * @notice Depositing tokens must be pre-approved to vault address
+     * @notice Token using as main collateral must be whitelisted
+     * @dev Deposits collaterals and borrows USDP to spawned positions simultaneously
+     * @param colAmount The amount of COL token to deposit
+     * @param usdpAmount The amount of USDP token to borrow
+     * @param colPriceProof The merkle proof of the COL token price
+     **/
+    function depositAndBorrow_Eth(
+        uint colAmount,
+        uint usdpAmount,
+        UniswapOracle.ProofData memory colPriceProof
+    )
+        public
+        payable
+        spawned(vault.weth(), msg.sender)
+    {
+        require(usdpAmount != 0, "USDP: ZERO_BORROWING");
+
+        _depositAndBorrow_Eth(msg.sender, colAmount, usdpAmount, colPriceProof);
+
+        // fire an event
+        emit Join(vault.weth(), msg.sender, msg.value, colAmount, usdpAmount);
+    }
+
+    /**
       * @notice Tx sender must have a sufficient USDP balance to pay the debt
-      * @dev Withdraws collateral
-      * @dev Repays specified amount of debt
+      * @dev Withdraws collateral and repays specified amount of debt simultaneously
       * @param asset The address of token using as main collateral
       * @param mainAmount The amount of main collateral token to withdraw
       * @param colAmount The amount of COL token to withdraw
@@ -179,15 +239,92 @@ contract VaultManagerUniswap is Auth {
     }
 
     /**
-      * @notice Tx sender must have a sufficient USDP and COL balances to pay the debt
+      * @notice Tx sender must have a sufficient USDP balance to pay the debt
+      * @dev Withdraws collateral and repays specified amount of debt simultaneously converting WETH to ETH
+      * @param ethAmount The amount of ETH to withdraw
+      * @param colAmount The amount of COL token to withdraw
+      * @param usdpAmount The amount of USDP token to repay
+      * @param colPriceProof The merkle proof of the COL token price
+      **/
+    function withdrawAndRepay_Eth(
+        uint ethAmount,
+        uint colAmount,
+        uint usdpAmount,
+        UniswapOracle.ProofData memory colPriceProof
+    )
+        public
+        spawned(vault.weth(), msg.sender)
+    {
+        // check usefulness of tx
+        require(ethAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
+
+        uint debt = vault.debts(vault.weth(), msg.sender);
+        require(debt != 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
+
+        if (ethAmount != 0) {
+            // withdraw main collateral to the user address
+            vault.withdrawEth(msg.sender, ethAmount);
+        }
+
+        if (colAmount != 0) {
+            // withdraw COL tokens to the user's address
+            vault.withdrawCol(vault.weth(), msg.sender, colAmount);
+        }
+
+        if (usdpAmount != 0) {
+            uint fee = vault.calculateFee(vault.weth(), msg.sender, usdpAmount);
+            vault.chargeFee(address(vault.usdp()), msg.sender, fee);
+            vault.repay(vault.weth(), msg.sender, usdpAmount);
+        }
+
+        vault.update(vault.weth(), msg.sender);
+
+        _ensureCollateralizationTroughProofs_Eth(msg.sender, colPriceProof);
+
+        // fire an event
+        emit Exit(vault.weth(), msg.sender, ethAmount, colAmount, usdpAmount);
+    }
+
+    /**
+      * @notice Tx sender must have a sufficient USDP and COL balances and allowances to pay the debt
+      * @dev Repays specified amount of debt paying fee in COL
+      * @param asset The address of token using as main collateral
+      * @param usdpAmount The amount of USDP token to repay
+      * @param colPriceProof The merkle proof of the COL token price
+      **/
+    function repayUsingCol(
+        address asset,
+        uint usdpAmount,
+        UniswapOracle.ProofData memory colPriceProof
+    )
+        public
+        spawned(asset, msg.sender)
+    {
+        // check usefulness of tx
+        require(usdpAmount != 0, "USDP: USELESS_TX");
+
+        // COL token price in USD
+        uint colUsdPrice_q112 = uniswapOracle.assetToUsd(vault.col(), 1, colPriceProof);
+
+        uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
+        uint feeInCol = fee.mul(uniswapOracle.Q112()).div(colUsdPrice_q112);
+        vault.chargeFee(vault.col(), msg.sender, feeInCol);
+        vault.repay(asset, msg.sender, usdpAmount);
+
+        // fire an event
+        emit Exit(asset, msg.sender, 0, 0, usdpAmount);
+    }
+
+    /**
+      * @notice Tx sender must have a sufficient USDP and COL balances and allowances to pay the debt
       * @dev Withdraws collateral
       * @dev Repays specified amount of debt paying fee in COL
       * @param asset The address of token using as main collateral
       * @param mainAmount The amount of main collateral token to withdraw
       * @param colAmount The amount of COL token to withdraw
       * @param usdpAmount The amount of USDP token to repay
-      * @param mainPriceProof The merkle proof of the main collateral price at given block
-      * @param colPriceProof The merkle proof of the COL token price at given block
+      * @param mainPriceProof The merkle proof of the main collateral price
+      * @param colPriceProof The merkle proof of the COL token price
       **/
     function withdrawAndRepayUsingCol(
         address asset,
@@ -200,11 +337,11 @@ contract VaultManagerUniswap is Auth {
         public
         spawned(asset, msg.sender)
     {
-        // fix Stack too deep
-        {
-            // check usefulness of tx
-            require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
+        // check usefulness of tx
+        require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
 
+        // fix 'Stack too deep'
+        {
             uint debt = vault.debts(asset, msg.sender);
             require(debt != 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
 
@@ -242,6 +379,67 @@ contract VaultManagerUniswap is Auth {
         emit Exit(asset, msg.sender, mainAmount, colAmount, usdpAmount);
     }
 
+    /**
+      * @notice Tx sender must have a sufficient USDP and COL balances to pay the debt
+      * @dev Withdraws collateral converting WETH to ETH
+      * @dev Repays specified amount of debt paying fee in COL
+      * @param ethAmount The amount of ETH to withdraw
+      * @param colAmount The amount of COL token to withdraw
+      * @param usdpAmount The amount of USDP token to repay
+      * @param colPriceProof The merkle proof of the COL token price
+      **/
+    function withdrawAndRepayUsingCol_Eth(
+        uint ethAmount,
+        uint colAmount,
+        uint usdpAmount,
+        UniswapOracle.ProofData memory mainPriceProof,
+        UniswapOracle.ProofData memory colPriceProof
+    )
+        public
+        spawned(vault.weth(), msg.sender)
+    {
+        // fix 'Stack too deep'
+        {
+            // check usefulness of tx
+            require(ethAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
+
+            uint debt = vault.debts(vault.weth(), msg.sender);
+            require(debt != 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
+
+            if (ethAmount != 0) {
+                // withdraw main collateral to the user address
+                vault.withdrawEth(msg.sender, ethAmount);
+            }
+
+            if (colAmount != 0) {
+                // withdraw COL tokens to the user's address
+                vault.withdrawCol(vault.weth(), msg.sender, colAmount);
+            }
+        }
+
+        uint colDeposit = vault.colToken(vault.weth(), msg.sender);
+
+        // main collateral value of the position in USD
+        uint mainUsdValue_q112 = uniswapOracle.assetToUsd(vault.weth(), vault.collaterals(vault.weth(), msg.sender), mainPriceProof);
+
+        // COL token value of the position in USD
+        uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), colDeposit, colPriceProof);
+
+        if (usdpAmount != 0) {
+            uint fee = vault.calculateFee(vault.weth(), msg.sender, usdpAmount);
+            uint feeInCol = fee.mul(uniswapOracle.Q112()).mul(colDeposit).div(colUsdValue_q112);
+            vault.chargeFee(vault.col(), msg.sender, feeInCol);
+            vault.repay(vault.weth(), msg.sender, usdpAmount);
+        }
+
+        vault.update(vault.weth(), msg.sender);
+
+        _ensureCollateralization(vault.weth(), msg.sender, mainUsdValue_q112, colUsdValue_q112);
+
+        // fire an event
+        emit Exit(vault.weth(), msg.sender, ethAmount, colAmount, usdpAmount);
+    }
+
     function _depositAndBorrow(
         address asset,
         address user,
@@ -268,6 +466,28 @@ contract VaultManagerUniswap is Auth {
         _ensureCollateralizationTroughProofs(asset, user, mainPriceProof, colPriceProof);
     }
 
+    function _depositAndBorrow_Eth(
+        address user,
+        uint colAmount,
+        uint usdpAmount,
+        UniswapOracle.ProofData memory colPriceProof
+    )
+        internal
+    {
+        if (msg.value != 0) {
+            vault.depositEth{value:msg.value}(user);
+        }
+
+        if (colAmount != 0) {
+            vault.depositCol(vault.weth(), user, colAmount);
+        }
+
+        // mint USDP to user
+        vault.borrow(vault.weth(), user, usdpAmount);
+
+        _ensureCollateralizationTroughProofs_Eth(user, colPriceProof);
+    }
+
     function _ensureCollateralizationTroughProofs(
         address asset,
         address user,
@@ -284,6 +504,22 @@ contract VaultManagerUniswap is Auth {
         uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), vault.colToken(asset, user), colPriceProof);
 
         _ensureCollateralization(asset, user, mainUsdValue_q112, colUsdValue_q112);
+    }
+
+    function _ensureCollateralizationTroughProofs_Eth(
+        address user,
+        UniswapOracle.ProofData memory colPriceProof
+    )
+        internal
+        view
+    {
+        // ETH value of the position in USD
+        uint ethUsdValue_q112 = uniswapOracle.ethToUsd(vault.collaterals(vault.weth(), user).mul(uniswapOracle.Q112()));
+
+        // COL token value of the position in USD
+        uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), vault.colToken(vault.weth(), user), colPriceProof);
+
+        _ensureCollateralization(vault.weth(), user, ethUsdValue_q112, colUsdValue_q112);
     }
 
     // ensures that borrowed value is in desired range

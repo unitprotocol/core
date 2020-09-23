@@ -9,6 +9,7 @@ import "./helpers/SafeMath.sol";
 import "./Parameters.sol";
 import "./helpers/ERC20SafeTransfer.sol";
 import "./USDP.sol";
+import "./test-helpers/WETH.sol";
 
 
 interface LiquidationSystem{
@@ -37,7 +38,12 @@ contract Vault is Auth {
     // COL token address
     address public col;
 
+    // WETH token address
+    address payable public weth;
+
     uint public constant FEE_DENOMINATOR = 100000;
+
+    bool public canReceiveEth = false;
 
     // USDP token address
     USDP public usdp;
@@ -71,9 +77,14 @@ contract Vault is Auth {
      * @param _col COL token address
      * @param _usdp USDP token address
      **/
-    constructor(address _parameters, address _col, USDP _usdp) public Auth(_parameters) {
+    constructor(address _parameters, address _col, USDP _usdp, address payable _weth) public Auth(_parameters) {
         col = _col;
         usdp = _usdp;
+        weth = _weth;
+    }
+
+    receive() external payable {
+        require(canReceiveEth, "Contract does not accept donations");
     }
 
     /**
@@ -127,6 +138,15 @@ contract Vault is Auth {
     }
 
     /**
+     * @dev Converts ETH to WETH and adds main collateral to a position
+     * @param user The address of a position's owner
+     **/
+    function depositEth(address user) external payable {
+        WETH(weth).deposit{value: msg.value}();
+        collaterals[weth][user] = collaterals[weth][user].add(msg.value);
+    }
+
+    /**
      * @dev Withdraws main collateral from a position
      * @param asset The address of the main collateral token
      * @param user The address of a position's owner
@@ -135,6 +155,21 @@ contract Vault is Auth {
     function withdrawMain(address asset, address user, uint amount) external hasVaultAccess {
         collaterals[asset][user] = collaterals[asset][user].sub(amount);
         asset.safeTransferAndVerify(user, amount);
+    }
+
+    /**
+     * @dev Withdraws WETH collateral from a position converting WETH to ETH
+     * @param user The address of a position's owner
+     * @param amount The amount of ETH to withdraw
+     **/
+    function withdrawEth(address payable user, uint amount) external hasVaultAccess {
+        collaterals[weth][user] = collaterals[weth][user].sub(amount);
+
+        canReceiveEth = true;
+        WETH(weth).withdraw(amount);
+        canReceiveEth = false;
+
+        user.transfer(amount);
     }
 
     /**

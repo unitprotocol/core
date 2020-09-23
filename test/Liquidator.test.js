@@ -9,12 +9,14 @@ const utils = require('./helpers/utils');
 contract('Liquidator', function([
 	deployer,
 	liquidationSystem,
+	foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this);
 		this.deployer = deployer;
 		this.liquidationSystem = liquidationSystem;
+		this.foundation = foundation;
 		await this.utils.deploy();
 	});
 

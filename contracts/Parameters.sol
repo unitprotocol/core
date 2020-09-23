@@ -79,7 +79,7 @@ contract Parameters is Auth {
     mapping(uint => mapping (address => bool)) public isOracleTypeEnabled;
 
     // address of the Vault
-    address public vault;
+    address payable public vault;
 
     // The foundation address
     address public foundation;
@@ -90,7 +90,7 @@ contract Parameters is Auth {
      * hashed with Keccak-256.
      * Therefore, the Vault address can be pre-computed and passed as an argument before deployment.
     **/
-    constructor(address _vault, address _foundation) public Auth(address(this)) {
+    constructor(address payable _vault, address _foundation) public Auth(address(this)) {
         require(_vault != address(0), "USDP: ZERO_ADDRESS");
         require(_foundation != address(0), "USDP: ZERO_ADDRESS");
 

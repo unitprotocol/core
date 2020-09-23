@@ -42,7 +42,7 @@ contract LiquidatorUniswapLP {
      * @param _liquidationSystem The liquidation system's address
      **/
     constructor(
-        address _vault,
+        address payable _vault,
         address _uniswapOracle,
         address _liquidationSystem
     )

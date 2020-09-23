@@ -69,7 +69,7 @@ contract ChainlinkedUniswapOracleMock {
         // WETH reserve of {Token}/WETH pool
         uint wethReserve = ERC20Like(WETH).balanceOf(uniswapPair);
 
-        uint wethResult = amount.mul(wethReserve);
+        uint wethResult = amount.mul(wethReserve).mul(Q112);
 
         return ethToUsd(wethResult).div(tokenReserve);
     }
@@ -81,6 +81,6 @@ contract ChainlinkedUniswapOracleMock {
     function ethToUsd(uint ethAmount) public view returns (uint) {
         require(ethUsdChainlinkAggregator.latestTimestamp() > now - 6 hours, "USDP: OUTDATED_CHAINLINK_PRICE");
         uint ethUsdPrice = uint(ethUsdChainlinkAggregator.latestAnswer());
-        return ethAmount.mul(Q112).mul(ethUsdPrice).div(ETH_USD_DENOMINATOR);
+        return ethAmount.mul(ethUsdPrice).div(ETH_USD_DENOMINATOR);
     }
 }
