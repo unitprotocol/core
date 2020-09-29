@@ -41,7 +41,9 @@ contract Vault is Auth {
     // WETH token address
     address payable public weth;
 
-    uint public constant FEE_DENOMINATOR = 100000;
+    uint public constant STABILITY_FEE_DENOMINATOR = 100000;
+
+    uint public constant LIQUIDATION_FEE_DENOMINATOR = 100;
 
     bool public canReceiveEth = false;
 
@@ -245,38 +247,58 @@ contract Vault is Auth {
     /**
      * @dev Deletes position and transfers collateral to liquidation system
      * @param asset The address of the main collateral token
-     * @param user The address of a position's owner
-     * @param liquidationSystem The address of an liquidation system
+     * @param positionOwner The address of a position's owner
+     * @param liquidator The liquidator address
+     * @param usdCollateralValue The total USD value of liquidation collateral
      **/
-    function liquidate(address asset, address user, address liquidationSystem) external hasVaultAccess {
+    function liquidate(
+        address asset,
+        address positionOwner,
+        address liquidator,
+        uint usdCollateralValue
+    )
+        external
+        hasVaultAccess
+    {
         // reverts if oracle type is disabled
-        require(parameters.isOracleTypeEnabled(oracleType[asset][user], asset), "USDP: WRONG_ORACLE_TYPE");
+        require(parameters.isOracleTypeEnabled(oracleType[asset][positionOwner], asset), "USDP: WRONG_ORACLE_TYPE");
 
-        uint debt = debts[asset][user];
-        uint assetAmount = collaterals[asset][user];
-        uint colAmount = colToken[asset][user];
-        uint fee = liquidationFee[asset][user];
+        uint debt = debts[asset][positionOwner];
+        uint assetAmount = collaterals[asset][positionOwner];
+        uint colAmount = colToken[asset][positionOwner];
+
+        uint totalDebt = getTotalDebt(asset, positionOwner);
+        uint debtWithPenalty = totalDebt.add(totalDebt.mul(parameters.liquidationFee(asset)).div(LIQUIDATION_FEE_DENOMINATOR));
 
         tokenDebts[asset] = tokenDebts[asset].sub(debt);
 
-        delete debts[asset][user];
-        delete collaterals[asset][user];
-        delete colToken[asset][user];
-        destroy(asset, user);
+        delete debts[asset][positionOwner];
+        delete collaterals[asset][positionOwner];
+        delete colToken[asset][positionOwner];
+        destroy(asset, positionOwner);
 
-        col.safeTransferAndVerify(liquidationSystem, colAmount);
-        asset.safeTransferAndVerify(liquidationSystem, assetAmount);
+        uint colToLiquidator;
+        uint assetToLiquidator;
 
-        if (isContract(liquidationSystem)) {
-            LiquidationSystem(liquidationSystem).liquidate(
-                asset,
-                user,
-                assetAmount,
-                colAmount,
-                debt,
-                fee
-            );
+        if (usdCollateralValue > debtWithPenalty) {
+            colToLiquidator = colAmount.mul(debtWithPenalty).div(usdCollateralValue);
+            assetToLiquidator = assetAmount.mul(debtWithPenalty).div(usdCollateralValue);
+
+            col.safeTransferAndVerify(positionOwner, colAmount.sub(colToLiquidator));
+            asset.safeTransferAndVerify(positionOwner, assetAmount.sub(assetToLiquidator));
+        } else {
+            colToLiquidator = colAmount;
+            assetToLiquidator = assetAmount;
         }
+
+        usdp.burn(liquidator, debt);
+
+        if (totalDebt > debt) {
+            address(usdp).safeTransferFromAndVerify(liquidator, parameters.foundation(), totalDebt.sub(debt));
+        }
+
+        col.safeTransferAndVerify(liquidator, colToLiquidator);
+        asset.safeTransferAndVerify(liquidator, assetToLiquidator);
     }
 
     /**
@@ -324,6 +346,6 @@ contract Vault is Auth {
         uint sFeePercent = stabilityFee[asset][user];
         uint timePast = block.timestamp.sub(lastUpdate[asset][user]);
 
-        return amount.mul(sFeePercent).mul(timePast).div(365 days).div(FEE_DENOMINATOR);
+        return amount.mul(sFeePercent).mul(timePast).div(365 days).div(STABILITY_FEE_DENOMINATOR);
     }
 }

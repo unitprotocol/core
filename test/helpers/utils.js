@@ -10,7 +10,7 @@ const IUniswapV2Factory = artifacts.require('IUniswapV2Factory');
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const VaultManagerStandard = artifacts.require('VaultManagerStandard');
 const VaultManagerUniswap = artifacts.require('VaultManagerUniswap');
-const Liquidator = artifacts.require('LiquidatorUniswap');
+const Liquidator = artifacts.require('LiquidatorUniswapMainAsset');
 const { ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce, deployContractBytecode } = require('./deployUtils');
 const BN = web3.utils.BN;
@@ -41,6 +41,7 @@ module.exports = context => {
 	const poolDeposit = async (token, amount, decimals) => {
 		amount = decimals ? String(amount * 10 ** decimals) : ether(amount.toString());
 		amount = new BN(amount).div(new BN((10 ** 6).toString()));
+		const ethUnitsPerDeposit = ether('1').div(new BN((10 ** 6)));
 		const block = await web3.eth.getBlock('latest');
 		const time = new BN(block.timestamp);
 		await token.approve(context.uniswapRouter.address, amount);
@@ -48,9 +49,9 @@ module.exports = context => {
 			token.address,
 			context.weth.address,
 			amount,
-			ether('1').div(new BN((10 ** 6).toString())),
+			ethUnitsPerDeposit,
 			amount,
-			ether('1').div(new BN((10 ** 6).toString())),
+			ethUnitsPerDeposit,
 			context.deployer,
 			time.add(new BN('100')),
 		);
@@ -96,12 +97,14 @@ module.exports = context => {
 		);
 	};
 
-	const liquidate = (main, user) => {
+	const liquidate = (main, user, from) => {
+		from = from ? from : vault.deployer;
 		return context.liquidator.liquidate(
 			main.address,
 			user,
 			['0x', '0x', '0x', '0x'], // main price proof
 			['0x', '0x', '0x', '0x'], // COL price proof
+			{ from }
 		);
 	};
 
@@ -206,7 +209,7 @@ module.exports = context => {
 		const vaultAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
 		context.parameters = await Parameters.new(vaultAddr, context.foundation);
 		context.vault = await Vault.new(context.parameters.address, context.col.address, context.usdp.address, context.weth.address);
-		context.liquidator = await Liquidator.new(context.vault.address, context.uniswapOracle.address, context.liquidationSystem);
+		context.liquidator = await Liquidator.new(context.vault.address, context.uniswapOracle.address);
 		context.vaultManagerUniswap = await VaultManagerUniswap.new(
 			context.vault.address,
 			context.parameters.address,
@@ -234,7 +237,7 @@ module.exports = context => {
 		await context.parameters.setCollateral(
 			context.mainCollateral.address,
 			'0', // stability fee
-			'0', // liquidation fee
+			'13', // liquidation fee
 			'67', // initial collateralization
 			'68', // liquidation ratio
 			ether('100000'), // debt limit
@@ -246,7 +249,7 @@ module.exports = context => {
 		await context.parameters.setCollateral(
 			context.weth.address,
 			'0', // stability fee
-			'0', // liquidation fee
+			'13', // liquidation fee
 			'67', // initial collateralization
 			'68', // liquidation ratio
 			ether('100000'), // debt limit

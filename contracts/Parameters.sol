@@ -200,6 +200,7 @@ contract Parameters is Auth {
      * @param newValue The liquidation fee percentage (0 decimals)
      **/
     function setLiquidationFee(address asset, uint newValue) public onlyManager {
+        require(newValue <= 100, "USDP: OUT OF RANGE");
         liquidationFee[asset] = newValue;
     }
 

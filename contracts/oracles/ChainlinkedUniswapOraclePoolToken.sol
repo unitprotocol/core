@@ -6,16 +6,16 @@
 pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
-import "./ChainlinkedUniswapOracle.sol";
+import "./ChainlinkedUniswapOracleMainAsset.sol";
 import "../helpers/IUniswapV2PairFull.sol";
 
 
 /**
- * @title ChainlinkedUniswapOracleLP
+ * @title ChainlinkedUniswapOraclePoolToken
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Calculates the USD price of Uniswap LP tokens
  **/
-contract ChainlinkedUniswapOracleLP {
+contract ChainlinkedUniswapOraclePoolToken {
     using SafeMath for uint;
 
     uint public constant magicNum1 = 9;
@@ -25,12 +25,12 @@ contract ChainlinkedUniswapOracleLP {
     uint public constant magicNum5 = 3;
     uint public constant magicNum6 = 2;
 
-    uint public constant Q112 = 2**112;
+    uint public constant Q112 = 2 ** 112;
 
-    ChainlinkedUniswapOracle public chainlinkedUniswapOracle;
+    ChainlinkedUniswapOracleMainAsset public uniswapOracleMainAsset;
 
-    constructor(ChainlinkedUniswapOracle _chainlinkedUniswapOracle) public {
-        chainlinkedUniswapOracle = _chainlinkedUniswapOracle;
+    constructor(address _chainlinkedUniswapOracle) public {
+        uniswapOracleMainAsset = ChainlinkedUniswapOracleMainAsset(_chainlinkedUniswapOracle);
     }
 
     /**
@@ -53,15 +53,15 @@ contract ChainlinkedUniswapOracleLP {
     {
         IUniswapV2PairFull pair = IUniswapV2PairFull(asset);
         address underlyingAsset;
-        if (pair.token0() == chainlinkedUniswapOracle.WETH()) {
+        if (pair.token0() == uniswapOracleMainAsset.WETH()) {
             underlyingAsset = pair.token1();
-        } else if (pair.token1() == chainlinkedUniswapOracle.WETH()) {
+        } else if (pair.token1() == uniswapOracleMainAsset.WETH()) {
             underlyingAsset = pair.token0();
         } else {
             revert("USDP: NOT_REGISTERED_PAIR");
         }
 
-        uint eAvg = chainlinkedUniswapOracle.assetToEth(underlyingAsset, 1, proofData); // average price of 1 token in ETH
+        uint eAvg = uniswapOracleMainAsset.assetToEth(underlyingAsset, 1, proofData); // average price of 1 token in ETH
 
         (uint112 _reserve0, uint112 _reserve1,) = pair.getReserves();
         uint aPool; // current asset pool
@@ -98,7 +98,7 @@ contract ChainlinkedUniswapOracleLP {
         uint num = ePoolCalc.mul(magicNum6).mul(amount).mul(Q112);
         uint priceInEth = num.div(pair.totalSupply());
 
-        return chainlinkedUniswapOracle.ethToUsd(priceInEth);
+        return uniswapOracleMainAsset.ethToUsd(priceInEth);
     }
 
     function sqrt(uint x) internal pure returns (uint y) {

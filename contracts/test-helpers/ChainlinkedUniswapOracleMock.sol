@@ -6,7 +6,7 @@
 pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
-import "../oracles/ChainlinkedUniswapOracle.sol";
+import "../oracles/ChainlinkedUniswapOracleMainAsset.sol";
 import "../helpers/ERC20Like.sol";
 
 /**

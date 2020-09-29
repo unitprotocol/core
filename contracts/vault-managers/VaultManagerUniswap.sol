@@ -7,7 +7,7 @@ pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
-import "../oracles/ChainlinkedUniswapOracle.sol";
+import "../oracles/ChainlinkedUniswapOracleMainAsset.sol";
 import "../helpers/Math.sol";
 
 
@@ -20,8 +20,9 @@ contract VaultManagerUniswap is Auth {
     using SafeMath for uint;
 
     Vault public vault;
-    ChainlinkedUniswapOracle public uniswapOracle;
+    ChainlinkedUniswapOracleMainAsset public uniswapOracle;
     uint public constant ORACLE_TYPE = 1;
+    uint public constant Q112 = 2 ** 112;
 
     /**
      * @dev Trigger when joins are happened
@@ -48,13 +49,13 @@ contract VaultManagerUniswap is Auth {
     constructor(
         address payable _vault,
         address _parameters,
-        ChainlinkedUniswapOracle _uniswapOracle
+        address _uniswapOracle
     )
         Auth(_parameters)
         public
     {
         vault = Vault(_vault);
-        uniswapOracle = _uniswapOracle;
+        uniswapOracle = ChainlinkedUniswapOracleMainAsset(_uniswapOracle);
     }
 
     /**
@@ -307,7 +308,7 @@ contract VaultManagerUniswap is Auth {
         uint colUsdPrice_q112 = uniswapOracle.assetToUsd(vault.col(), 1, colPriceProof);
 
         uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
-        uint feeInCol = fee.mul(uniswapOracle.Q112()).div(colUsdPrice_q112);
+        uint feeInCol = fee.mul(Q112).div(colUsdPrice_q112);
         vault.chargeFee(vault.col(), msg.sender, feeInCol);
         vault.repay(asset, msg.sender, usdpAmount);
 
@@ -366,7 +367,7 @@ contract VaultManagerUniswap is Auth {
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
-            uint feeInCol = fee.mul(uniswapOracle.Q112()).mul(colDeposit).div(colUsdValue_q112);
+            uint feeInCol = fee.mul(Q112).mul(colDeposit).div(colUsdValue_q112);
             vault.chargeFee(vault.col(), msg.sender, feeInCol);
             vault.repay(asset, msg.sender, usdpAmount);
         }
@@ -427,7 +428,7 @@ contract VaultManagerUniswap is Auth {
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(vault.weth(), msg.sender, usdpAmount);
-            uint feeInCol = fee.mul(uniswapOracle.Q112()).mul(colDeposit).div(colUsdValue_q112);
+            uint feeInCol = fee.mul(Q112).mul(colDeposit).div(colUsdValue_q112);
             vault.chargeFee(vault.col(), msg.sender, feeInCol);
             vault.repay(vault.weth(), msg.sender, usdpAmount);
         }
@@ -514,7 +515,7 @@ contract VaultManagerUniswap is Auth {
         view
     {
         // ETH value of the position in USD
-        uint ethUsdValue_q112 = uniswapOracle.ethToUsd(vault.collaterals(vault.weth(), user).mul(uniswapOracle.Q112()));
+        uint ethUsdValue_q112 = uniswapOracle.ethToUsd(vault.collaterals(vault.weth(), user).mul(Q112));
 
         // COL token value of the position in USD
         uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), vault.colToken(vault.weth(), user), colPriceProof);
@@ -557,7 +558,7 @@ contract VaultManagerUniswap is Auth {
         uint usdLimit = (
             mainUsdUtilized_q112 * parameters.initialCollateralRatio(asset) +
             colUsdUtilized_q112 * parameters.initialCollateralRatio(vault.col())
-        ) / uniswapOracle.Q112() / 100;
+        ) / Q112 / 100;
 
         // revert if collateralization is not enough
         require(vault.getTotalDebt(asset, user) <= usdLimit, "USDP: UNDERCOLLATERALIZED");
