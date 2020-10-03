@@ -12,10 +12,10 @@ import "../helpers/Math.sol";
 
 
 /**
- * @title VaultManagerUniswapLP
+ * @title VaultManagerUniswapPoolToken
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
-contract VaultManagerUniswapLP is Auth {
+contract VaultManagerUniswapPoolToken is Auth {
     using ERC20SafeTransfer for address;
     using SafeMath for uint;
 
