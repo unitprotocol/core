@@ -9,6 +9,7 @@ import "./helpers/SafeMath.sol";
 import "./Parameters.sol";
 import "./helpers/ERC20SafeTransfer.sol";
 import "./USDP.sol";
+import "./test-helpers/WETH.sol";
 
 
 interface LiquidationSystem{
@@ -37,7 +38,14 @@ contract Vault is Auth {
     // COL token address
     address public col;
 
-    uint public constant FEE_DENOMINATOR = 100000;
+    // WETH token address
+    address payable public weth;
+
+    uint public constant STABILITY_FEE_DENOMINATOR = 100000;
+
+    uint public constant LIQUIDATION_FEE_DENOMINATOR = 100;
+
+    bool public canReceiveEth = false;
 
     // USDP token address
     USDP public usdp;
@@ -71,9 +79,14 @@ contract Vault is Auth {
      * @param _col COL token address
      * @param _usdp USDP token address
      **/
-    constructor(address _parameters, address _col, USDP _usdp) public Auth(_parameters) {
+    constructor(address _parameters, address _col, USDP _usdp, address payable _weth) public Auth(_parameters) {
         col = _col;
         usdp = _usdp;
+        weth = _weth;
+    }
+
+    receive() external payable {
+        require(canReceiveEth, "Contract does not accept donations");
     }
 
     /**
@@ -127,6 +140,15 @@ contract Vault is Auth {
     }
 
     /**
+     * @dev Converts ETH to WETH and adds main collateral to a position
+     * @param user The address of a position's owner
+     **/
+    function depositEth(address user) external payable {
+        WETH(weth).deposit{value: msg.value}();
+        collaterals[weth][user] = collaterals[weth][user].add(msg.value);
+    }
+
+    /**
      * @dev Withdraws main collateral from a position
      * @param asset The address of the main collateral token
      * @param user The address of a position's owner
@@ -135,6 +157,21 @@ contract Vault is Auth {
     function withdrawMain(address asset, address user, uint amount) external hasVaultAccess {
         collaterals[asset][user] = collaterals[asset][user].sub(amount);
         asset.safeTransferAndVerify(user, amount);
+    }
+
+    /**
+     * @dev Withdraws WETH collateral from a position converting WETH to ETH
+     * @param user The address of a position's owner
+     * @param amount The amount of ETH to withdraw
+     **/
+    function withdrawEth(address payable user, uint amount) external hasVaultAccess {
+        collaterals[weth][user] = collaterals[weth][user].sub(amount);
+
+        canReceiveEth = true;
+        WETH(weth).withdraw(amount);
+        canReceiveEth = false;
+
+        user.transfer(amount);
     }
 
     /**
@@ -156,8 +193,8 @@ contract Vault is Auth {
      * @param amount The amount of tokens to withdraw
      **/
     function withdrawCol(address asset, address user, uint amount) external hasVaultAccess {
-        col.safeTransferAndVerify(user, amount);
         colToken[asset][user] = colToken[asset][user].sub(amount);
+        col.safeTransferAndVerify(user, amount);
     }
 
     /**
@@ -202,7 +239,7 @@ contract Vault is Auth {
      * @param amount The amount of asset to transfer
      **/
     function chargeFee(address asset, address user, uint amount) external hasVaultAccess {
-        if (amount > 0) {
+        if (amount != 0) {
             asset.safeTransferFromAndVerify(user, parameters.foundation(), amount);
         }
     }
@@ -210,33 +247,58 @@ contract Vault is Auth {
     /**
      * @dev Deletes position and transfers collateral to liquidation system
      * @param asset The address of the main collateral token
-     * @param user The address of a position's owner
-     * @param liquidationSystem The address of an liquidation system
+     * @param positionOwner The address of a position's owner
+     * @param liquidator The liquidator address
+     * @param usdCollateralValue The total USD value of liquidation collateral
      **/
-    function liquidate(address asset, address user, address liquidationSystem) external hasVaultAccess {
-
+    function liquidate(
+        address asset,
+        address positionOwner,
+        address liquidator,
+        uint usdCollateralValue
+    )
+        external
+        hasVaultAccess
+    {
         // reverts if oracle type is disabled
-        require(parameters.isOracleTypeEnabled(oracleType[asset][user], asset), "USDP: WRONG_ORACLE_TYPE");
+        require(parameters.isOracleTypeEnabled(oracleType[asset][positionOwner], asset), "USDP: WRONG_ORACLE_TYPE");
 
-        col.safeTransferAndVerify(liquidationSystem, colToken[asset][user]);
-        asset.safeTransferAndVerify(liquidationSystem, collaterals[asset][user]);
+        uint debt = debts[asset][positionOwner];
+        uint assetAmount = collaterals[asset][positionOwner];
+        uint colAmount = colToken[asset][positionOwner];
 
-        if (isContract(liquidationSystem)) {
-            LiquidationSystem(liquidationSystem).liquidate(
-                asset,
-                user,
-                collaterals[asset][user],
-                colToken[asset][user],
-                debts[asset][user],
-                liquidationFee[asset][user]
-            );
+        uint totalDebt = getTotalDebt(asset, positionOwner);
+        uint debtWithPenalty = totalDebt.add(totalDebt.mul(parameters.liquidationFee(asset)).div(LIQUIDATION_FEE_DENOMINATOR));
+
+        tokenDebts[asset] = tokenDebts[asset].sub(debt);
+
+        delete debts[asset][positionOwner];
+        delete collaterals[asset][positionOwner];
+        delete colToken[asset][positionOwner];
+        destroy(asset, positionOwner);
+
+        uint colToLiquidator;
+        uint assetToLiquidator;
+
+        if (usdCollateralValue > debtWithPenalty) {
+            colToLiquidator = colAmount.mul(debtWithPenalty).div(usdCollateralValue);
+            assetToLiquidator = assetAmount.mul(debtWithPenalty).div(usdCollateralValue);
+
+            col.safeTransferAndVerify(positionOwner, colAmount.sub(colToLiquidator));
+            asset.safeTransferAndVerify(positionOwner, assetAmount.sub(assetToLiquidator));
+        } else {
+            colToLiquidator = colAmount;
+            assetToLiquidator = assetAmount;
         }
 
-        tokenDebts[asset] = tokenDebts[asset].sub(debts[asset][user]);
-        delete debts[asset][user];
-        delete collaterals[asset][user];
-        delete colToken[asset][user];
-        destroy(asset, user);
+        usdp.burn(liquidator, debt);
+
+        if (totalDebt > debt) {
+            address(usdp).safeTransferFromAndVerify(liquidator, parameters.foundation(), totalDebt.sub(debt));
+        }
+
+        col.safeTransferAndVerify(liquidator, colToLiquidator);
+        asset.safeTransferAndVerify(liquidator, assetToLiquidator);
     }
 
     /**
@@ -258,7 +320,7 @@ contract Vault is Auth {
         uint256 size;
         // solhint-disable-next-line no-inline-assembly
         assembly { size := extcodesize(account) }
-        return size > 0;
+        return size != 0;
     }
 
     /**
@@ -284,6 +346,6 @@ contract Vault is Auth {
         uint sFeePercent = stabilityFee[asset][user];
         uint timePast = block.timestamp.sub(lastUpdate[asset][user]);
 
-        return amount.mul(sFeePercent).mul(timePast).div(365 days).div(FEE_DENOMINATOR);
+        return amount.mul(sFeePercent).mul(timePast).div(365 days).div(STABILITY_FEE_DENOMINATOR);
     }
 }

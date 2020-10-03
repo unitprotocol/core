@@ -6,24 +6,31 @@
 pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
-import "./ChainlinkedUniswapOracle.sol";
+import "./ChainlinkedUniswapOracleMainAsset.sol";
 import "../helpers/IUniswapV2PairFull.sol";
 
 
 /**
- * @title ChainlinkedUniswapOracleLP
+ * @title ChainlinkedUniswapOraclePoolToken
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Calculates the USD price of Uniswap LP tokens
  **/
-contract ChainlinkedUniswapOracleLP {
+contract ChainlinkedUniswapOraclePoolToken {
     using SafeMath for uint;
 
-    uint public constant Q112 = 2**112;
+    uint public constant magicNum1 = 9;
+    uint public constant magicNum2 = 3988000;
+    uint public constant magicNum3 = 1997;
+    uint public constant magicNum4 = 2000;
+    uint public constant magicNum5 = 3;
+    uint public constant magicNum6 = 2;
 
-    ChainlinkedUniswapOracle public chainlinkedUniswapOracle;
+    uint public constant Q112 = 2 ** 112;
 
-    constructor(ChainlinkedUniswapOracle _chainlinkedUniswapOracle) public {
-        chainlinkedUniswapOracle = _chainlinkedUniswapOracle;
+    ChainlinkedUniswapOracleMainAsset public uniswapOracleMainAsset;
+
+    constructor(address _chainlinkedUniswapOracle) public {
+        uniswapOracleMainAsset = ChainlinkedUniswapOracleMainAsset(_chainlinkedUniswapOracle);
     }
 
     /**
@@ -46,15 +53,15 @@ contract ChainlinkedUniswapOracleLP {
     {
         IUniswapV2PairFull pair = IUniswapV2PairFull(asset);
         address underlyingAsset;
-        if (pair.token0() == chainlinkedUniswapOracle.WETH()) {
+        if (pair.token0() == uniswapOracleMainAsset.WETH()) {
             underlyingAsset = pair.token1();
-        } else if (pair.token1() == chainlinkedUniswapOracle.WETH()) {
+        } else if (pair.token1() == uniswapOracleMainAsset.WETH()) {
             underlyingAsset = pair.token0();
         } else {
             revert("USDP: NOT_REGISTERED_PAIR");
         }
 
-        uint eAvg = chainlinkedUniswapOracle.assetToEth(underlyingAsset, 1, proofData); // average price of 1 token in ETH
+        uint eAvg = uniswapOracleMainAsset.assetToEth(underlyingAsset, 1, proofData); // average price of 1 token in ETH
 
         (uint112 _reserve0, uint112 _reserve1,) = pair.getReserves();
         uint aPool; // current asset pool
@@ -72,35 +79,39 @@ contract ChainlinkedUniswapOracleLP {
 
         if (eCurr < eAvg) {
             // flashloan with buying WETH
-            uint sqrtd = ePool.mul((ePool).mul(9).add(
-                aPool.mul(3988000).mul(eAvg).div(Q112)
+            uint sqrtd = ePool.mul((ePool).mul(magicNum1).add(
+                aPool.mul(magicNum2).mul(eAvg).div(Q112)
             ));
-            uint eChange = sqrt(sqrtd).sub(ePool.mul(1997)).div(2000);
+            uint eChange = sqrt(sqrtd).sub(ePool.mul(magicNum3)).div(magicNum4);
             ePoolCalc = ePool.add(eChange);
         } else {
             // flashloan with selling WETH
             uint a = aPool.mul(eAvg);
-            uint b = a.mul(9).div(Q112);
-            uint c = ePool.mul(3988000);
+            uint b = a.mul(magicNum1).div(Q112);
+            uint c = ePool.mul(magicNum2);
             uint sqRoot = sqrt(a.div(Q112).mul(b.add(c)));
-            uint d = a.mul(3).div(Q112);
-            uint eChange = ePool.sub(d.add(sqRoot).div(2000));
+            uint d = a.mul(magicNum5).div(Q112);
+            uint eChange = ePool.sub(d.add(sqRoot).div(magicNum4));
             ePoolCalc = ePool.sub(eChange);
         }
 
-        uint num = ePoolCalc.mul(2).mul(amount).mul(Q112);
+        uint num = ePoolCalc.mul(magicNum6).mul(amount).mul(Q112);
         uint priceInEth = num.div(pair.totalSupply());
 
-        return chainlinkedUniswapOracle.ethToUsd(priceInEth);
+        return uniswapOracleMainAsset.ethToUsd(priceInEth);
     }
-
 
     function sqrt(uint x) internal pure returns (uint y) {
-        uint z = (x + 1) / 2;
-        y = x;
-        while (z < y) {
-            y = z;
-            z = (x / z + z) / 2;
+        if (x > 3) {
+            uint z = x / 2 + 1;
+            y = x;
+            while (z < y) {
+                y = z;
+                z = (x / z + z) / 2;
+            }
+        } else if (x != 0) {
+            y = 1;
         }
     }
+
 }

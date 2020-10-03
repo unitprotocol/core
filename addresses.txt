@@ -1,21 +1,28 @@
-// RINKEBY // Deployed at 2.09
+// RINKEBY // Deployed at 3.10
 
-COL                             0x0F235462cA4a41EA92Fca6b7c4d67dAe0DA8d1D6
-STAKE                           0xeED5B67BEf854D8Cb7FCa3e8220c54b3b48C461B
-WETH                            0xc778417e063141139fce010982780140aa0cd5ab
+COL                                 0x0F235462cA4a41EA92Fca6b7c4d67dAe0DA8d1D6
+STAKE                               0xeED5B67BEf854D8Cb7FCa3e8220c54b3b48C461B
+WETH                                0xc778417e063141139fce010982780140aa0cd5ab
 
-UniswapFactory                  0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
-ChainlinkAggregaor mock         0x8692e13F484e10b0A6e3Cc97BB87a8eceA6EB9AE
-ChainLinkedUniswapOracle        0x65905Eb3257fB523774628102b372306B3F65F90
-ChainLinkedUniswapOracleLP      0xC91E97E0C20ae258f06F3EBf1F85Ce177B8D824B
-UniswapV2Router02               0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
 
-USDP                            0xf60C41456BE4342a52E64225D923Fb824af494f8
+YFI                                 0x62289C64a943416205142BDCcF1D752792A687e3
+MKR                                 0xC5d9497Fd3fa13549026f2fC8048DbaE11D7114c
+UMA                                 0xb34aDe076f9e5B40AaB8bD31694d37aec1C6f12F
+LEND                                0xd070437A0C4c97F4E2FF6EF9010DA2ec4fc830Eb
+WBTC                                0x03f1A5d11cB1C698d865756EBEdeb144898bB319
 
-Parameters                      0x8c59A397b88DFb3B951d73BAA05005d0C552fb5E
-Vault                           0x10220BAD3BC23f6046E23dFd1029Ad8afef3B111
-LiquidatorUniswap               0xC09f678965e9AFbCF8D7a6f5d33096d53e6c33b5
-LiquidatorUniswapLP             0xDCd2F4C413e357FD9281eC657425Bd4c37826A20
-VaultManagerUniswap             0x0F5CEd729ECc514643D3a72E3B9FAd79d717b629
-VaultManagerStandard            0x280baa86e38f3bF3276b42011Ca3C22BEacc35E7
-VaultManagerUniswapLP           0xC8a03cF97c5e1FCc47aEf0FAb94089BEed1D73f5
+UniswapFactory                      0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
+ChainlinkAggregaor mock             0x8692e13F484e10b0A6e3Cc97BB87a8eceA6EB9AE
+ChainLinkedUniswapOracleMainAsset   0xC8DfD255EaA029716d4a58152a4d4B0018b76389
+ChainLinkedUniswapOraclePoolToken   0x901c67C54860e41857E750181dC78A612B01c39C
+UniswapV2Router02                   0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
+
+USDP                                0x2905F3Dd1406797b6214Ee0654E2FB6e694C8773
+
+Parameters                          0x84ebb5b662A3d6F5d5e3a7a2d887F07d8b466aF3
+Vault                               0x09c53FdF34696844F197ABbbFbd259FFe81Ec24E
+LiquidatorUniswapMainAsset          0xD15636cAbD0b18Cb90DB64eFf93C00F3022b1FA8
+LiquidatorUniswapPoolToken          0xd360Dddb01eBB3e95aa4e9De756a569A9BA00CD4
+VaultManagerStandard                0x0a5BcB9d6dDc4e1489c535E49D7fc89dee953F96
+VaultManagerUniswapMainAsset        0xC05b1F58ed1809496D43Eb3F682A40904C435e70
+VaultManagerUniswapPoolToken        0xB8358147B991282dB9986258a66bC4C4F232e184

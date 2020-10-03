@@ -6,7 +6,7 @@
 pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
-import "../oracles/ChainlinkedUniswapOracle.sol";
+import "../oracles/ChainlinkedUniswapOracleMainAsset.sol";
 import "../helpers/ERC20Like.sol";
 
 /**
@@ -64,12 +64,12 @@ contract ChainlinkedUniswapOracleMock {
         uint tokenReserve = ERC20Like(asset).balanceOf(uniswapPair);
 
         // revert if there is no liquidity
-        require(tokenReserve > 0, "USDP: UNISWAP_EMPTY_POOL");
+        require(tokenReserve != 0, "USDP: UNISWAP_EMPTY_POOL");
 
         // WETH reserve of {Token}/WETH pool
         uint wethReserve = ERC20Like(WETH).balanceOf(uniswapPair);
 
-        uint wethResult = amount.mul(wethReserve);
+        uint wethResult = amount.mul(wethReserve).mul(Q112);
 
         return ethToUsd(wethResult).div(tokenReserve);
     }
@@ -81,6 +81,6 @@ contract ChainlinkedUniswapOracleMock {
     function ethToUsd(uint ethAmount) public view returns (uint) {
         require(ethUsdChainlinkAggregator.latestTimestamp() > now - 6 hours, "USDP: OUTDATED_CHAINLINK_PRICE");
         uint ethUsdPrice = uint(ethUsdChainlinkAggregator.latestAnswer());
-        return ethAmount.mul(Q112).mul(ethUsdPrice).div(ETH_USD_DENOMINATOR);
+        return ethAmount.mul(ethUsdPrice).div(ETH_USD_DENOMINATOR);
     }
 }

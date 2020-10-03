@@ -79,7 +79,7 @@ contract Parameters is Auth {
     mapping(uint => mapping (address => bool)) public isOracleTypeEnabled;
 
     // address of the Vault
-    address public vault;
+    address payable public vault;
 
     // The foundation address
     address public foundation;
@@ -90,7 +90,7 @@ contract Parameters is Auth {
      * hashed with Keccak-256.
      * Therefore, the Vault address can be pre-computed and passed as an argument before deployment.
     **/
-    constructor(address _vault, address _foundation) public Auth(address(this)) {
+    constructor(address payable _vault, address _foundation) public Auth(address(this)) {
         require(_vault != address(0), "USDP: ZERO_ADDRESS");
         require(_foundation != address(0), "USDP: ZERO_ADDRESS");
 
@@ -158,7 +158,7 @@ contract Parameters is Auth {
      * @param newValue The collateralization ratio (0 decimals)
      **/
     function setInitialCollateralRatio(address asset, uint newValue) public onlyManager {
-        require(newValue > 0 && newValue <= 100, "USDP: INCORRECT_COLLATERALIZATION_VALUE");
+        require(newValue != 0 && newValue <= 100, "USDP: INCORRECT_COLLATERALIZATION_VALUE");
         initialCollateralRatio[asset] = newValue;
     }
 
@@ -169,7 +169,7 @@ contract Parameters is Auth {
      * @param newValue The liquidation ratio (0 decimals)
      **/
     function setLiquidationRatio(address asset, uint newValue) public onlyManager {
-        require(newValue > 0 && newValue >= initialCollateralRatio[asset], "USDP: INCORRECT_COLLATERALIZATION_VALUE");
+        require(newValue != 0 && newValue >= initialCollateralRatio[asset], "USDP: INCORRECT_COLLATERALIZATION_VALUE");
         liquidationRatio[asset] = newValue;
     }
 
@@ -200,6 +200,7 @@ contract Parameters is Auth {
      * @param newValue The liquidation fee percentage (0 decimals)
      **/
     function setLiquidationFee(address asset, uint newValue) public onlyManager {
+        require(newValue <= 100, "USDP: OUT OF RANGE");
         liquidationFee[asset] = newValue;
     }
 

@@ -7,21 +7,21 @@ pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
-import "../oracles/ChainlinkedUniswapOracle.sol";
+import "../oracles/ChainlinkedUniswapOraclePoolToken.sol";
 import "../helpers/Math.sol";
 
 
 /**
- * @title VaultManagerUniswap
+ * @title VaultManagerUniswapPoolToken
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
-contract VaultManagerUniswap is Auth {
+contract VaultManagerUniswapPoolToken is Auth {
     using ERC20SafeTransfer for address;
     using SafeMath for uint;
 
     Vault public vault;
-    ChainlinkedUniswapOracle public uniswapOracle;
-    uint public constant ORACLE_TYPE = 1;
+    ChainlinkedUniswapOraclePoolToken public uniswapOraclePool;
+    uint public constant ORACLE_TYPE = 2;
 
     /**
      * @dev Trigger when joins are happened
@@ -36,25 +36,23 @@ contract VaultManagerUniswap is Auth {
     modifier spawned(address asset, address user) {
 
         // check the existence of a position
-        require(vault.getTotalDebt(asset, user) > 0, "USDP: NOT_SPAWNED_POSITION");
+        require(vault.getTotalDebt(asset, user) != 0, "USDP: NOT_SPAWNED_POSITION");
         _;
     }
 
     /**
      * @param _vault The address of the Vault
-     * @param _parameters The address of the contract with system parameters
-     * @param _uniswapOracle The address of Uniswap-based Oracle
+     * @param _uniswapOracle The address of Uniswap-based Oracle for LP tokens
      **/
     constructor(
-        address _vault,
-        address _parameters,
-        ChainlinkedUniswapOracle _uniswapOracle
+        address payable _vault,
+        address _uniswapOracle
     )
-        Auth(_parameters)
+        Auth(address(Vault(_vault).parameters()))
         public
     {
         vault = Vault(_vault);
-        uniswapOracle = _uniswapOracle;
+        uniswapOraclePool = ChainlinkedUniswapOraclePoolToken(_uniswapOracle);
     }
 
     /**
@@ -63,38 +61,39 @@ contract VaultManagerUniswap is Auth {
       * @notice Depositing tokens must be pre-approved to vault address
       * @dev Spawns new positions
       * @dev Adds collaterals to non-spawned positions
-      * @notice position actually spawns when usdpAmount > 0
+      * @notice position actually considered as spawned only when usdpAmount > 0
       * @param asset The address of token using as main collateral
       * @param mainAmount The amount of main collateral to deposit
       * @param colAmount The amount of COL token to deposit
       * @param usdpAmount The amount of USDP token to borrow
+      * @param underlyingProof The merkle proof data of the underlying collateral token price
+      * @param colProof The merkle proof data of the COL token price
       **/
     function spawn(
         address asset,
-        address user,
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        UniswapOracle.ProofData memory underlyingProof,
+        UniswapOracle.ProofData memory colProof
     )
         public
     {
-        require(usdpAmount > 0, "USDP: ZERO_BORROWING");
+        require(usdpAmount != 0, "USDP: ZERO_BORROWING");
 
         // check whether the position is spawned
-        require(vault.getTotalDebt(asset, user) == 0, "USDP: SPAWNED_POSITION");
+        require(vault.getTotalDebt(asset, msg.sender) == 0, "USDP: SPAWNED_POSITION");
 
         // oracle availability check
         require(parameters.isOracleTypeEnabled(ORACLE_TYPE, asset), "USDP: WRONG_ORACLE_TYPE");
 
         // USDP minting triggers the spawn of a position
-        vault.spawn(asset, user, ORACLE_TYPE);
+        vault.spawn(asset, msg.sender, ORACLE_TYPE);
 
-        _depositAndBorrow(asset, user, mainAmount, colAmount, usdpAmount, mainPriceProof, colPriceProof);
+        _depositAndBorrow(asset, msg.sender, mainAmount, colAmount, usdpAmount, underlyingProof, colProof);
 
         // fire an event
-        emit Join(asset, user, mainAmount, colAmount, usdpAmount);
+        emit Join(asset, msg.sender, mainAmount, colAmount, usdpAmount);
     }
 
     /**
@@ -107,25 +106,26 @@ contract VaultManagerUniswap is Auth {
      * @param mainAmount The amount of main collateral to deposit
      * @param colAmount The amount of COL token to deposit
      * @param usdpAmount The amount of USDP token to borrow
+     * @param underlyingProof The merkle proof data of the underlying collateral token price
+     * @param colProof The merkle proof data of the COL token price
      **/
     function depositAndBorrow(
         address asset,
-        address user,
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        UniswapOracle.ProofData memory underlyingProof,
+        UniswapOracle.ProofData memory colProof
     )
         public
-        spawned(asset, user)
+        spawned(asset, msg.sender)
     {
-        require(usdpAmount > 0, "USDP: ZERO_BORROWING");
+        require(usdpAmount != 0, "USDP: ZERO_BORROWING");
 
-        _depositAndBorrow(asset, user, mainAmount, colAmount, usdpAmount, mainPriceProof, colPriceProof);
+        _depositAndBorrow(asset, msg.sender, mainAmount, colAmount, usdpAmount, underlyingProof, colProof);
 
         // fire an event
-        emit Join(asset, user, mainAmount, colAmount, usdpAmount);
+        emit Join(asset, msg.sender, mainAmount, colAmount, usdpAmount);
     }
 
     /**
@@ -136,49 +136,48 @@ contract VaultManagerUniswap is Auth {
       * @param mainAmount The amount of main collateral token to withdraw
       * @param colAmount The amount of COL token to withdraw
       * @param usdpAmount The amount of USDP token to repay
-      * @param mainPriceProof The merkle proof of the main collateral price at given block
-      * @param colPriceProof The merkle proof of the COL token price at given block
+      * @param underlyingProof The merkle proof data of the underlying collateral token price
+      * @param colProof The merkle proof data of the COL token price
       **/
     function withdrawAndRepay(
         address asset,
-        address user,
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        UniswapOracle.ProofData memory underlyingProof,
+        UniswapOracle.ProofData memory colProof
     )
         public
-        spawned(asset, user)
+        spawned(asset, msg.sender)
     {
         // check usefulness of tx
-        require(mainAmount > 0 || colAmount > 0, "USDP: USELESS_TX");
+        require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
 
-        uint debt = vault.debts(asset, user);
-        require(debt > 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
+        uint debt = vault.debts(asset, msg.sender);
+        require(debt != 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
 
-        vault.update(asset, user);
-
-        if (mainAmount > 0) {
+        if (mainAmount != 0) {
             // withdraw main collateral to the user address
-            vault.withdrawMain(asset, user, mainAmount);
+            vault.withdrawMain(asset, msg.sender, mainAmount);
         }
 
-        if (colAmount > 0) {
+        if (colAmount != 0) {
             // withdraw COL tokens to the user's address
-            vault.withdrawCol(asset, user, colAmount);
+            vault.withdrawCol(asset, msg.sender, colAmount);
         }
 
-        if (usdpAmount > 0) {
-            uint fee = vault.calculateFee(asset, user, usdpAmount);
-            vault.chargeFee(address(vault.usdp()), user, fee);
-            vault.repay(asset, user, usdpAmount);
+        if (usdpAmount != 0) {
+            uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
+            vault.chargeFee(address(vault.usdp()), msg.sender, fee);
+            vault.repay(asset, msg.sender, usdpAmount);
         }
 
-        _ensureCollateralizationTroughProofs(asset, user, mainPriceProof, colPriceProof);
+        vault.update(asset, msg.sender);
+
+        _ensureCollateralizationTroughProofs(asset, msg.sender, underlyingProof, colProof);
 
         // fire an event
-        emit Exit(asset, user, mainAmount, colAmount, usdpAmount);
+        emit Exit(asset, msg.sender, mainAmount, colAmount, usdpAmount);
     }
 
     /**
@@ -189,61 +188,59 @@ contract VaultManagerUniswap is Auth {
       * @param mainAmount The amount of main collateral token to withdraw
       * @param colAmount The amount of COL token to withdraw
       * @param usdpAmount The amount of USDP token to repay
-      * @param mainPriceProof The merkle proof of the main collateral price at given block
-      * @param colPriceProof The merkle proof of the COL token price at given block
+      * @param underlyingProof The merkle proof data of the underlying collateral token price
+      * @param colProof The merkle proof data of the COL token price
       **/
     function withdrawAndRepayUsingCol(
         address asset,
-        address user,
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        UniswapOracle.ProofData memory underlyingProof,
+        UniswapOracle.ProofData memory colProof
     )
         public
-        spawned(asset, user)
+        spawned(asset, msg.sender)
     {
-        // fix Stack too deep
         {
             // check usefulness of tx
-            require(mainAmount > 0 || colAmount > 0, "USDP: USELESS_TX");
+            require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
 
-            uint debt = vault.debts(asset, user);
-            require(debt > 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
+            uint debt = vault.debts(asset, msg.sender);
+            require(debt != 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
 
-            vault.update(asset, user);
-
-            if (mainAmount > 0) {
+            if (mainAmount != 0) {
                 // withdraw main collateral to the user address
-                vault.withdrawMain(asset, user, mainAmount);
+                vault.withdrawMain(asset, msg.sender, mainAmount);
             }
 
-            if (colAmount > 0) {
+            if (colAmount != 0) {
                 // withdraw COL tokens to the user's address
-                vault.withdrawCol(asset, user, colAmount);
+                vault.withdrawCol(asset, msg.sender, colAmount);
             }
         }
 
-        uint colDeposit = vault.colToken(asset, user);
+        uint colDeposit = vault.colToken(asset, msg.sender);
 
         // main collateral value of the position in USD
-        uint mainUsdValue_q112 = uniswapOracle.assetToUsd(asset, vault.collaterals(asset, user), mainPriceProof);
+        uint mainUsdValue_q112 = uniswapOraclePool.assetToUsd(asset, vault.collaterals(asset, msg.sender), underlyingProof);
 
         // COL token value of the position in USD
-        uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), colDeposit, colPriceProof);
+        uint colUsdValue_q112 = uniswapOraclePool.uniswapOracleMainAsset().assetToUsd(vault.col(), colDeposit, colProof);
 
-        if (usdpAmount > 0) {
-            uint fee = vault.calculateFee(asset, user, usdpAmount);
-            uint feeInCol = fee.mul(uniswapOracle.Q112()).mul(colDeposit).div(colUsdValue_q112);
-            vault.chargeFee(vault.col(), user, feeInCol);
-            vault.repay(asset, user, usdpAmount);
+        if (usdpAmount != 0) {
+            uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
+            uint feeInCol = fee.mul(uniswapOraclePool.Q112()).mul(colDeposit).div(colUsdValue_q112);
+            vault.chargeFee(address(vault.col()), msg.sender, feeInCol);
+            vault.repay(asset, msg.sender, usdpAmount);
         }
 
-        _ensureCollateralization(asset, user, mainUsdValue_q112, colUsdValue_q112);
+        vault.update(asset, msg.sender);
+
+        _ensureCollateralization(asset, msg.sender, mainUsdValue_q112, colUsdValue_q112);
 
         // fire an event
-        emit Exit(asset, user, mainAmount, colAmount, usdpAmount);
+        emit Exit(asset, msg.sender, mainAmount, colAmount, usdpAmount);
     }
 
     function _depositAndBorrow(
@@ -252,16 +249,16 @@ contract VaultManagerUniswap is Auth {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        UniswapOracle.ProofData memory underlyingProof,
+        UniswapOracle.ProofData memory colProof
     )
         internal
     {
-        if (mainAmount > 0) {
+        if (mainAmount != 0) {
             vault.depositMain(asset, user, mainAmount);
         }
 
-        if (colAmount > 0) {
+        if (colAmount != 0) {
             vault.depositCol(asset, user, colAmount);
         }
 
@@ -269,23 +266,24 @@ contract VaultManagerUniswap is Auth {
         vault.borrow(asset, user, usdpAmount);
 
         // check collateralization
-        _ensureCollateralizationTroughProofs(asset, user, mainPriceProof, colPriceProof);
+        _ensureCollateralizationTroughProofs(asset, user, underlyingProof, colProof);
     }
 
+    // ensures that borrowed value is in desired range
     function _ensureCollateralizationTroughProofs(
         address asset,
         address user,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        UniswapOracle.ProofData memory underlyingProof,
+        UniswapOracle.ProofData memory colProof
     )
         internal
         view
     {
         // main collateral value of the position in USD
-        uint mainUsdValue_q112 = uniswapOracle.assetToUsd(asset, vault.collaterals(asset, user), mainPriceProof);
+        uint mainUsdValue_q112 = uniswapOraclePool.assetToUsd(asset, vault.collaterals(asset, user), underlyingProof);
 
         // COL token value of the position in USD
-        uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), vault.colToken(asset, user), colPriceProof);
+        uint colUsdValue_q112 = uniswapOraclePool.uniswapOracleMainAsset().assetToUsd(vault.col(), vault.colToken(asset, user), colProof);
 
         _ensureCollateralization(asset, user, mainUsdValue_q112, colUsdValue_q112);
     }
@@ -304,7 +302,7 @@ contract VaultManagerUniswap is Auth {
         uint colUsdUtilized_q112;
 
         uint minColPercent = parameters.minColPercent(asset);
-        if (minColPercent > 0) {
+        if (minColPercent != 0) {
             // main limit by COL
             uint mainUsdLimit_q112 = colUsdValue_q112 * (100 - minColPercent) / minColPercent;
             mainUsdUtilized_q112 = Math.min(mainUsdValue_q112, mainUsdLimit_q112);
@@ -325,7 +323,7 @@ contract VaultManagerUniswap is Auth {
         uint usdLimit = (
             mainUsdUtilized_q112 * parameters.initialCollateralRatio(asset) +
             colUsdUtilized_q112 * parameters.initialCollateralRatio(vault.col())
-        ) / uniswapOracle.Q112() / 100;
+        ) / uniswapOraclePool.Q112() / 100;
 
         // revert if collateralization is not enough
         require(vault.getTotalDebt(asset, user) <= usdLimit, "USDP: UNDERCOLLATERALIZED");

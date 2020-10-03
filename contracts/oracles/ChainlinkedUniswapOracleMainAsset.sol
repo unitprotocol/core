@@ -7,26 +7,26 @@ pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
 import "../helpers/SafeMath.sol";
-import { UniswapOracle, IUniswapV2Pair } from  '../../node_modules/@keydonix/uniswap-oracle-contracts/source/UniswapOracle.sol';
+import { UniswapOracle, IUniswapV2Pair } from  '@keydonix/uniswap-oracle-contracts/source/UniswapOracle.sol';
 import "../helpers/AggregatorInterface.sol";
 import "../helpers/IUniswapV2Factory.sol";
 
 
 /**
- * @title ChainlinkedUniswapOracle
+ * @title ChainlinkedUniswapOracleMainAsset
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Calculates the USD price of desired tokens
  **/
-contract ChainlinkedUniswapOracle is UniswapOracle {
+contract ChainlinkedUniswapOracleMainAsset is UniswapOracle {
     using SafeMath for uint;
 
-    uint8 public MIN_BLOCKS_BACK = uint8(100);
+    uint public constant Q112 = 2 ** 112;
+
+    uint8 public constant MIN_BLOCKS_BACK = uint8(100);
 
     uint8 public constant MAX_BLOCKS_BACK = uint8(255);
 
     uint public constant ETH_USD_DENOMINATOR = 100000000;
-
-    uint public constant Q112 = 2**112;
 
     AggregatorInterface public ethUsdChainlinkAggregator;
 
@@ -56,7 +56,7 @@ contract ChainlinkedUniswapOracle is UniswapOracle {
      * @notice {Token}/WETH pair must be registered on Uniswap
      * @param asset The token address
      * @param amount Amount of tokens
-     * @return Q112 encoded price of tokens in USD
+     * @return Q112-encoded price of tokens in USD
      **/
     function assetToUsd(address asset, uint amount, ProofData memory proofData) public view returns (uint) {
         uint priceInEth = assetToEth(asset, amount, proofData);
@@ -69,11 +69,11 @@ contract ChainlinkedUniswapOracle is UniswapOracle {
      * @notice {Token}/WETH pair must be registered on Uniswap
      * @param asset The token address
      * @param amount Amount of tokens
-     * @return Q112 encoded price of asset in ETH
+     * @return Q112-encoded price of asset in ETH
      **/
     function assetToEth(address asset, uint amount, ProofData memory proofData) public view returns (uint) {
         if (asset == WETH) {
-            return amount;
+            return amount.mul(Q112);
         }
         IUniswapV2Pair pair = IUniswapV2Pair(uniswapFactory.getPair(asset, WETH));
         require(address(pair) != address(0), "USDP: UNISWAP_PAIR_DOES_NOT_EXIST");

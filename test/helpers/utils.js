@@ -9,12 +9,14 @@ const UniswapV2FactoryDeployCode = require('./UniswapV2DeployCode');
 const IUniswapV2Factory = artifacts.require('IUniswapV2Factory');
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const VaultManagerStandard = artifacts.require('VaultManagerStandard');
-const VaultManagerUniswap = artifacts.require('VaultManagerUniswap');
-const Liquidator = artifacts.require('LiquidatorUniswap');
+const VaultManagerUniswap = artifacts.require('VaultManagerUniswapMainAsset');
+const Liquidator = artifacts.require('LiquidatorUniswapMainAsset');
 const { ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce, deployContractBytecode } = require('./deployUtils');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
+
+const MAX_UINT = new BN('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
 
 async function expectRevert(promise, expectedError) {
 	try {
@@ -35,11 +37,11 @@ async function expectRevert(promise, expectedError) {
 	expect.fail('Expected an exception but none was received');
 }
 
-module.exports = context =>
-{
+module.exports = context => {
 	const poolDeposit = async (token, amount, decimals) => {
 		amount = decimals ? String(amount * 10 ** decimals) : ether(amount.toString());
 		amount = new BN(amount).div(new BN((10 ** 6).toString()));
+		const ethUnitsPerDeposit = ether('1').div(new BN((10 ** 6)));
 		const block = await web3.eth.getBlock('latest');
 		const time = new BN(block.timestamp);
 		await token.approve(context.uniswapRouter.address, amount);
@@ -47,9 +49,9 @@ module.exports = context =>
 			token.address,
 			context.weth.address,
 			amount,
-			ether('1').div(new BN((10 ** 6).toString())),
+			ethUnitsPerDeposit,
 			amount,
-			ether('1').div(new BN((10 ** 6).toString())),
+			ethUnitsPerDeposit,
 			context.deployer,
 			time.add(new BN('100')),
 		);
@@ -64,12 +66,21 @@ module.exports = context =>
 		await approveCollaterals(main, mainAmount, colAmount);
 		return context.vaultManagerUniswap.spawn(
 			main.address,
-			context.deployer,
 			mainAmount, // main
 			colAmount, // COL
 			usdpAmount,	// USDP
 			['0x', '0x', '0x', '0x'], // main price proof
 			['0x', '0x', '0x', '0x'], // COL price proof
+		);
+	};
+
+	const spawnEth = async(mainAmount, colAmount, usdpAmount) => {
+		await context.col.approve(context.vault.address, colAmount);
+		return context.vaultManagerUniswap.spawn_Eth(
+			colAmount, // COL
+			usdpAmount,	// USDP
+			['0x', '0x', '0x', '0x'], // COL price proof
+			{ value: mainAmount	}
 		);
 	};
 
@@ -78,7 +89,6 @@ module.exports = context =>
 		await context.col.approve(context.vault.address, colAmount);
 		return context.vaultManagerUniswap.depositAndBorrow(
 			main.address,
-			context.deployer,
 			mainAmount, // main
 			colAmount, // COL
 			usdpAmount,	// USDP
@@ -87,19 +97,20 @@ module.exports = context =>
 		);
 	};
 
-	const liquidate = (main, user) => {
+	const liquidate = (main, user, from) => {
+		from = from ? from : vault.deployer;
 		return context.liquidator.liquidate(
 			main.address,
 			user,
 			['0x', '0x', '0x', '0x'], // main price proof
 			['0x', '0x', '0x', '0x'], // COL price proof
+			{ from }
 		);
 	};
 
 	const exit = async(main, mainAmount, colAmount, usdpAmount) => {
 		return context.vaultManagerUniswap.withdrawAndRepay(
 			main.address,
-			context.deployer,
 			mainAmount, // main
 			colAmount, // COL
 			usdpAmount,	// USDP
@@ -108,11 +119,73 @@ module.exports = context =>
 		);
 	};
 
-	const repayAndWithdraw = async(main, user) => {
+	const repayAllAndWithdraw = async(main, user) => {
+		const totalDebt = await context.vault.getTotalDebt(main.address, user);
+		await context.usdp.approve(context.vault.address, totalDebt);
 		const mainAmount = await context.vault.collaterals(main.address, user);
 		const colAmount = await context.vault.colToken(main.address, user);
-		return context.vaultManagerStandard.repayAllAndWithdraw(main.address, user, mainAmount, colAmount);
+		return context.vaultManagerStandard.repayAllAndWithdraw(main.address, mainAmount, colAmount);
 	};
+
+	const withdrawAndRepay = async(main, mainAmount, colAmount, usdpAmount) => {
+		return context.vaultManagerUniswap.withdrawAndRepay(
+			main.address,
+			mainAmount,
+			colAmount,
+			usdpAmount,
+			['0x', '0x', '0x', '0x'], // main price proof
+			['0x', '0x', '0x', '0x'], // COL price proof
+		);
+	};
+
+	const repay = async(main, user, usdpAmount) => {
+		const totalDebt = await context.vault.getTotalDebt(main.address, user);
+		await context.usdp.approve(context.vault.address, totalDebt);
+		return context.vaultManagerStandard.repay(
+			main.address,
+			usdpAmount,
+		);
+	};
+
+	const withdrawAndRepayEth = async(mainAmount, colAmount, usdpAmount) => {
+		return context.vaultManagerUniswap.withdrawAndRepay_Eth(
+			mainAmount,
+			colAmount,
+			usdpAmount,
+			['0x', '0x', '0x', '0x'], // COL price proof
+		);
+	};
+
+	const withdrawAndRepayCol = async(main, mainAmount, colAmount, usdpAmount) => {
+		await context.col.approve(context.vault.address, MAX_UINT);
+		return context.vaultManagerUniswap.withdrawAndRepayUsingCol(
+			main.address,
+			mainAmount,
+			colAmount,
+			usdpAmount,
+			['0x', '0x', '0x', '0x'], // main price proof
+			['0x', '0x', '0x', '0x'], // COL price proof
+		);
+	};
+
+	const repayUsingCol = async(main, usdpAmount) => {
+		await context.col.approve(context.vault.address, MAX_UINT);
+		return context.vaultManagerUniswap.repayUsingCol(
+			main.address,
+			usdpAmount,
+			['0x', '0x', '0x', '0x'], // COL price proof
+		);
+	};
+
+	const repayAllAndWithdrawEth = async(user) => {
+		const mainAmount = await context.vault.collaterals(context.weth.address, user);
+		const colAmount = await context.vault.colToken(context.weth.address, user);
+		return context.vaultManagerStandard.repayAllAndWithdraw_Eth(mainAmount, colAmount);
+	};
+
+	const updatePrice = async() => {
+		return context.chainlinkAggregator.setPrice(await context.chainlinkAggregator.latestAnswer());
+	}
 
 	const deploy = async() => {
 		context.col = await DummyToken.new("Unit Protocol Token", "COL", 18, ether('1000000'));
@@ -123,20 +196,20 @@ module.exports = context =>
 		const uniswapFactoryAddr = await deployContractBytecode(UniswapV2FactoryDeployCode, context.deployer, web3);
 		context.uniswapFactory = await IUniswapV2Factory.at(uniswapFactoryAddr);
 
-		const chainlinkAggregator = await ChainlinkAggregator.new();
+		context.chainlinkAggregator = await ChainlinkAggregator.new();
 
 		context.uniswapOracle = await UniswapOracle.new(
 			context.uniswapFactory.address,
 			context.weth.address,
-			chainlinkAggregator.address,
+			context.chainlinkAggregator.address,
 		);
 
 		const parametersAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
 		context.usdp = await USDP.new(parametersAddr);
 		const vaultAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
-		context.parameters = await Parameters.new(vaultAddr, context.deployer);
-		context.vault = await Vault.new(context.parameters.address, context.col.address, context.usdp.address);
-		context.liquidator = await Liquidator.new(context.vault.address, context.uniswapOracle.address, context.liquidationSystem);
+		context.parameters = await Parameters.new(vaultAddr, context.foundation);
+		context.vault = await Vault.new(context.parameters.address, context.col.address, context.usdp.address, context.weth.address);
+		context.liquidator = await Liquidator.new(context.vault.address, context.uniswapOracle.address);
 		context.vaultManagerUniswap = await VaultManagerUniswap.new(
 			context.vault.address,
 			context.parameters.address,
@@ -160,10 +233,23 @@ module.exports = context =>
 		await context.parameters.setVaultAccess(context.vaultManagerUniswap.address, true);
 		await context.parameters.setVaultAccess(context.liquidator.address, true);
 		await context.parameters.setVaultAccess(context.vaultManagerStandard.address, true);
+
 		await context.parameters.setCollateral(
 			context.mainCollateral.address,
 			'0', // stability fee
-			'0', // liquidation fee
+			'13', // liquidation fee
+			'67', // initial collateralization
+			'68', // liquidation ratio
+			ether('100000'), // debt limit
+			[1], // enabled oracles
+			3,
+			5,
+		);
+
+		await context.parameters.setCollateral(
+			context.weth.address,
+			'0', // stability fee
+			'13', // liquidation fee
 			'67', // initial collateralization
 			'68', // liquidation ratio
 			ether('100000'), // debt limit
@@ -179,12 +265,20 @@ module.exports = context =>
 	return {
 		poolDeposit,
 		spawn,
+		spawnEth,
 		approveCollaterals,
 		join,
 		liquidate,
 		exit,
-		repayAndWithdraw,
+		repayAllAndWithdraw,
+		repayAllAndWithdrawEth,
+		withdrawAndRepay,
+		withdrawAndRepayEth,
+		withdrawAndRepayCol,
 		deploy,
+		updatePrice,
+		repay,
+		repayUsingCol,
 		expectRevert,
 	}
 }
