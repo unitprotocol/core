@@ -1,4 +1,4 @@
-// RINKEBY // Deployed at 30.09
+// RINKEBY // Deployed at 3.10
 
 COL                                 0x0F235462cA4a41EA92Fca6b7c4d67dAe0DA8d1D6
 STAKE                               0xeED5B67BEf854D8Cb7FCa3e8220c54b3b48C461B
@@ -13,8 +13,8 @@ WBTC                                0x03f1A5d11cB1C698d865756EBEdeb144898bB319
 
 UniswapFactory                      0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
 ChainlinkAggregaor mock             0x8692e13F484e10b0A6e3Cc97BB87a8eceA6EB9AE
-ChainLinkedUniswapOracleMainAsset   0xF0445293cb920ff8EBf119005323AE076222f9F6
-ChainLinkedUniswapOraclePoolToken   0xa6f9fe28CE27dd3ae5153FA08081132B34E5BA4e
+ChainLinkedUniswapOracleMainAsset   0xC8DfD255EaA029716d4a58152a4d4B0018b76389
+ChainLinkedUniswapOraclePoolToken   0x901c67C54860e41857E750181dC78A612B01c39C
 UniswapV2Router02                   0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
 
 USDP                                0x2905F3Dd1406797b6214Ee0654E2FB6e694C8773
@@ -24,5 +24,5 @@ Vault                               0x09c53FdF34696844F197ABbbFbd259FFe81Ec24E
 LiquidatorUniswapMainAsset          0xD15636cAbD0b18Cb90DB64eFf93C00F3022b1FA8
 LiquidatorUniswapPoolToken          0xd360Dddb01eBB3e95aa4e9De756a569A9BA00CD4
 VaultManagerStandard                0x0a5BcB9d6dDc4e1489c535E49D7fc89dee953F96
-VaultManagerUniswapMainAsset        0x4A6473e3F3a361f31945ad344C18C4bd6Dc11Dbd
-VaultManagerUniswapPoolToken        0xA5a38e370C8D1290588488C845f4890B0c9859D8
+VaultManagerUniswapMainAsset        0xC05b1F58ed1809496D43Eb3F682A40904C435e70
+VaultManagerUniswapPoolToken        0xB8358147B991282dB9986258a66bC4C4F232e184
