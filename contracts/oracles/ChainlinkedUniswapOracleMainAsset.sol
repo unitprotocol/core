@@ -20,6 +20,8 @@ import "../helpers/IUniswapV2Factory.sol";
 contract ChainlinkedUniswapOracleMainAsset is UniswapOracle {
     using SafeMath for uint;
 
+    uint public constant Q112 = 2 ** 112;
+
     uint8 public constant MIN_BLOCKS_BACK = uint8(100);
 
     uint8 public constant MAX_BLOCKS_BACK = uint8(255);
@@ -71,7 +73,7 @@ contract ChainlinkedUniswapOracleMainAsset is UniswapOracle {
      **/
     function assetToEth(address asset, uint amount, ProofData memory proofData) public view returns (uint) {
         if (asset == WETH) {
-            return amount;
+            return amount.mul(Q112);
         }
         IUniswapV2Pair pair = IUniswapV2Pair(uniswapFactory.getPair(asset, WETH));
         require(address(pair) != address(0), "USDP: UNISWAP_PAIR_DOES_NOT_EXIST");
