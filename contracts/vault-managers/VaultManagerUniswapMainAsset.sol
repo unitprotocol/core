@@ -9,13 +9,14 @@ pragma experimental ABIEncoderV2;
 import "../Vault.sol";
 import "../oracles/ChainlinkedUniswapOracleMainAsset.sol";
 import "../helpers/Math.sol";
+import "../helpers/ReentrancyGuard.sol";
 
 
 /**
  * @title VaultManagerUniswapMainAsset
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
-contract VaultManagerUniswapMainAsset is Auth {
+contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
     using ERC20SafeTransfer for address;
     using SafeMath for uint;
 
@@ -79,6 +80,7 @@ contract VaultManagerUniswapMainAsset is Auth {
         UniswapOracle.ProofData memory colPriceProof
     )
         public
+        nonReentrant
     {
         require(usdpAmount != 0, "USDP: ZERO_BORROWING");
 
@@ -113,6 +115,7 @@ contract VaultManagerUniswapMainAsset is Auth {
     )
         public
         payable
+        nonReentrant
     {
         require(usdpAmount != 0, "USDP: ZERO_BORROWING");
 
@@ -153,6 +156,7 @@ contract VaultManagerUniswapMainAsset is Auth {
     )
         public
         spawned(asset, msg.sender)
+        nonReentrant
     {
         require(usdpAmount != 0, "USDP: ZERO_BORROWING");
 
@@ -179,6 +183,7 @@ contract VaultManagerUniswapMainAsset is Auth {
         public
         payable
         spawned(vault.weth(), msg.sender)
+        nonReentrant
     {
         require(usdpAmount != 0, "USDP: ZERO_BORROWING");
 
@@ -208,6 +213,7 @@ contract VaultManagerUniswapMainAsset is Auth {
     )
         public
         spawned(asset, msg.sender)
+        nonReentrant
     {
         // check usefulness of tx
         require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
@@ -255,6 +261,7 @@ contract VaultManagerUniswapMainAsset is Auth {
     )
         public
         spawned(vault.weth(), msg.sender)
+        nonReentrant
     {
         // check usefulness of tx
         require(ethAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
@@ -300,6 +307,7 @@ contract VaultManagerUniswapMainAsset is Auth {
     )
         public
         spawned(asset, msg.sender)
+        nonReentrant
     {
         // check usefulness of tx
         require(usdpAmount != 0, "USDP: USELESS_TX");
@@ -337,6 +345,7 @@ contract VaultManagerUniswapMainAsset is Auth {
     )
         public
         spawned(asset, msg.sender)
+        nonReentrant
     {
         // check usefulness of tx
         require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
@@ -398,6 +407,7 @@ contract VaultManagerUniswapMainAsset is Auth {
     )
         public
         spawned(vault.weth(), msg.sender)
+        nonReentrant
     {
         // fix 'Stack too deep'
         {

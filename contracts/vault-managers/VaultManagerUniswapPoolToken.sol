@@ -9,13 +9,14 @@ pragma experimental ABIEncoderV2;
 import "../Vault.sol";
 import "../oracles/ChainlinkedUniswapOraclePoolToken.sol";
 import "../helpers/Math.sol";
+import "../helpers/ReentrancyGuard.sol";
 
 
 /**
  * @title VaultManagerUniswapPoolToken
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
-contract VaultManagerUniswapPoolToken is Auth {
+contract VaultManagerUniswapPoolToken is Auth, ReentrancyGuard {
     using ERC20SafeTransfer for address;
     using SafeMath for uint;
 
@@ -78,6 +79,7 @@ contract VaultManagerUniswapPoolToken is Auth {
         UniswapOracle.ProofData memory colProof
     )
         public
+        nonReentrant
     {
         require(usdpAmount != 0, "USDP: ZERO_BORROWING");
 
@@ -119,6 +121,7 @@ contract VaultManagerUniswapPoolToken is Auth {
     )
         public
         spawned(asset, msg.sender)
+        nonReentrant
     {
         require(usdpAmount != 0, "USDP: ZERO_BORROWING");
 
@@ -149,6 +152,7 @@ contract VaultManagerUniswapPoolToken is Auth {
     )
         public
         spawned(asset, msg.sender)
+        nonReentrant
     {
         // check usefulness of tx
         require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
@@ -201,6 +205,7 @@ contract VaultManagerUniswapPoolToken is Auth {
     )
         public
         spawned(asset, msg.sender)
+        nonReentrant
     {
         {
             // check usefulness of tx

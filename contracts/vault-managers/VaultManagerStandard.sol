@@ -8,13 +8,14 @@ pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
 import "../helpers/Math.sol";
+import "../helpers/ReentrancyGuard.sol";
 
 
 /**
  * @title VaultManagerStandard
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
-contract VaultManagerStandard is Auth {
+contract VaultManagerStandard is Auth, ReentrancyGuard {
     using ERC20SafeTransfer for address;
     using SafeMath for uint;
 
@@ -46,7 +47,7 @@ contract VaultManagerStandard is Auth {
      * @param mainAmount The amount of main collateral to deposit
      * @param colAmount The amount of COL token to deposit
      **/
-    function deposit(address asset, uint mainAmount, uint colAmount) public {
+    function deposit(address asset, uint mainAmount, uint colAmount) public nonReentrant {
 
         // check usefulness of tx
         require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
@@ -69,7 +70,7 @@ contract VaultManagerStandard is Auth {
      * @dev Deposits collaterals converting ETH to WETH
      * @param colAmount The amount of COL token to deposit
      **/
-    function deposit_Eth(uint colAmount) public payable {
+    function deposit_Eth(uint colAmount) public payable nonReentrant {
 
         // check usefulness of tx
         require(msg.value != 0 || colAmount != 0, "USDP: USELESS_TX");
@@ -92,7 +93,7 @@ contract VaultManagerStandard is Auth {
       * @param asset The address of token using as main collateral
       * @param usdpAmount The amount of USDP token to repay
       **/
-    function repay(address asset, uint usdpAmount) public {
+    function repay(address asset, uint usdpAmount) public nonReentrant {
 
         // check usefulness of tx
         require(usdpAmount != 0, "USDP: USELESS_TX");
@@ -118,6 +119,7 @@ contract VaultManagerStandard is Auth {
         uint colAmount
     )
         external
+        nonReentrant
     {
         uint debtAmount = vault.debts(asset, msg.sender);
 
@@ -158,6 +160,7 @@ contract VaultManagerStandard is Auth {
         uint colAmount
     )
         external
+        nonReentrant
     {
         uint debtAmount = vault.debts(vault.weth(), msg.sender);
 
