@@ -5,15 +5,18 @@
 */
 pragma solidity ^0.6.8;
 
-contract ChainlinkAggregatorMock {
+contract ChainlinkAggregator_Mock {
     uint public latestAnswer = 250e8;
     uint public latestTimestamp = now;
 
     address admin = msg.sender;
 
+    event AnswerUpdated(int256 indexed current, uint256 indexed roundId, uint256 timestamp);
+
     function setPrice(uint price) external {
         require(msg.sender == admin, "USDP: UNAUTHORIZED");
         latestAnswer = price;
         latestTimestamp = now;
+        emit AnswerUpdated(int(price), now, now);
     }
 }

@@ -8,7 +8,7 @@ pragma experimental ABIEncoderV2;
 
 import "./LiquidatorUniswapAbstract.sol";
 import "../helpers/ERC20Like.sol";
-import "../oracles/ChainlinkedUniswapOracleMainAsset.sol";
+import "../oracles/ChainlinkedUniswapOracleMainAssetAbstract.sol";
 
 
 /**
@@ -19,20 +19,20 @@ import "../oracles/ChainlinkedUniswapOracleMainAsset.sol";
 contract LiquidatorUniswapMainAsset is LiquidatorUniswapAbstract {
 
     // uniswap-based oracle contract
-    ChainlinkedUniswapOracleMainAsset public uniswapOracle;
+    ChainlinkedUniswapOracleMainAssetAbstract public uniswapOracleMainAsset;
 
     /**
      * @param _vault The address of the Vault
-     * @param _uniswapOracle The address of Uniswap-based Oracle
+     * @param _uniswapOracleMainAsset The address of Uniswap-based Oracle for main assets
      **/
     constructor(
         address payable _vault,
-        address _uniswapOracle
+        address _uniswapOracleMainAsset
     )
         public
         LiquidatorUniswapAbstract(_vault, 1)
     {
-        uniswapOracle = ChainlinkedUniswapOracleMainAsset(_uniswapOracle);
+        uniswapOracleMainAsset = ChainlinkedUniswapOracleMainAssetAbstract(_uniswapOracleMainAsset);
     }
 
     /**
@@ -45,17 +45,17 @@ contract LiquidatorUniswapMainAsset is LiquidatorUniswapAbstract {
     function liquidate(
         address asset,
         address user,
-        UniswapOracle.ProofData memory mainProof,
-        UniswapOracle.ProofData memory colProof
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainProof,
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colProof
     )
         public
         override
     {
         // USD value of the main collateral
-        uint mainUsdValue_q112 = uniswapOracle.assetToUsd(asset, vault.collaterals(asset, user), mainProof);
+        uint mainUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(asset, vault.collaterals(asset, user), mainProof);
 
         // USD value of the COL amount of a position
-        uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), vault.colToken(asset, user), colProof);
+        uint colUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(vault.col(), vault.colToken(asset, user), colProof);
 
         // reverts if a position is not liquidatable
         require(isLiquidatablePosition(asset, user, mainUsdValue_q112, colUsdValue_q112), "USDP: SAFE_POSITION");

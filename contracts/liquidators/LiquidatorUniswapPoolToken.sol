@@ -8,7 +8,7 @@ pragma experimental ABIEncoderV2;
 
 import "./LiquidatorUniswapAbstract.sol";
 import "../Vault.sol";
-import "../oracles/ChainlinkedUniswapOraclePoolToken.sol";
+import "../oracles/ChainlinkedUniswapOraclePoolTokenAbstract.sol";
 import "../helpers/ERC20Like.sol";
 
 
@@ -20,22 +20,22 @@ import "../helpers/ERC20Like.sol";
 contract LiquidatorUniswapPoolToken is LiquidatorUniswapAbstract {
 
     // uniswap-based oracle contract
-    ChainlinkedUniswapOraclePoolToken public uniswapOraclePool;
+    ChainlinkedUniswapOraclePoolTokenAbstract public uniswapOraclePool;
 
     /**
      * @param _vault The address of the Vault
-     * @param _uniswapOracle The address of Uniswap-based Oracle for LP tokens
+     * @param _uniswapOraclePoolToken The address of Uniswap-based Oracle for LP tokens
      **/
     constructor(
         address payable _vault,
-        address _uniswapOracle
+        address _uniswapOraclePoolToken
     )
         public
         LiquidatorUniswapAbstract(_vault, 2)
     {
         vault = Vault(_vault);
         parameters = vault.parameters();
-        uniswapOraclePool = ChainlinkedUniswapOraclePoolToken(_uniswapOracle);
+        uniswapOraclePool = ChainlinkedUniswapOraclePoolTokenAbstract(_uniswapOraclePoolToken);
     }
 
     /**
@@ -48,8 +48,8 @@ contract LiquidatorUniswapPoolToken is LiquidatorUniswapAbstract {
     function liquidate(
         address asset,
         address user,
-        UniswapOracle.ProofData calldata underlyingProof,
-        UniswapOracle.ProofData calldata colProof
+        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct calldata underlyingProof,
+        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct calldata colProof
     )
         external
         override

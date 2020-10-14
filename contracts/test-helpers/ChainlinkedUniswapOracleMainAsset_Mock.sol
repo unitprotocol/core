@@ -6,15 +6,18 @@
 pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
-import "../oracles/ChainlinkedUniswapOracleMainAsset.sol";
+import "../oracles/ChainlinkedUniswapOracleMainAssetAbstract.sol";
 import "../helpers/ERC20Like.sol";
+import "../helpers/SafeMath.sol";
+import "../helpers/AggregatorInterface.sol";
+import "../helpers/IUniswapV2Factory.sol";
 
 /**
- * @title UniswapOracle
+ * @title ChainlinkedUniswapOracleMainAsset_Mock
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Calculates the USD price of desired tokens
  **/
-contract ChainlinkedUniswapOracleMock {
+contract ChainlinkedUniswapOracleMainAsset_Mock is ChainlinkedUniswapOracleMainAssetAbstract {
     using SafeMath for uint;
 
     uint8 public MIN_BLOCKS_BACK = uint8(100);
@@ -23,13 +26,9 @@ contract ChainlinkedUniswapOracleMock {
 
     uint public constant ETH_USD_DENOMINATOR = 100000000;
 
-    uint public constant Q112 = 2**112;
-
     AggregatorInterface public ethUsdChainlinkAggregator;
 
     IUniswapV2Factory public uniswapFactory;
-
-    address public WETH;
 
     constructor(
         IUniswapV2Factory uniFactory,
@@ -47,9 +46,8 @@ contract ChainlinkedUniswapOracleMock {
         ethUsdChainlinkAggregator = chainlinkAggregator;
     }
 
-    // override with old-style mechanics realization
-    // only for tests
-    function assetToUsd(address asset, uint amount, UniswapOracle.ProofData memory proofData) public view returns (uint) {
+    // override with mock; only for tests
+    function assetToUsd(address asset, uint amount, ProofDataStruct memory proofData) public override view returns (uint) {
 
         if (asset == WETH) {
             return ethToUsd(amount);
@@ -75,10 +73,10 @@ contract ChainlinkedUniswapOracleMock {
     }
 
     /**
-     * @notice ETH/USD price feed from Chainlink see for more info: https://feeds.chain.link/eth-usd
+     * @notice ETH/USD price feed from Chainlink, see for more info: https://feeds.chain.link/eth-usd
      * returns Price of given amount of Ether in USD (0 decimals)
      **/
-    function ethToUsd(uint ethAmount) public view returns (uint) {
+    function ethToUsd(uint ethAmount) public override view returns (uint) {
         require(ethUsdChainlinkAggregator.latestTimestamp() > now - 6 hours, "USDP: OUTDATED_CHAINLINK_PRICE");
         uint ethUsdPrice = uint(ethUsdChainlinkAggregator.latestAnswer());
         return ethAmount.mul(ethUsdPrice).div(ETH_USD_DENOMINATOR);

@@ -8,7 +8,7 @@ import "../Vault.sol";
 */
 pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
-import "../oracles/ChainlinkedUniswapOracleMainAsset.sol";
+import "../oracles/UniswapOracleAbstract.sol";
 
 
 
@@ -60,8 +60,8 @@ abstract contract LiquidatorUniswapAbstract {
     function liquidate(
         address asset,
         address user,
-        UniswapOracle.ProofData calldata assetProof,
-        UniswapOracle.ProofData calldata colProof
+        UniswapOracleAbstract.ProofDataStruct calldata assetProof,
+        UniswapOracleAbstract.ProofDataStruct calldata colProof
     )
         external
         virtual
@@ -98,11 +98,11 @@ abstract contract LiquidatorUniswapAbstract {
     }
 
     /**
-     * @dev Calculates position's collateral ratio
+     * @dev Calculates position's utilization ratio
      * @param mainUsdValue USD value of main collateral
      * @param colUsdValue USD value of COL amount
      * @param debt USDP borrowed
-     * @return collateralization ratio of a position
+     * @return utilization ratio of a position
      **/
     function UR(uint mainUsdValue, uint colUsdValue, uint debt) public pure returns (uint) {
         return debt.mul(100).mul(Q112).div(mainUsdValue.add(colUsdValue));

@@ -10,16 +10,14 @@ const utils = require('./helpers/utils');
 const increaseTime = require('./helpers/timeTravel');
 const time = require('./helpers/time');
 
-contract('VaultManager', function([
+contract('VaultManagerUniswapMainAsset', function([
 	deployer,
-	liquidationSystem,
 	foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this);
 		this.deployer = deployer;
-		this.liquidationSystem = liquidationSystem;
 		this.foundation = foundation;
 		await this.utils.deploy();
 	});
@@ -349,7 +347,7 @@ contract('VaultManager', function([
 
 				await this.utils.spawn(this.mainCollateral, mainAmount, colAmount, usdpAmount);
 				await this.utils.approveCollaterals(this.mainCollateral, mainAmount, colAmount);
-				const tx = this.vaultManagerUniswap.spawn(
+				const tx = this.vaultManagerUniswapMainAsset.spawn(
 					this.mainCollateral.address,
 					mainAmount, // main
 					colAmount, // COL
@@ -366,7 +364,7 @@ contract('VaultManager', function([
 				const usdpAmount = ether('0');
 
 				await this.utils.approveCollaterals(this.mainCollateral, mainAmount, colAmount);
-				const tx = this.vaultManagerUniswap.spawn(
+				const tx = this.vaultManagerUniswapMainAsset.spawn(
 					this.mainCollateral.address,
 					mainAmount, // main
 					colAmount, // COL
@@ -384,7 +382,7 @@ contract('VaultManager', function([
 					const usdpAmount = ether('20');
 
 					await this.utils.approveCollaterals(this.mainCollateral, mainAmount, colAmount);
-					const tx = this.vaultManagerUniswap.spawn(
+					const tx = this.vaultManagerUniswapMainAsset.spawn(
 						this.mainCollateral.address,
 						mainAmount, // main
 						colAmount, // COL
@@ -400,7 +398,7 @@ contract('VaultManager', function([
 					const usdpAmount = ether('20');
 
 					await this.utils.approveCollaterals(this.mainCollateral, mainAmount, colAmount);
-					const tx = this.vaultManagerUniswap.spawn(
+					const tx = this.vaultManagerUniswapMainAsset.spawn(
 						this.mainCollateral.address,
 						mainAmount, // main
 						colAmount, // COL
@@ -416,7 +414,7 @@ contract('VaultManager', function([
 					const colAmount = ether('5');
 					const usdpAmount = ether('20');
 
-					const tx = this.vaultManagerUniswap.spawn(
+					const tx = this.vaultManagerUniswapMainAsset.spawn(
 						this.mainCollateral.address,
 						mainAmount, // main
 						colAmount, // COL
@@ -434,7 +432,7 @@ contract('VaultManager', function([
 
 					await this.mainCollateral.approve(this.vault.address, mainAmount);
 
-					const tx = this.vaultManagerUniswap.spawn(
+					const tx = this.vaultManagerUniswapMainAsset.spawn(
 						this.mainCollateral.address,
 						mainAmount, // main
 						colAmount, // COL
@@ -453,7 +451,7 @@ contract('VaultManager', function([
 				const colAmount = ether('5');
 				const usdpAmount = ether('20');
 
-				const tx = this.vaultManagerUniswap.depositAndBorrow(
+				const tx = this.vaultManagerUniswapMainAsset.depositAndBorrow(
 					this.mainCollateral.address,
 					mainAmount,
 					colAmount,

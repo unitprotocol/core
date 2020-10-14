@@ -3,7 +3,6 @@ const Parameters = artifacts.require('Parameters');
 const USDP = artifacts.require('USDP');
 const WETH = artifacts.require('WETH');
 const DummyToken = artifacts.require('DummyToken');
-const UniswapOracle = artifacts.require('UniswapOracle');
 const IUniswapV2Factory = artifacts.require('IUniswapV2Factory');
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const VaultManagerUniswap = artifacts.require('VaultManagerUniswapMainAsset');

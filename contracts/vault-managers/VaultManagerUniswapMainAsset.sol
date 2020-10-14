@@ -7,7 +7,7 @@ pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
-import "../oracles/ChainlinkedUniswapOracleMainAsset.sol";
+import "../oracles/ChainlinkedUniswapOracleMainAssetAbstract.sol";
 import "../helpers/Math.sol";
 import "../helpers/ReentrancyGuard.sol";
 
@@ -16,12 +16,12 @@ import "../helpers/ReentrancyGuard.sol";
  * @title VaultManagerUniswapMainAsset
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
-contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
+contract VaultManagerUniswapMainAsset is ReentrancyGuard {
     using ERC20SafeTransfer for address;
     using SafeMath for uint;
 
     Vault public vault;
-    ChainlinkedUniswapOracleMainAsset public uniswapOracle;
+    ChainlinkedUniswapOracleMainAssetAbstract public uniswapOracleMainAsset;
     uint public constant ORACLE_TYPE = 1;
     uint public constant Q112 = 2 ** 112;
 
@@ -44,19 +44,16 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
 
     /**
      * @param _vault The address of the Vault
-     * @param _parameters The address of the contract with system parameters
      * @param _uniswapOracle The address of Uniswap-based Oracle
      **/
     constructor(
         address payable _vault,
-        address _parameters,
         address _uniswapOracle
     )
-        Auth(_parameters)
         public
     {
         vault = Vault(_vault);
-        uniswapOracle = ChainlinkedUniswapOracleMainAsset(_uniswapOracle);
+        uniswapOracleMainAsset = ChainlinkedUniswapOracleMainAssetAbstract(_uniswapOracle);
     }
 
     /**
@@ -76,8 +73,8 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
         public
         nonReentrant
@@ -88,7 +85,7 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
         require(vault.getTotalDebt(asset, msg.sender) == 0, "USDP: SPAWNED_POSITION");
 
         // oracle availability check
-        require(parameters.isOracleTypeEnabled(ORACLE_TYPE, asset), "USDP: WRONG_ORACLE_TYPE");
+        require(vault.parameters().isOracleTypeEnabled(ORACLE_TYPE, asset), "USDP: WRONG_ORACLE_TYPE");
 
         // USDP minting triggers the spawn of a position
         vault.spawn(asset, msg.sender, ORACLE_TYPE);
@@ -111,7 +108,7 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
     function spawn_Eth(
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
         public
         payable
@@ -123,7 +120,7 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
         require(vault.getTotalDebt(vault.weth(), msg.sender) == 0, "USDP: SPAWNED_POSITION");
 
         // oracle availability check
-        require(parameters.isOracleTypeEnabled(ORACLE_TYPE, vault.weth()), "USDP: WRONG_ORACLE_TYPE");
+        require(vault.parameters().isOracleTypeEnabled(ORACLE_TYPE, vault.weth()), "USDP: WRONG_ORACLE_TYPE");
 
         // USDP minting triggers the spawn of a position
         vault.spawn(vault.weth(), msg.sender, ORACLE_TYPE);
@@ -151,8 +148,8 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
         public
         spawned(asset, msg.sender)
@@ -178,7 +175,7 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
     function depositAndBorrow_Eth(
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
         public
         payable
@@ -208,8 +205,8 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
         public
         spawned(asset, msg.sender)
@@ -257,7 +254,7 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
         uint ethAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
         public
         spawned(vault.weth(), msg.sender)
@@ -303,7 +300,7 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
     function repayUsingCol(
         address asset,
         uint usdpAmount,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
         public
         spawned(asset, msg.sender)
@@ -313,7 +310,7 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
         require(usdpAmount != 0, "USDP: USELESS_TX");
 
         // COL token price in USD
-        uint colUsdPrice_q112 = uniswapOracle.assetToUsd(vault.col(), 1, colPriceProof);
+        uint colUsdPrice_q112 = uniswapOracleMainAsset.assetToUsd(vault.col(), 1, colPriceProof);
 
         uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
         uint feeInCol = fee.mul(Q112).div(colUsdPrice_q112);
@@ -340,8 +337,8 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
         public
         spawned(asset, msg.sender)
@@ -369,10 +366,10 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
         uint colDeposit = vault.colToken(asset, msg.sender);
 
         // main collateral value of the position in USD
-        uint mainUsdValue_q112 = uniswapOracle.assetToUsd(asset, vault.collaterals(asset, msg.sender), mainPriceProof);
+        uint mainUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(asset, vault.collaterals(asset, msg.sender), mainPriceProof);
 
         // COL token value of the position in USD
-        uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), colDeposit, colPriceProof);
+        uint colUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(vault.col(), colDeposit, colPriceProof);
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
@@ -402,8 +399,8 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
         uint ethAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
         public
         spawned(vault.weth(), msg.sender)
@@ -431,10 +428,10 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
         uint colDeposit = vault.colToken(vault.weth(), msg.sender);
 
         // main collateral value of the position in USD
-        uint mainUsdValue_q112 = uniswapOracle.assetToUsd(vault.weth(), vault.collaterals(vault.weth(), msg.sender), mainPriceProof);
+        uint mainUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(vault.weth(), vault.collaterals(vault.weth(), msg.sender), mainPriceProof);
 
         // COL token value of the position in USD
-        uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), colDeposit, colPriceProof);
+        uint colUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(vault.col(), colDeposit, colPriceProof);
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(vault.weth(), msg.sender, usdpAmount);
@@ -457,8 +454,8 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
         internal
     {
@@ -481,7 +478,7 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
         address user,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
         internal
     {
@@ -502,33 +499,33 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
     function _ensureCollateralizationTroughProofs(
         address asset,
         address user,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
         internal
         view
     {
         // main collateral value of the position in USD
-        uint mainUsdValue_q112 = uniswapOracle.assetToUsd(asset, vault.collaterals(asset, user), mainPriceProof);
+        uint mainUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(asset, vault.collaterals(asset, user), mainPriceProof);
 
         // COL token value of the position in USD
-        uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), vault.colToken(asset, user), colPriceProof);
+        uint colUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(vault.col(), vault.colToken(asset, user), colPriceProof);
 
         _ensureCollateralization(asset, user, mainUsdValue_q112, colUsdValue_q112);
     }
 
     function _ensureCollateralizationTroughProofs_Eth(
         address user,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
         internal
         view
     {
         // ETH value of the position in USD
-        uint ethUsdValue_q112 = uniswapOracle.ethToUsd(vault.collaterals(vault.weth(), user).mul(Q112));
+        uint ethUsdValue_q112 = uniswapOracleMainAsset.ethToUsd(vault.collaterals(vault.weth(), user).mul(Q112));
 
         // COL token value of the position in USD
-        uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), vault.colToken(vault.weth(), user), colPriceProof);
+        uint colUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(vault.col(), vault.colToken(vault.weth(), user), colPriceProof);
 
         _ensureCollateralization(vault.weth(), user, ethUsdValue_q112, colUsdValue_q112);
     }
@@ -546,7 +543,7 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
         uint mainUsdUtilized_q112;
         uint colUsdUtilized_q112;
 
-        uint minColPercent = parameters.minColPercent(asset);
+        uint minColPercent = vault.parameters().minColPercent(asset);
         if (minColPercent != 0) {
             // main limit by COL
             uint mainUsdLimit_q112 = colUsdValue_q112 * (100 - minColPercent) / minColPercent;
@@ -555,7 +552,7 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
             mainUsdUtilized_q112 = mainUsdValue_q112;
         }
 
-        uint maxColPercent = parameters.maxColPercent(asset);
+        uint maxColPercent = vault.parameters().maxColPercent(asset);
         if (maxColPercent < 100) {
             // COL limit by main
             uint colUsdLimit_q112 = mainUsdValue_q112 * maxColPercent / (100 - maxColPercent);
@@ -566,8 +563,8 @@ contract VaultManagerUniswapMainAsset is Auth, ReentrancyGuard {
 
         // USD limit of the position
         uint usdLimit = (
-            mainUsdUtilized_q112 * parameters.initialCollateralRatio(asset) +
-            colUsdUtilized_q112 * parameters.initialCollateralRatio(vault.col())
+            mainUsdUtilized_q112 * vault.parameters().initialCollateralRatio(asset) +
+            colUsdUtilized_q112 * vault.parameters().initialCollateralRatio(vault.col())
         ) / Q112 / 100;
 
         // revert if collateralization is not enough

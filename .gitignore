@@ -4,3 +4,5 @@
 /build/
 coverage
 coverage.json
+
+contracts/**/artifacts/

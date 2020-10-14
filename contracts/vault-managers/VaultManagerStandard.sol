@@ -15,7 +15,7 @@ import "../helpers/ReentrancyGuard.sol";
  * @title VaultManagerStandard
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
-contract VaultManagerStandard is Auth, ReentrancyGuard {
+contract VaultManagerStandard is ReentrancyGuard {
     using ERC20SafeTransfer for address;
     using SafeMath for uint;
 
@@ -33,9 +33,8 @@ contract VaultManagerStandard is Auth, ReentrancyGuard {
 
     /**
      * @param _vault The address of the Vault
-     * @param _parameters The address of the contract with system parameters
      **/
-    constructor(address payable _vault, address _parameters) Auth(_parameters) public {
+    constructor(address payable _vault) public {
         vault = Vault(_vault);
     }
 
