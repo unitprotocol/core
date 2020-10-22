@@ -4,6 +4,7 @@ COL                                 0x0F235462cA4a41EA92Fca6b7c4d67dAe0DA8d1D6
 STAKE                               0xeED5B67BEf854D8Cb7FCa3e8220c54b3b48C461B
 WETH                                0xc778417e063141139fce010982780140aa0cd5ab
 
+STAKE/WETH                          0x1B50B21225c2C7B3449fF776C368d14D51d05c5a
 
 YFI                                 0x62289C64a943416205142BDCcF1D752792A687e3
 MKR                                 0xC5d9497Fd3fa13549026f2fC8048DbaE11D7114c
@@ -13,8 +14,8 @@ WBTC                                0x03f1A5d11cB1C698d865756EBEdeb144898bB319
 
 UniswapFactory                      0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
 ChainlinkAggregaor mock             0x8692e13F484e10b0A6e3Cc97BB87a8eceA6EB9AE
-ChainLinkedUniswapOracleMainAsset   0xC8DfD255EaA029716d4a58152a4d4B0018b76389
-ChainLinkedUniswapOraclePoolToken   0x901c67C54860e41857E750181dC78A612B01c39C
+ChainLinkedUniswapOracleMainAsset   0x7DbB5b5064B2f2A660140c095B862960Eebfa596
+ChainLinkedUniswapOraclePoolToken   0x4CBbDDB323fe79800C491fc72090D980F5E09465
 UniswapV2Router02                   0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
 
 USDP                                0x2905F3Dd1406797b6214Ee0654E2FB6e694C8773
@@ -24,5 +25,5 @@ Vault                               0x09c53FdF34696844F197ABbbFbd259FFe81Ec24E
 LiquidatorUniswapMainAsset          0xD15636cAbD0b18Cb90DB64eFf93C00F3022b1FA8
 LiquidatorUniswapPoolToken          0xd360Dddb01eBB3e95aa4e9De756a569A9BA00CD4
 VaultManagerStandard                0x0a5BcB9d6dDc4e1489c535E49D7fc89dee953F96
-VaultManagerUniswapMainAsset        0xC05b1F58ed1809496D43Eb3F682A40904C435e70
-VaultManagerUniswapPoolToken        0xB8358147B991282dB9986258a66bC4C4F232e184
+VaultManagerUniswapMainAsset        0xbf80cd628769E477BAc0C28fFb3c6f859FCd2C98
+VaultManagerUniswapPoolToken        0xcA348BCA9621a2A71733254d8AE01a853723F1c9
