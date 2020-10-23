@@ -26,7 +26,7 @@ interface LiquidationSystem{
 /**
  * @title Vault
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
- * @notice Vault is the core of USD ThePay.cash Stablecoin distribution system
+ * @notice Vault is the core of Unit Protocol USDP Stablecoin system
  * @notice Vault stores and manages collateral funds of all positions and counts debts
  * @notice Only Vault can manage supply of USDP token
  * @notice Vault will not be changed/upgraded after initial deployment for the current stablecoin version
