@@ -3,9 +3,9 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.6.8;
+pragma solidity ^0.7.4;
 
-import "./Parameters.sol";
+import "./VaultParameters.sol";
 import "./helpers/SafeMath.sol";
 
 
@@ -51,7 +51,7 @@ contract USDP is Auth {
     /**
       * @param _parameters The address of system parameters contract
      **/
-    constructor(address _parameters) public Auth(_parameters) {}
+    constructor(address _parameters) Auth(_parameters) {}
 
     /**
       * @notice Only Vault can mint USDP

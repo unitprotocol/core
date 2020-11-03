@@ -3,13 +3,14 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.6.8;
+pragma solidity ^0.7.4;
 pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
 import "../oracles/ChainlinkedUniswapOraclePoolTokenAbstract.sol";
 import "../helpers/Math.sol";
 import "../helpers/ReentrancyGuard.sol";
+import "./VaultManagerParameters.sol";
 
 
 /**
@@ -17,10 +18,10 @@ import "../helpers/ReentrancyGuard.sol";
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
 contract VaultManagerUniswapPoolToken is ReentrancyGuard {
-    using ERC20SafeTransfer for address;
     using SafeMath for uint;
 
     Vault public vault;
+    VaultManagerParameters public vaultManagerParameters;
     ChainlinkedUniswapOraclePoolTokenAbstract public uniswapOraclePoolToken;
     uint public constant ORACLE_TYPE = 2;
 
@@ -42,17 +43,13 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
     }
 
     /**
-     * @param _vault The address of the Vault
-     * @param _uniswapOracle The address of Uniswap-based Oracle for LP tokens
+     * @param _vaultManagerParameters The address of the contract with vault manager parameters
+     * @param _uniswapOraclePoolToken The address of Uniswap-based Oracle for LP tokens
      **/
-    constructor(
-        address payable _vault,
-        address _uniswapOracle
-    )
-        public
-    {
-        vault = Vault(_vault);
-        uniswapOraclePoolToken = ChainlinkedUniswapOraclePoolTokenAbstract(_uniswapOracle);
+    constructor(address payable _vaultManagerParameters, address _uniswapOraclePoolToken) {
+        vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
+        vault = Vault(vaultManagerParameters.vaultParameters().vault());
+        uniswapOraclePoolToken = ChainlinkedUniswapOraclePoolTokenAbstract(_uniswapOraclePoolToken);
     }
 
     /**
@@ -86,7 +83,7 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         require(vault.getTotalDebt(asset, msg.sender) == 0, "USDP: SPAWNED_POSITION");
 
         // oracle availability check
-        require(vault.parameters().isOracleTypeEnabled(ORACLE_TYPE, asset), "USDP: WRONG_ORACLE_TYPE");
+        require(vault.vaultParameters().isOracleTypeEnabled(ORACLE_TYPE, asset), "USDP: WRONG_ORACLE_TYPE");
 
         // USDP minting triggers the spawn of a position
         vault.spawn(asset, msg.sender, ORACLE_TYPE);
@@ -171,7 +168,7 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
-            vault.chargeFee(address(vault.usdp()), msg.sender, fee);
+            vault.chargeFee(vault.usdp(), msg.sender, fee);
             vault.repay(asset, msg.sender, usdpAmount);
         }
 
@@ -266,7 +263,7 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
             uint feeInCol = fee.mul(uniswapOraclePoolToken.Q112()).mul(colDeposit).div(colUsdValue_q112);
-            vault.chargeFee(address(vault.col()), msg.sender, feeInCol);
+            vault.chargeFee(vault.col(), msg.sender, feeInCol);
             vault.repay(asset, msg.sender, usdpAmount);
         }
 
@@ -336,7 +333,7 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         uint mainUsdUtilized_q112;
         uint colUsdUtilized_q112;
 
-        uint minColPercent = vault.parameters().minColPercent(asset);
+        uint minColPercent = vaultManagerParameters.minColPercent(asset);
         if (minColPercent != 0) {
             // main limit by COL
             uint mainUsdLimit_q112 = colUsdValue_q112 * (100 - minColPercent) / minColPercent;
@@ -345,7 +342,7 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
             mainUsdUtilized_q112 = mainUsdValue_q112;
         }
 
-        uint maxColPercent = vault.parameters().maxColPercent(asset);
+        uint maxColPercent = vaultManagerParameters.maxColPercent(asset);
         if (maxColPercent < 100) {
             // COL limit by main
             uint colUsdLimit_q112 = mainUsdValue_q112 * maxColPercent / (100 - maxColPercent);
@@ -356,8 +353,8 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
 
         // USD limit of the position
         uint usdLimit = (
-            mainUsdUtilized_q112 * vault.parameters().initialCollateralRatio(asset) +
-            colUsdUtilized_q112 * vault.parameters().initialCollateralRatio(vault.col())
+            mainUsdUtilized_q112 * vaultManagerParameters.initialCollateralRatio(asset) +
+            colUsdUtilized_q112 * vaultManagerParameters.initialCollateralRatio(vault.col())
         ) / uniswapOraclePoolToken.Q112() / 100;
 
         // revert if collateralization is not enough

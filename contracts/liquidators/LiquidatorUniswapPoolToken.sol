@@ -3,13 +3,12 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.6.8;
+pragma solidity ^0.7.4;
 pragma experimental ABIEncoderV2;
 
 import "./LiquidatorUniswapAbstract.sol";
 import "../Vault.sol";
 import "../oracles/ChainlinkedUniswapOraclePoolTokenAbstract.sol";
-import "../helpers/ERC20Like.sol";
 
 
 /**
@@ -18,34 +17,32 @@ import "../helpers/ERC20Like.sol";
  * @dev Manages liquidation process
  **/
 contract LiquidatorUniswapPoolToken is LiquidatorUniswapAbstract {
+    using SafeMath for uint;
 
     // uniswap-based oracle contract
     ChainlinkedUniswapOraclePoolTokenAbstract public uniswapOraclePool;
 
     /**
-     * @param _vault The address of the Vault
+     * @param _vaultManagerParameters The address of the contract with vault manager parameters
      * @param _uniswapOraclePoolToken The address of Uniswap-based Oracle for LP tokens
      **/
     constructor(
-        address payable _vault,
+        address _vaultManagerParameters,
         address _uniswapOraclePoolToken
     )
-        public
-        LiquidatorUniswapAbstract(_vault, 2)
+        LiquidatorUniswapAbstract(_vaultManagerParameters, 2)
     {
-        vault = Vault(_vault);
-        parameters = vault.parameters();
         uniswapOraclePool = ChainlinkedUniswapOraclePoolTokenAbstract(_uniswapOraclePoolToken);
     }
 
     /**
-     * @dev Liquidates position
+     * @dev Triggers liquidation of a position
      * @param asset The address of the main collateral token of a position
      * @param user The owner of a position
      * @param underlyingProof The proof data of underlying token price
      * @param colProof The proof data of COL token price
      **/
-    function liquidate(
+    function triggerLiquidation(
         address asset,
         address user,
         ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct calldata underlyingProof,
@@ -62,11 +59,15 @@ contract LiquidatorUniswapPoolToken is LiquidatorUniswapAbstract {
 
         // reverts if a position is safe
         require(isLiquidatablePosition(asset, user, mainUsdValue_q112, colUsdValue_q112), "USDP: SAFE_POSITION");
+        
+        uint liquidationDiscount_q112 = mainUsdValue_q112.add(colUsdValue_q112).mul(vaultManagerParameters.liquidationDiscount(asset)).div(DENOMINATOR_1E5);
+        
+        uint initialLiquidationPrice = mainUsdValue_q112.add(colUsdValue_q112).sub(liquidationDiscount_q112).div(Q112);
 
         // sends liquidation command to the Vault
-        vault.liquidate(asset, user, msg.sender, mainUsdValue_q112.add(colUsdValue_q112).div(Q112));
+        vault.triggerLiquidation(asset, user, initialLiquidationPrice);
 
         // fire an liquidation event
-        emit Liquidation(asset, user);
+        emit LiquidationTriggered(asset, user);
     }
 }

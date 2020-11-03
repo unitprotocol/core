@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.6.8;
+pragma solidity ^0.7.4;
 pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
@@ -16,7 +16,6 @@ import "../helpers/ReentrancyGuard.sol";
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
 contract VaultManagerStandard is ReentrancyGuard {
-    using ERC20SafeTransfer for address;
     using SafeMath for uint;
 
     Vault public vault;
@@ -34,7 +33,7 @@ contract VaultManagerStandard is ReentrancyGuard {
     /**
      * @param _vault The address of the Vault
      **/
-    constructor(address payable _vault) public {
+    constructor(address payable _vault) {
         vault = Vault(_vault);
     }
 
@@ -105,8 +104,7 @@ contract VaultManagerStandard is ReentrancyGuard {
 
     /**
       * @notice Tx sender must have a sufficient USDP balance to pay the debt
-      * @notice Token approwal is NOT needed
-      * @notice Merkle proofs are NOT needed since we don't need to check collateralization (cause there is no debt)
+      * @notice USDP approval is NOT needed
       * @dev Repays total debt and withdraws collaterals
       * @param asset The address of token using as main collateral
       * @param mainAmount The amount of main collateral token to withdraw
@@ -148,8 +146,7 @@ contract VaultManagerStandard is ReentrancyGuard {
 
     /**
       * @notice Tx sender must have a sufficient USDP balance to pay the debt
-      * @notice Token approwal is NOT needed
-      * @notice Merkle proofs are NOT needed since we don't need to check collateralization (cause there is no debt)
+      * @notice USDP approval is NOT needed
       * @dev Repays total debt and withdraws collaterals
       * @param ethAmount The ETH amount to withdraw
       * @param colAmount The amount of COL token to withdraw
@@ -190,7 +187,7 @@ contract VaultManagerStandard is ReentrancyGuard {
     // decreases debt
     function _repay(address asset, address user, uint usdpAmount) internal {
         uint fee = vault.calculateFee(asset, user, usdpAmount);
-        vault.chargeFee(address(vault.usdp()), user, fee);
+        vault.chargeFee(vault.usdp(), user, fee);
 
         // burn USDP from the user's balance
         uint debtAfter = vault.repay(asset, user, usdpAmount);
