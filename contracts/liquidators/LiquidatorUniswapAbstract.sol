@@ -74,7 +74,7 @@ abstract contract LiquidatorUniswapAbstract {
      * @param asset The address of the main collateral token of a position
      * @param user The owner of a position
      **/
-    function triggerLiquidation(
+    function liquidate(
         address asset,
         address user
     )
@@ -85,17 +85,17 @@ abstract contract LiquidatorUniswapAbstract {
         uint devaluationPeriod = vaultManagerParameters.devaluationPeriod(asset);
         uint debt = vault.getTotalDebt(asset, user);
         uint penalty = debt.mul(vault.liquidationFee(asset, user)).div(DENOMINATOR_1E2);
-        
+
 
         uint mainAssetInPosition = vault.collaterals(asset, user);
         uint colInPosition = vault.collaterals(asset, user);
-        
+
         uint mainToLiquidator;
         uint colToLiquidator;
         uint mainToOwner;
         uint colToOwner;
         uint repayment;
-        
+
         (mainToLiquidator, colToLiquidator, mainToOwner, colToOwner, repayment) = _calcLiquidationParams(
             devaluationPeriod,
             blocksPast,
@@ -104,7 +104,7 @@ abstract contract LiquidatorUniswapAbstract {
             mainAssetInPosition,
             colInPosition
         );
-        
+
         // send liquidation command to the Vault
         _liquidate(
             asset,
@@ -117,7 +117,7 @@ abstract contract LiquidatorUniswapAbstract {
             penalty
         );
     }
-    
+
     function _liquidate(
         address asset,
         address user,
@@ -139,12 +139,12 @@ abstract contract LiquidatorUniswapAbstract {
             penalty,
             msg.sender
         );
-        
+
 
         // fire an liquidation event
         emit Liquidated(asset, user);
     }
-    
+
     function _calcLiquidationParams(
         uint devaluationPeriod,
         uint blocksPast,
@@ -152,14 +152,14 @@ abstract contract LiquidatorUniswapAbstract {
         uint debtWithPenalty,
         uint mainAssetInPosition,
         uint colInPosition
-    ) 
+    )
         internal
-        pure 
+        pure
         returns(
-            uint mainToLiquidator, 
-            uint colToLiquidator, 
-            uint mainToOwner, 
-            uint colToOwner, 
+            uint mainToLiquidator,
+            uint colToLiquidator,
+            uint mainToOwner,
+            uint colToOwner,
             uint repayment
         )
     {
@@ -182,7 +182,7 @@ abstract contract LiquidatorUniswapAbstract {
             mainToLiquidator = mainAssetInPosition;
             colToLiquidator = colInPosition;
         }
-        
+
     }
 
 
