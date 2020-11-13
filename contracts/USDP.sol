@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.4;
+pragma solidity ^0.7.1;
 
 import "./VaultParameters.sol";
 import "./helpers/SafeMath.sol";
@@ -51,7 +51,7 @@ contract USDP is Auth {
     /**
       * @param _parameters The address of system parameters contract
      **/
-    constructor(address _parameters) Auth(_parameters) {}
+    constructor(address _parameters) public Auth(_parameters) {}
 
     /**
       * @notice Only Vault can mint USDP
@@ -61,7 +61,7 @@ contract USDP is Auth {
       * @param amount The amount of token to be minted
      **/
     function mint(address to, uint amount) external onlyVault {
-        require(to != address(0), "USDP: ZERO_ADDRESS");
+        require(to != address(0), "Unit Protocol: ZERO_ADDRESS");
 
         balanceOf[to] = balanceOf[to].add(amount);
         totalSupply = totalSupply.add(amount);
@@ -106,11 +106,11 @@ contract USDP is Auth {
       * @param amount The amount of token to be transferred
      **/
     function transferFrom(address from, address to, uint amount) public returns (bool) {
-        require(to != address(0), "USDP: ZERO_ADDRESS");
-        require(balanceOf[from] >= amount, "USDP: INSUFFICIENT_BALANCE");
+        require(to != address(0), "Unit Protocol: ZERO_ADDRESS");
+        require(balanceOf[from] >= amount, "Unit Protocol: INSUFFICIENT_BALANCE");
 
         if (from != msg.sender) {
-            require(allowance[from][msg.sender] >= amount, "USDP: INSUFFICIENT_ALLOWANCE");
+            require(allowance[from][msg.sender] >= amount, "Unit Protocol: INSUFFICIENT_ALLOWANCE");
             _approve(from, msg.sender, allowance[from][msg.sender].sub(amount));
         }
         balanceOf[from] = balanceOf[from].sub(amount);
@@ -168,8 +168,8 @@ contract USDP is Auth {
     }
 
     function _approve(address owner, address spender, uint amount) internal virtual {
-        require(owner != address(0), "USDP: approve from the zero address");
-        require(spender != address(0), "USDP: approve to the zero address");
+        require(owner != address(0), "Unit Protocol: approve from the zero address");
+        require(spender != address(0), "Unit Protocol: approve to the zero address");
 
         allowance[owner][spender] = amount;
         emit Approval(owner, spender, amount);

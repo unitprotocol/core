@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.4;
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "../oracles/ChainlinkedUniswapOracleMainAssetAbstract.sol";
@@ -37,7 +37,7 @@ contract ChainlinkedUniswapOraclePoolToken_Mock is ChainlinkedUniswapOraclePoolT
         } else if (pair.token1() == uniswapOracleMainAsset.WETH()) {
             ePool = _reserve1;
         } else {
-            revert("USDP: NOT_REGISTERED_PAIR");
+            revert("Unit Protocol: NOT_REGISTERED_PAIR");
         }
 
         uint lpSupply = pair.totalSupply();

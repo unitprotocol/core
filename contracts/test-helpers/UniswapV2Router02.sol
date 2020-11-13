@@ -3,12 +3,12 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.4;
+pragma solidity ^0.7.1;
 
 import '../helpers/IUniswapV2Factory.sol';
 import '../helpers/IUniswapV2PairFull.sol';
 import '../helpers/ERC20Like.sol';
-import './TransferHelper.sol';
+import '../helpers/TransferHelper.sol';
 
 import './UniswapV2Library.sol';
 import './WETH.sol';

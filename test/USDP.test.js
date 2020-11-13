@@ -1,4 +1,4 @@
-const Parameters = artifacts.require('Parameters');
+const Parameters = artifacts.require('VaultParameters');
 const { constants, expectEvent, expectRevert } = require('openzeppelin-test-helpers');
 const { ZERO_ADDRESS} = constants;
 const USDP = artifacts.require('USDP');

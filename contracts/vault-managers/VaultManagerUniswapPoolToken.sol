@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.4;
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
@@ -38,7 +38,7 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
     modifier spawned(address asset, address user) {
 
         // check the existence of a position
-        require(vault.getTotalDebt(asset, user) != 0, "USDP: NOT_SPAWNED_POSITION");
+        require(vault.getTotalDebt(asset, user) != 0, "Unit Protocol: NOT_SPAWNED_POSITION");
         _;
     }
 
@@ -46,7 +46,7 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
      * @param _vaultManagerParameters The address of the contract with vault manager parameters
      * @param _uniswapOraclePoolToken The address of Uniswap-based Oracle for LP tokens
      **/
-    constructor(address payable _vaultManagerParameters, address _uniswapOraclePoolToken) {
+    constructor(address payable _vaultManagerParameters, address _uniswapOraclePoolToken) public {
         vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
         vault = Vault(vaultManagerParameters.vaultParameters().vault());
         uniswapOraclePoolToken = ChainlinkedUniswapOraclePoolTokenAbstract(_uniswapOraclePoolToken);
@@ -74,16 +74,16 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
         ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory colProof
     )
-        public
-        nonReentrant
+    public
+    nonReentrant
     {
-        require(usdpAmount != 0, "USDP: ZERO_BORROWING");
+        require(usdpAmount != 0, "Unit Protocol: ZERO_BORROWING");
 
         // check whether the position is spawned
-        require(vault.getTotalDebt(asset, msg.sender) == 0, "USDP: SPAWNED_POSITION");
+        require(vault.getTotalDebt(asset, msg.sender) == 0, "Unit Protocol: SPAWNED_POSITION");
 
         // oracle availability check
-        require(vault.vaultParameters().isOracleTypeEnabled(ORACLE_TYPE, asset), "USDP: WRONG_ORACLE_TYPE");
+        require(vault.vaultParameters().isOracleTypeEnabled(ORACLE_TYPE, asset), "Unit Protocol: WRONG_ORACLE_TYPE");
 
         // USDP minting triggers the spawn of a position
         vault.spawn(asset, msg.sender, ORACLE_TYPE);
@@ -115,11 +115,11 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
         ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory colProof
     )
-        public
-        spawned(asset, msg.sender)
-        nonReentrant
+    public
+    spawned(asset, msg.sender)
+    nonReentrant
     {
-        require(usdpAmount != 0, "USDP: ZERO_BORROWING");
+        require(usdpAmount != 0, "Unit Protocol: ZERO_BORROWING");
 
         _depositAndBorrow(asset, msg.sender, mainAmount, colAmount, usdpAmount, underlyingProof, colProof);
 
@@ -146,15 +146,15 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
         ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory colProof
     )
-        public
-        spawned(asset, msg.sender)
-        nonReentrant
+    public
+    spawned(asset, msg.sender)
+    nonReentrant
     {
         // check usefulness of tx
-        require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
+        require(mainAmount != 0 || colAmount != 0, "Unit Protocol: USELESS_TX");
 
         uint debt = vault.debts(asset, msg.sender);
-        require(debt != 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
+        require(debt != 0 && usdpAmount != debt, "Unit Protocol: USE_REPAY_ALL_INSTEAD");
 
         if (mainAmount != 0) {
             // withdraw main collateral to the user address
@@ -192,12 +192,12 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         uint usdpAmount,
         ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory colPriceProof
     )
-        public
-        spawned(asset, msg.sender)
-        nonReentrant
+    public
+    spawned(asset, msg.sender)
+    nonReentrant
     {
         // check usefulness of tx
-        require(usdpAmount != 0, "USDP: USELESS_TX");
+        require(usdpAmount != 0, "Unit Protocol: USELESS_TX");
 
         // COL token price in USD
         uint colUsdPrice_q112 = uniswapOraclePoolToken.uniswapOracleMainAsset().assetToUsd(vault.col(), 1, colPriceProof);
@@ -230,16 +230,16 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
         ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory colProof
     )
-        public
-        spawned(asset, msg.sender)
-        nonReentrant
+    public
+    spawned(asset, msg.sender)
+    nonReentrant
     {
         {
             // check usefulness of tx
-            require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
+            require(mainAmount != 0 || colAmount != 0, "Unit Protocol: USELESS_TX");
 
             uint debt = vault.debts(asset, msg.sender);
-            require(debt != 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
+            require(debt != 0 && usdpAmount != debt, "Unit Protocol: USE_REPAY_ALL_INSTEAD");
 
             if (mainAmount != 0) {
                 // withdraw main collateral to the user address
@@ -284,7 +284,7 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
         ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory colProof
     )
-        internal
+    internal
     {
         if (mainAmount != 0) {
             vault.depositMain(asset, user, mainAmount);
@@ -308,8 +308,8 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
         ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory colProof
     )
-        internal
-        view
+    internal
+    view
     {
         // main collateral value of the position in USD
         uint mainUsdValue_q112 = uniswapOraclePoolToken.assetToUsd(asset, vault.collaterals(asset, user), underlyingProof);
@@ -327,8 +327,8 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         uint mainUsdValue_q112,
         uint colUsdValue_q112
     )
-        internal
-        view
+    internal
+    view
     {
         uint mainUsdUtilized_q112;
         uint colUsdUtilized_q112;
@@ -358,6 +358,6 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         ) / uniswapOraclePoolToken.Q112() / 100;
 
         // revert if collateralization is not enough
-        require(vault.getTotalDebt(asset, user) <= usdLimit, "USDP: UNDERCOLLATERALIZED");
+        require(vault.getTotalDebt(asset, user) <= usdLimit, "Unit Protocol: UNDERCOLLATERALIZED");
     }
 }

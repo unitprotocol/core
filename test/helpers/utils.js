@@ -1,5 +1,6 @@
 const Vault = artifacts.require('Vault');
-const Parameters = artifacts.require('Parameters');
+const VaultParameters = artifacts.require('VaultParameters');
+const VaultManagerParameters = artifacts.require('VaultManagerParameters');
 const USDP = artifacts.require('USDP');
 const WETH = artifacts.require('WETH');
 const DummyToken = artifacts.require('DummyToken');
@@ -13,8 +14,9 @@ const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const VaultManagerStandard = artifacts.require('VaultManagerStandard');
 const VaultManagerUniswapMainAsset = artifacts.require('VaultManagerUniswapMainAsset');
 const VaultManagerUniswapPoolToken = artifacts.require('VaultManagerUniswapPoolToken');
-const LiquidatorMainAsset = artifacts.require('LiquidatorUniswapMainAsset');
-const LiquidatorPoolToken = artifacts.require('LiquidatorUniswapPoolToken');
+const LiquidatorMainAsset = artifacts.require('LiquidationTriggerUniswapMainAsset');
+const LiquidatorPoolToken = artifacts.require('LiquidationTriggerUniswapPoolToken');
+const LiquidationAuction01 = artifacts.require('LiquidationAuction01');
 const { ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce, deployContractBytecode } = require('./deployUtils');
 const BN = web3.utils.BN;
@@ -61,9 +63,9 @@ module.exports = context => {
 		);
 	};
 
-	const approveCollaterals = async(main, mainAmount, colAmount) => {
-		await main.approve(context.vault.address, mainAmount);
-		return context.col.approve(context.vault.address, colAmount);
+	const approveCollaterals = async(main, mainAmount, colAmount, from = context.deployer) => {
+		await main.approve(context.vault.address, mainAmount, { from });
+		return context.col.approve(context.vault.address, colAmount, { from });
 	};
 
 	const getPoolToken = async(mainAddress) => {
@@ -71,8 +73,8 @@ module.exports = context => {
 		return IUniswapV2Pair.at(poolAddress);
 	};
 
-	const spawn = async(main, mainAmount, colAmount, usdpAmount) => {
-		await approveCollaterals(main, mainAmount, colAmount);
+	const spawn = async(main, mainAmount, colAmount, usdpAmount, from = context.deployer) => {
+		await approveCollaterals(main, mainAmount, colAmount, from);
 		return context.vaultManagerUniswapMainAsset.spawn(
 			main.address,
 			mainAmount, // main
@@ -80,6 +82,7 @@ module.exports = context => {
 			usdpAmount,	// USDP
 			['0x', '0x', '0x', '0x'], // main price proof
 			['0x', '0x', '0x', '0x'], // COL price proof
+			{ from },
 		);
 	};
 
@@ -131,9 +134,16 @@ module.exports = context => {
 		);
 	};
 
-	const liquidate = (main, user, from) => {
-		from = from ? from : vault.deployer;
-		return context.liquidatorMainAsset.liquidate(
+	const buyout = (main, user, from = context.deployer) => {
+		return context.liquidationAuction.buyout(
+			main.address,
+			user,
+			{ from }
+		);
+	};
+
+	const triggerLiquidation = (main, user, from = context.deployer) => {
+		return context.liquidatorMainAsset.triggerLiquidation(
 			main.address,
 			user,
 			['0x', '0x', '0x', '0x'], // main price proof
@@ -142,9 +152,8 @@ module.exports = context => {
 		);
 	};
 
-	const liquidate_Pool = (main, user, from) => {
-		from = from ? from : vault.deployer;
-		return context.liquidatorPoolToken.liquidate(
+	const triggerLiquidation_Pool = (main, user, from = context.deployer) => {
+		return context.liquidatorPoolToken.triggerLiquidation(
 			main.address,
 			user,
 			['0x', '0x', '0x', '0x'], // main price proof
@@ -298,15 +307,22 @@ module.exports = context => {
 
 		const parametersAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
 		context.usdp = await USDP.new(parametersAddr);
-		const vaultAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
-		context.parameters = await Parameters.new(vaultAddr, context.foundation);
-		context.vault = await Vault.new(context.parameters.address, context.col.address, context.usdp.address, context.weth.address);
-		context.liquidatorMainAsset = await LiquidatorMainAsset.new(context.vault.address, context.uniswapOracleMainAsset.address);
 
-		context.liquidatorPoolToken = await LiquidatorPoolToken.new(context.vault.address, context.uniswapOraclePoolToken.address);
+		const vaultAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
+		context.vaultParameters = await VaultParameters.new(vaultAddr, context.foundation);
+		context.vault = await Vault.new(context.vaultParameters.address, context.col.address, context.usdp.address, context.weth.address);
+
+		context.vaultManagerParameters = await VaultManagerParameters.new(context.vaultParameters.address);
+		await context.vaultParameters.setManager(context.vaultManagerParameters.address, true);
+		context.liquidatorMainAsset = await LiquidatorMainAsset.new(context.vaultManagerParameters.address, context.uniswapOracleMainAsset.address);
+
+		context.liquidatorPoolToken = await LiquidatorPoolToken.new(context.vaultManagerParameters.address, context.uniswapOraclePoolToken.address);
+
+
+		context.liquidationAuction = await LiquidationAuction01.new(context.vaultManagerParameters.address);
 
 		context.vaultManagerUniswapMainAsset = await VaultManagerUniswapMainAsset.new(
-			context.vault.address,
+			context.vaultManagerParameters.address,
 			context.uniswapOracleMainAsset.address,
 		);
 
@@ -315,7 +331,7 @@ module.exports = context => {
 		);
 
 		context.vaultManagerUniswapPoolToken = await VaultManagerUniswapPoolToken.new(
-			context.vault.address,
+			context.vaultManagerParameters.address,
 			context.uniswapOraclePoolToken.address,
 		);
 
@@ -329,42 +345,49 @@ module.exports = context => {
 		// Add liquidity to some token/WETH pool; rate = 125 token/WETH; 1 token = 2 USD
 		await poolDeposit(context.mainCollateral, 125);
 
-		await context.parameters.setVaultAccess(context.vaultManagerUniswapMainAsset.address, true);
-		await context.parameters.setVaultAccess(context.vaultManagerUniswapPoolToken.address, true);
-		await context.parameters.setVaultAccess(context.liquidatorMainAsset.address, true);
-		await context.parameters.setVaultAccess(context.liquidatorPoolToken.address, true);
-		await context.parameters.setVaultAccess(context.vaultManagerStandard.address, true);
+		await context.vaultParameters.setVaultAccess(context.vaultManagerUniswapMainAsset.address, true);
+		await context.vaultParameters.setVaultAccess(context.vaultManagerUniswapPoolToken.address, true);
+		await context.vaultParameters.setVaultAccess(context.liquidatorMainAsset.address, true);
+		await context.vaultParameters.setVaultAccess(context.liquidatorPoolToken.address, true);
+		await context.vaultParameters.setVaultAccess(context.vaultManagerStandard.address, true);
+		await context.vaultParameters.setVaultAccess(context.liquidationAuction.address, true);
 
-		await context.parameters.setCollateral(
+		await context.vaultManagerParameters.setCollateral(
 			context.mainCollateral.address,
 			'0', // stability fee
 			'13', // liquidation fee
 			'67', // initial collateralization
 			'68', // liquidation ratio
+			'0', // liquidation discount (3 decimals)
+			'1000', // devaluation period in blocks
 			ether('100000'), // debt limit
 			[1], // enabled oracles
 			3,
 			5,
 		);
 
-		await context.parameters.setCollateral(
+		await context.vaultManagerParameters.setCollateral(
 			context.weth.address,
 			'0', // stability fee
 			'13', // liquidation fee
 			'67', // initial collateralization
 			'68', // liquidation ratio
+			'0', // liquidation discount (3 decimals)
+			'1000', // devaluation period in blocks
 			ether('100000'), // debt limit
 			[1], // enabled oracles
 			3,
 			5,
 		);
 
-		await context.parameters.setCollateral(
+		await context.vaultManagerParameters.setCollateral(
 			await context.uniswapFactory.getPair(context.weth.address, context.mainCollateral.address),
 			'0', // stability fee
 			'13', // liquidation fee
 			'67', // initial collateralization
 			'68', // liquidation ratio
+			'0', // liquidation discount (3 decimals)
+			'1000', // devaluation period in blocks
 			ether('100000'), // debt limit
 			[2], // enabled oracles
 			3,
@@ -372,8 +395,8 @@ module.exports = context => {
 		);
 
 		context.poolToken = await getPoolToken(context.mainCollateral.address);
-		await context.parameters.setInitialCollateralRatio(context.col.address, 67);
-		await context.parameters.setLiquidationRatio(context.col.address, 68);
+		await context.vaultManagerParameters.setInitialCollateralRatio(context.col.address, 67);
+		await context.vaultManagerParameters.setLiquidationRatio(context.col.address, 68);
 	};
 
 	return {
@@ -384,8 +407,9 @@ module.exports = context => {
 		approveCollaterals,
 		join,
 		join_Pool,
-		liquidate,
-		liquidate_Pool,
+		buyout,
+		triggerLiquidation,
+		triggerLiquidation_Pool,
 		exit,
 		exit_Pool,
 		repayAllAndWithdraw,

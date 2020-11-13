@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: bsl-1.1
 
 
-pragma solidity ^0.7.4;
+pragma solidity ^0.7.1;
 
 contract Migrations {
   address public owner;

@@ -3,20 +3,20 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.4;
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "./LiquidatorUniswapAbstract.sol";
+import "./LiquidationTriggerUniswapAbstract.sol";
 import "../helpers/ERC20Like.sol";
 import "../oracles/ChainlinkedUniswapOracleMainAssetAbstract.sol";
 
 
 /**
- * @title LiquidatorUniswapMainAsset
+ * @title LiquidationTriggerUniswapMainAsset
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
- * @dev Manages liquidation process
+ * @dev Manages liquidation process triggering of main asset-based positions
  **/
-contract LiquidatorUniswapMainAsset is LiquidatorUniswapAbstract {
+contract LiquidationTriggerUniswapMainAsset is LiquidationTriggerUniswapAbstract {
     using SafeMath for uint;
 
     // uniswap-based oracle contract
@@ -30,7 +30,8 @@ contract LiquidatorUniswapMainAsset is LiquidatorUniswapAbstract {
         address _vaultManagerParameters,
         address _uniswapOracleMainAsset
     )
-        LiquidatorUniswapAbstract(_vaultManagerParameters, 1)
+    public
+    LiquidationTriggerUniswapAbstract(_vaultManagerParameters, 1)
     {
         uniswapOracleMainAsset = ChainlinkedUniswapOracleMainAssetAbstract(_uniswapOracleMainAsset);
     }
@@ -48,8 +49,8 @@ contract LiquidatorUniswapMainAsset is LiquidatorUniswapAbstract {
         ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainProof,
         ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colProof
     )
-        public
-        override
+    public
+    override
     {
         // USD value of the main collateral
         uint mainUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(asset, vault.collaterals(asset, user), mainProof);
@@ -58,7 +59,7 @@ contract LiquidatorUniswapMainAsset is LiquidatorUniswapAbstract {
         uint colUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(vault.col(), vault.colToken(asset, user), colProof);
 
         // reverts if a position is not liquidatable
-        require(isLiquidatablePosition(asset, user, mainUsdValue_q112, colUsdValue_q112), "USDP: SAFE_POSITION");
+        require(isLiquidatablePosition(asset, user, mainUsdValue_q112, colUsdValue_q112), "Unit Protocol: SAFE_POSITION");
 
         uint liquidationDiscount_q112 = mainUsdValue_q112.add(colUsdValue_q112).mul(
             vaultManagerParameters.liquidationDiscount(asset)

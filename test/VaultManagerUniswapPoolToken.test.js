@@ -75,7 +75,7 @@ contract('VaultManagerUniswapPoolToken', function([
 			})
 
 			it('Should accumulate fee when stability is fee above zero and make repayment', async function() {
-				await this.parameters.setStabilityFee(this.poolToken.address, 3000); // 3% st. fee
+				await this.vaultParameters.setStabilityFee(this.poolToken.address, 3000); // 3% st. fee
 				const mainAmount = new BN('100');
 				const colAmount = new BN('5');
 				const usdpAmount = new BN('20');
@@ -234,7 +234,7 @@ contract('VaultManagerUniswapPoolToken', function([
 					['0x', '0x', '0x', '0x'], // main price proof
 					['0x', '0x', '0x', '0x'], // COL price proof
 				);
-				await this.utils.expectRevert(tx, "USDP: SPAWNED_POSITION");
+				await this.utils.expectRevert(tx, "Unit Protocol: SPAWNED_POSITION");
 			})
 
 			it('Reverts non valuable tx', async function() {
@@ -251,7 +251,7 @@ contract('VaultManagerUniswapPoolToken', function([
 					['0x', '0x', '0x', '0x'], // main price proof
 					['0x', '0x', '0x', '0x'], // COL price proof
 				);
-				await this.utils.expectRevert(tx, "USDP: ZERO_BORROWING");
+				await this.utils.expectRevert(tx, "Unit Protocol: ZERO_BORROWING");
 			})
 
 			describe('Reverts when collateralization is incorrect', function() {
@@ -269,7 +269,7 @@ contract('VaultManagerUniswapPoolToken', function([
 						['0x', '0x', '0x', '0x'], // main price proof
 						['0x', '0x', '0x', '0x'], // COL price proof
 					);
-					await this.utils.expectRevert(tx, "USDP: UNDERCOLLATERALIZED");
+					await this.utils.expectRevert(tx, "Unit Protocol: UNDERCOLLATERALIZED");
 				})
 				it('Not enough main collateral', async function() {
 					let mainAmount = new BN('0');
@@ -285,7 +285,7 @@ contract('VaultManagerUniswapPoolToken', function([
 						['0x', '0x', '0x', '0x'], // main price proof
 						['0x', '0x', '0x', '0x'], // COL price proof
 					);
-					await this.utils.expectRevert(tx, "USDP: UNDERCOLLATERALIZED");
+					await this.utils.expectRevert(tx, "Unit Protocol: UNDERCOLLATERALIZED");
 				})
 
 				it('Reverts when main collateral is not approved', async function() {
@@ -301,7 +301,7 @@ contract('VaultManagerUniswapPoolToken', function([
 						['0x', '0x', '0x', '0x'], // main price proof
 						['0x', '0x', '0x', '0x'], // COL price proof
 					);
-					await this.utils.expectRevert(tx, "TRANSFER_FAILURE");
+					await this.utils.expectRevert(tx, "TRANSFER_FROM_FAILED");
 				})
 
 				it('Reverts when COL token is not approved', async function() {
@@ -319,7 +319,7 @@ contract('VaultManagerUniswapPoolToken', function([
 						['0x', '0x', '0x', '0x'], // main price proof
 						['0x', '0x', '0x', '0x'], // COL price proof
 					);
-					await this.utils.expectRevert(tx, "TRANSFER_FAILURE");
+					await this.utils.expectRevert(tx, "TRANSFER_FROM_FAILED");
 				})
 			})
 		})
@@ -338,7 +338,7 @@ contract('VaultManagerUniswapPoolToken', function([
 					['0x', '0x', '0x', '0x'], // main price proof
 					['0x', '0x', '0x', '0x'], // COL price proof
 				);
-				await this.utils.expectRevert(tx, "USDP: NOT_SPAWNED_POSITION");
+				await this.utils.expectRevert(tx, "Unit Protocol: NOT_SPAWNED_POSITION");
 			})
 		})
 
@@ -351,10 +351,10 @@ contract('VaultManagerUniswapPoolToken', function([
 				await this.utils.spawn_Pool(this.poolToken, mainAmount, colAmount, usdpAmount);
 
 				const tx = this.utils.exit(this.poolToken, 0, 0, 0);
-				await this.utils.expectRevert(tx, "USDP: USELESS_TX");
+				await this.utils.expectRevert(tx, "Unit Protocol: USELESS_TX");
 			})
 
-			it('Reverts when specified repayment amount is more than the accumulated debt', async function() {
+			it('Reverts when specified repayment amount is greater than the accumulated debt', async function() {
 				const mainAmount = new BN('100');
 				const colAmount = new BN('5');
 				const usdpAmount = new BN('20');
@@ -365,7 +365,7 @@ contract('VaultManagerUniswapPoolToken', function([
 				await expectRevert.unspecified(tx);
 			})
 
-			it('Reverts when position becomes undercollateralized', async function() {
+			it('Reverts when position state after exit becomes undercollateralized', async function() {
 				const mainAmount = new BN('100');
 				const colAmount = new BN('5');
 				const usdpAmount = new BN('20');
@@ -373,7 +373,7 @@ contract('VaultManagerUniswapPoolToken', function([
 				await this.utils.spawn_Pool(this.poolToken, mainAmount, colAmount, usdpAmount);
 
 				const tx = this.utils.exit_Pool(this.poolToken, mainAmount, 0, 0);
-				await this.utils.expectRevert(tx, "USDP: UNDERCOLLATERALIZED");
+				await this.utils.expectRevert(tx, "Unit Protocol: UNDERCOLLATERALIZED");
 			})
 		})
 	})

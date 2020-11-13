@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.4;
+pragma solidity ^0.7.1;
 
 import "../VaultParameters.sol";
 
@@ -32,7 +32,7 @@ contract VaultManagerParameters is Auth {
     // map token to devaluation period in blocks
     mapping(address => uint) public devaluationPeriod;
 
-    constructor(address _vaultParameters) Auth(_vaultParameters) {}
+    constructor(address _vaultParameters) public Auth(_vaultParameters) {}
 
     /**
      * notice Only manager is able to call this function
@@ -43,6 +43,7 @@ contract VaultManagerParameters is Auth {
      * @param initialCollateralRatioValue The initial collateralization ratio
      * @param liquidationRatioValue The liquidation ratio
      * @param liquidationDiscountValue The liquidation discount (3 decimals)
+     * @param devaluationPeriod The devaluation period in blocks
      * @param usdpLimit The USDP token issue limit
      * @param minColP The min percentage (0 decimals)
      * @param maxColP The max percentage (0 decimals)
@@ -54,6 +55,7 @@ contract VaultManagerParameters is Auth {
         uint initialCollateralRatioValue,
         uint liquidationRatioValue,
         uint liquidationDiscountValue,
+        uint devaluationPeriod,
         uint usdpLimit,
         uint[] calldata oracles,
         uint minColP,
@@ -62,6 +64,7 @@ contract VaultManagerParameters is Auth {
         vaultParameters.setCollateral(asset, stabilityFeeValue, liquidationFeeValue, usdpLimit, oracles);
         setInitialCollateralRatio(asset, initialCollateralRatioValue);
         setLiquidationRatio(asset, liquidationRatioValue);
+        setDevaluationPeriod(asset, devaluationPeriod);
         setLiquidationDiscount(asset, liquidationDiscountValue);
         setColPartRange(asset, minColP, maxColP);
     }
@@ -73,7 +76,7 @@ contract VaultManagerParameters is Auth {
      * @param newValue The collateralization ratio (0 decimals)
      **/
     function setInitialCollateralRatio(address asset, uint newValue) public onlyManager {
-        require(newValue != 0 && newValue <= 100, "USDP: INCORRECT_COLLATERALIZATION_VALUE");
+        require(newValue != 0 && newValue <= 100, "Unit Protocol: INCORRECT_COLLATERALIZATION_VALUE");
         initialCollateralRatio[asset] = newValue;
     }
 
@@ -84,7 +87,7 @@ contract VaultManagerParameters is Auth {
      * @param newValue The liquidation ratio (0 decimals)
      **/
     function setLiquidationRatio(address asset, uint newValue) public onlyManager {
-        require(newValue != 0 && newValue >= initialCollateralRatio[asset], "USDP: INCORRECT_COLLATERALIZATION_VALUE");
+        require(newValue != 0 && newValue >= initialCollateralRatio[asset], "Unit Protocol: INCORRECT_COLLATERALIZATION_VALUE");
         liquidationRatio[asset] = newValue;
     }
 
@@ -95,8 +98,19 @@ contract VaultManagerParameters is Auth {
      * @param newValue The liquidation discount (3 decimals)
      **/
     function setLiquidationDiscount(address asset, uint newValue) public onlyManager {
-        require(newValue < 1e5, "USDP: INCORRECT_DISCOUNT_VALUE");
+        require(newValue < 1e5, "Unit Protocol: INCORRECT_DISCOUNT_VALUE");
         liquidationDiscount[asset] = newValue;
+    }
+
+    /**
+     * notice Only manager is able to call this function
+     * @dev Sets the devaluation period of collateral after liquidation
+     * @param asset The address of the main collateral token
+     * @param newValue The devaluation period in blocks
+     **/
+    function setDevaluationPeriod(address asset, uint newValue) public onlyManager {
+        require(newValue != 0, "Unit Protocol: INCORRECT_DEVALUATION_VALUE");
+        devaluationPeriod[asset] = newValue;
     }
 
     /**
@@ -107,7 +121,7 @@ contract VaultManagerParameters is Auth {
      * @param max The max percentage (0 decimals)
      **/
     function setColPartRange(address asset, uint min, uint max) public onlyManager {
-        require(max <= 100 && min <= max, "USDP: WRONG_RANGE");
+        require(max <= 100 && min <= max, "Unit Protocol: WRONG_RANGE");
         minColPercent[asset] = min;
         maxColPercent[asset] = max;
     }

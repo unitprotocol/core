@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.4;
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
@@ -33,7 +33,7 @@ contract VaultManagerStandard is ReentrancyGuard {
     /**
      * @param _vault The address of the Vault
      **/
-    constructor(address payable _vault) {
+    constructor(address payable _vault) public {
         vault = Vault(_vault);
     }
 
@@ -48,7 +48,7 @@ contract VaultManagerStandard is ReentrancyGuard {
     function deposit(address asset, uint mainAmount, uint colAmount) public nonReentrant {
 
         // check usefulness of tx
-        require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
+        require(mainAmount != 0 || colAmount != 0, "Unit Protocol: USELESS_TX");
 
         if (mainAmount != 0) {
             vault.depositMain(asset, msg.sender, mainAmount);
@@ -71,7 +71,7 @@ contract VaultManagerStandard is ReentrancyGuard {
     function deposit_Eth(uint colAmount) public payable nonReentrant {
 
         // check usefulness of tx
-        require(msg.value != 0 || colAmount != 0, "USDP: USELESS_TX");
+        require(msg.value != 0 || colAmount != 0, "Unit Protocol: USELESS_TX");
 
         if (msg.value != 0) {
             vault.depositEth{value: msg.value}(msg.sender);
@@ -94,7 +94,7 @@ contract VaultManagerStandard is ReentrancyGuard {
     function repay(address asset, uint usdpAmount) public nonReentrant {
 
         // check usefulness of tx
-        require(usdpAmount != 0, "USDP: USELESS_TX");
+        require(usdpAmount != 0, "Unit Protocol: USELESS_TX");
 
         _repay(asset, msg.sender, usdpAmount);
 
@@ -115,8 +115,8 @@ contract VaultManagerStandard is ReentrancyGuard {
         uint mainAmount,
         uint colAmount
     )
-        external
-        nonReentrant
+    external
+    nonReentrant
     {
         uint debtAmount = vault.debts(asset, msg.sender);
 
@@ -155,8 +155,8 @@ contract VaultManagerStandard is ReentrancyGuard {
         uint ethAmount,
         uint colAmount
     )
-        external
-        nonReentrant
+    external
+    nonReentrant
     {
         uint debtAmount = vault.debts(vault.weth(), msg.sender);
 

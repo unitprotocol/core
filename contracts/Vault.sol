@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.4;
+pragma solidity ^0.7.1;
 
 import "./helpers/SafeMath.sol";
 import "./VaultParameters.sol";
@@ -68,7 +68,7 @@ contract Vault is Auth {
     // stability fee pinned to each position
     mapping(address => mapping(address => uint)) public stabilityFee;
 
-    // liquidation fee pinned to each position
+    // liquidation fee pinned to each position, 0 decimals
     mapping(address => mapping(address => uint)) public liquidationFee;
 
     // type of using oracle pinned for each position
@@ -78,7 +78,7 @@ contract Vault is Auth {
     mapping(address => mapping(address => uint)) public lastUpdate;
 
     modifier notLiquidating(address asset, address user) {
-        require(liquidationBlock[asset][user] == 0, "USDP: LIQUIDATING_POSITION");
+        require(liquidationBlock[asset][user] == 0, "Unit Protocol: LIQUIDATING_POSITION");
         _;
     }
 
@@ -87,7 +87,7 @@ contract Vault is Auth {
      * @param _col COL token address
      * @param _usdp USDP token address
      **/
-    constructor(address _parameters, address _col, address _usdp, address payable _weth) Auth(_parameters) {
+    constructor(address _parameters, address _col, address _usdp, address payable _weth) public Auth(_parameters) {
         col = _col;
         usdp = _usdp;
         weth = _weth;
@@ -215,18 +215,18 @@ contract Vault is Auth {
         address user,
         uint amount
     )
-        external
-        hasVaultAccess
-        notLiquidating(asset, user)
-        returns(uint)
+    external
+    hasVaultAccess
+    notLiquidating(asset, user)
+    returns(uint)
     {
-        require(vaultParameters.isOracleTypeEnabled(oracleType[asset][user], asset), "USDP: WRONG_ORACLE_TYPE");
+        require(vaultParameters.isOracleTypeEnabled(oracleType[asset][user], asset), "Unit Protocol: WRONG_ORACLE_TYPE");
         update(asset, user);
         debts[asset][user] = debts[asset][user].add(amount);
         tokenDebts[asset] = tokenDebts[asset].add(amount);
 
         // check USDP limit for token
-        require(tokenDebts[asset] <= vaultParameters.tokenDebtLimit(asset), "USDP: ASSET_DEBT_LIMIT");
+        require(tokenDebts[asset] <= vaultParameters.tokenDebtLimit(asset), "Unit Protocol: ASSET_DEBT_LIMIT");
 
         USDP(usdp).mint(user, amount);
 
@@ -245,10 +245,10 @@ contract Vault is Auth {
         address user,
         uint amount
     )
-        external
-        hasVaultAccess
-        notLiquidating(asset, user)
-        returns(uint)
+    external
+    hasVaultAccess
+    notLiquidating(asset, user)
+    returns(uint)
     {
         uint debt = debts[asset][user];
         debts[asset][user] = debt.sub(amount);
@@ -281,12 +281,12 @@ contract Vault is Auth {
         address positionOwner,
         uint initialPrice
     )
-        external
-        hasVaultAccess
-        notLiquidating(asset, positionOwner)
+    external
+    hasVaultAccess
+    notLiquidating(asset, positionOwner)
     {
         // reverts if oracle type is disabled
-        require(vaultParameters.isOracleTypeEnabled(oracleType[asset][positionOwner], asset), "USDP: WRONG_ORACLE_TYPE");
+        require(vaultParameters.isOracleTypeEnabled(oracleType[asset][positionOwner], asset), "Unit Protocol: WRONG_ORACLE_TYPE");
 
         // fix the debt
         debts[asset][positionOwner] = getTotalDebt(asset, positionOwner);
@@ -321,7 +321,7 @@ contract Vault is Auth {
         external
         hasVaultAccess
     {
-        require(liquidationBlock[asset][positionOwner] != 0, "USDP: NOT_TRIGGERED_LIQUIDATION");
+        require(liquidationBlock[asset][positionOwner] != 0, "Unit Protocol: NOT_TRIGGERED_LIQUIDATION");
 
         uint mainAssetInPosition = collaterals[asset][positionOwner];
         uint mainAssetToFoundation = mainAssetInPosition.sub(mainAssetToLiquidator).sub(mainAssetToPositionOwner);

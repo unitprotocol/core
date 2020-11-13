@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.4;
+pragma solidity ^0.7.1;
 
 import "./helpers/ERC20Like.sol";
 
@@ -18,25 +18,25 @@ contract Auth {
     // address of the the contract with vault parameters
     VaultParameters public vaultParameters;
 
-    constructor(address _parameters) {
+    constructor(address _parameters) public {
         vaultParameters = VaultParameters(_parameters);
     }
 
     // ensures tx's sender is a manager
     modifier onlyManager() {
-        require(vaultParameters.isManager(msg.sender), "USDP: AUTH_FAILED");
+        require(vaultParameters.isManager(msg.sender), "Unit Protocol: AUTH_FAILED");
         _;
     }
 
     // ensures tx's sender is able to modify the Vault
     modifier hasVaultAccess() {
-        require(vaultParameters.canModifyVault(msg.sender), "USDP: AUTH_FAILED");
+        require(vaultParameters.canModifyVault(msg.sender), "Unit Protocol: AUTH_FAILED");
         _;
     }
 
     // ensures tx's sender is the Vault
     modifier onlyVault() {
-        require(msg.sender == vaultParameters.vault(), "USDP: AUTH_FAILED");
+        require(msg.sender == vaultParameters.vault(), "Unit Protocol: AUTH_FAILED");
         _;
     }
 }
@@ -78,9 +78,9 @@ contract VaultParameters is Auth {
      * hashed with Keccak-256.
      * Therefore, the Vault address can be pre-computed and passed as an argument before deployment.
     **/
-    constructor(address payable _vault, address _foundation) Auth(address(this)) {
-        require(_vault != address(0), "USDP: ZERO_ADDRESS");
-        require(_foundation != address(0), "USDP: ZERO_ADDRESS");
+    constructor(address payable _vault, address _foundation) public Auth(address(this)) {
+        require(_vault != address(0), "Unit Protocol: ZERO_ADDRESS");
+        require(_foundation != address(0), "Unit Protocol: ZERO_ADDRESS");
 
         isManager[msg.sender] = true;
         vault = _vault;
@@ -103,7 +103,7 @@ contract VaultParameters is Auth {
      * @param newFoundation The new foundation address
      **/
     function setFoundation(address newFoundation) external onlyManager {
-        require(newFoundation != address(0), "USDP: ZERO_ADDRESS");
+        require(newFoundation != address(0), "Unit Protocol: ZERO_ADDRESS");
         foundation = newFoundation;
     }
 
@@ -158,7 +158,7 @@ contract VaultParameters is Auth {
      * @param newValue The liquidation fee percentage (0 decimals)
      **/
     function setLiquidationFee(address asset, uint newValue) public onlyManager {
-        require(newValue <= 100, "USDP: OUT OF RANGE");
+        require(newValue <= 100, "Unit Protocol: VALUE_OUT_OF_RANGE");
         liquidationFee[asset] = newValue;
     }
 

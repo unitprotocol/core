@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.4;
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "../oracles/ChainlinkedUniswapOracleMainAssetAbstract.sol";
@@ -37,9 +37,9 @@ contract ChainlinkedUniswapOracleMainAsset_Mock is ChainlinkedUniswapOracleMainA
     )
         public
     {
-        require(address(uniFactory) != address(0), "USDP: ZERO_ADDRESS");
-        require(weth != address(0), "USDP: ZERO_ADDRESS");
-        require(address(chainlinkAggregator) != address(0), "USDP: ZERO_ADDRESS");
+        require(address(uniFactory) != address(0), "Unit Protocol: ZERO_ADDRESS");
+        require(weth != address(0), "Unit Protocol: ZERO_ADDRESS");
+        require(address(chainlinkAggregator) != address(0), "Unit Protocol: ZERO_ADDRESS");
 
         uniswapFactory = uniFactory;
         WETH = weth;
@@ -54,7 +54,7 @@ contract ChainlinkedUniswapOracleMainAsset_Mock is ChainlinkedUniswapOracleMainA
         }
 
         address uniswapPair = uniswapFactory.getPair(asset, WETH);
-        require(uniswapPair != address(0), "USDP: UNISWAP_PAIR_DOES_NOT_EXIST");
+        require(uniswapPair != address(0), "Unit Protocol: UNISWAP_PAIR_DOES_NOT_EXIST");
 
         proofData;
 
@@ -62,7 +62,7 @@ contract ChainlinkedUniswapOracleMainAsset_Mock is ChainlinkedUniswapOracleMainA
         uint tokenReserve = ERC20Like(asset).balanceOf(uniswapPair);
 
         // revert if there is no liquidity
-        require(tokenReserve != 0, "USDP: UNISWAP_EMPTY_POOL");
+        require(tokenReserve != 0, "Unit Protocol: UNISWAP_EMPTY_POOL");
 
         // WETH reserve of {Token}/WETH pool
         uint wethReserve = ERC20Like(WETH).balanceOf(uniswapPair);
@@ -77,7 +77,7 @@ contract ChainlinkedUniswapOracleMainAsset_Mock is ChainlinkedUniswapOracleMainA
      * returns Price of given amount of Ether in USD (0 decimals)
      **/
     function ethToUsd(uint ethAmount) public override view returns (uint) {
-        require(ethUsdChainlinkAggregator.latestTimestamp() > now - 6 hours, "USDP: OUTDATED_CHAINLINK_PRICE");
+        require(ethUsdChainlinkAggregator.latestTimestamp() > block.timestamp - 6 hours, "Unit Protocol: OUTDATED_CHAINLINK_PRICE");
         uint ethUsdPrice = uint(ethUsdChainlinkAggregator.latestAnswer());
         return ethAmount.mul(ethUsdPrice).div(ETH_USD_DENOMINATOR);
     }
