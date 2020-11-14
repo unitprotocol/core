@@ -18,7 +18,7 @@ import "../helpers/ReentrancyGuard.sol";
 contract VaultManagerStandard is ReentrancyGuard {
     using SafeMath for uint;
 
-    Vault public vault;
+    Vault public immutable vault;
 
     /**
      * @dev Trigger when params joins are happened

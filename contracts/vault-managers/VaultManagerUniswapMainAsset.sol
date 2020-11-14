@@ -20,11 +20,11 @@ import "./VaultManagerParameters.sol";
 contract VaultManagerUniswapMainAsset is ReentrancyGuard {
     using SafeMath for uint;
 
-    Vault public vault;
-    VaultManagerParameters public vaultManagerParameters;
-    ChainlinkedUniswapOracleMainAssetAbstract public uniswapOracleMainAsset;
-    uint public constant ORACLE_TYPE = 1;
-    uint public constant Q112 = 2 ** 112;
+    Vault public immutable vault;
+    VaultManagerParameters public immutable vaultManagerParameters;
+    ChainlinkedUniswapOracleMainAssetAbstract public immutable uniswapOracleMainAsset;
+    uint public immutable ORACLE_TYPE = 1;
+    uint public immutable Q112 = 2 ** 112;
 
     /**
      * @dev Trigger when joins are happened
@@ -49,7 +49,7 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
      **/
     constructor(address _vaultManagerParameters, address _uniswapOracleMainAsset) public {
         vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
-        vault = Vault(vaultManagerParameters.vaultParameters().vault());
+        vault = Vault(VaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
         uniswapOracleMainAsset = ChainlinkedUniswapOracleMainAssetAbstract(_uniswapOracleMainAsset);
     }
 

@@ -20,10 +20,10 @@ import "./VaultManagerParameters.sol";
 contract VaultManagerUniswapPoolToken is ReentrancyGuard {
     using SafeMath for uint;
 
-    Vault public vault;
-    VaultManagerParameters public vaultManagerParameters;
-    ChainlinkedUniswapOraclePoolTokenAbstract public uniswapOraclePoolToken;
-    uint public constant ORACLE_TYPE = 2;
+    Vault public immutable vault;
+    VaultManagerParameters public immutable vaultManagerParameters;
+    ChainlinkedUniswapOraclePoolTokenAbstract public immutable uniswapOraclePoolToken;
+    uint public immutable ORACLE_TYPE = 2;
 
     /**
      * @dev Trigger when joins are happened
@@ -48,7 +48,7 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
      **/
     constructor(address payable _vaultManagerParameters, address _uniswapOraclePoolToken) public {
         vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
-        vault = Vault(vaultManagerParameters.vaultParameters().vault());
+        vault = Vault(VaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
         uniswapOraclePoolToken = ChainlinkedUniswapOraclePoolTokenAbstract(_uniswapOraclePoolToken);
     }
 

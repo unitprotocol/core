@@ -9,6 +9,7 @@ pragma experimental ABIEncoderV2;
 import "../Vault.sol";
 import "../oracles/UniswapOracleAbstract.sol";
 import "../vault-managers/VaultManagerParameters.sol";
+import "../helpers/ReentrancyGuard.sol";
 
 
 /**
@@ -16,18 +17,16 @@ import "../vault-managers/VaultManagerParameters.sol";
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Manages liquidation auction of position collateral
  **/
-contract LiquidationAuction01 {
+contract LiquidationAuction01 is ReentrancyGuard {
     using SafeMath for uint;
 
-    uint public constant DENOMINATOR_1E2 = 1e2;
+    uint public immutable DENOMINATOR_1E2 = 1e2;
 
     // vault manager parameters contract
-    VaultManagerParameters public vaultManagerParameters;
-
-    uint public oracleType;
+    VaultManagerParameters public immutable vaultManagerParameters;
 
     // Vault contract
-    Vault public vault;
+    Vault public immutable vault;
 
     /**
      * @dev Trigger when liquidations are happened
@@ -39,7 +38,7 @@ contract LiquidationAuction01 {
      **/
     constructor(address _vaultManagerParameters) public {
         vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
-        vault = Vault(vaultManagerParameters.vaultParameters().vault());
+        vault = Vault(VaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
     }
 
     /**
@@ -47,7 +46,7 @@ contract LiquidationAuction01 {
      * @param asset The address of the main collateral token of a position
      * @param user The owner of a position
      **/
-    function buyout(address asset, address user) public {
+    function buyout(address asset, address user) public nonReentrant {
         uint startingPrice = vault.liquidationPrice(asset, user);
         uint blocksPast = block.number.sub(vault.liquidationBlock(asset, user));
         uint devaluationPeriod = vaultManagerParameters.devaluationPeriod(asset);

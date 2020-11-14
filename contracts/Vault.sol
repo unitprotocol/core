@@ -35,17 +35,17 @@ contract Vault is Auth {
     using SafeMath for uint;
 
     // COL token address
-    address public col;
+    address public immutable col;
 
     // WETH token address
-    address payable public weth;
+    address payable public immutable weth;
 
-    uint public constant DENOMINATOR_1E5 = 1e5;
+    uint public immutable DENOMINATOR_1E5 = 1e5;
 
-    uint public constant DENOMINATOR_1E2 = 1e2;
+    uint public immutable DENOMINATOR_1E2 = 1e2;
 
     // USDP token address
-    address public usdp;
+    address public immutable usdp;
 
     // collaterals whitelist
     mapping(address => mapping(address => uint)) public collaterals;

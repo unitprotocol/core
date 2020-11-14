@@ -9,6 +9,7 @@ pragma experimental ABIEncoderV2;
 import "../Vault.sol";
 import "../oracles/UniswapOracleAbstract.sol";
 import "../vault-managers/VaultManagerParameters.sol";
+import "../helpers/ReentrancyGuard.sol";
 
 
 /**
@@ -19,17 +20,17 @@ import "../vault-managers/VaultManagerParameters.sol";
 abstract contract LiquidationTriggerUniswapAbstract {
     using SafeMath for uint;
 
-    uint public constant Q112 = 2**112;
-    uint public constant DENOMINATOR_1E5 = 1e5;
-    uint public constant DENOMINATOR_1E2 = 1e2;
+    uint public immutable Q112 = 2**112;
+    uint public immutable DENOMINATOR_1E5 = 1e5;
+    uint public immutable DENOMINATOR_1E2 = 1e2;
 
     // vault manager parameters contract
-    VaultManagerParameters public vaultManagerParameters;
+    VaultManagerParameters public immutable vaultManagerParameters;
 
-    uint public oracleType;
+    uint public immutable oracleType;
 
     // Vault contract
-    Vault public vault;
+    Vault public immutable vault;
 
     /**
      * @dev Trigger when liquidations are initiated
@@ -42,7 +43,7 @@ abstract contract LiquidationTriggerUniswapAbstract {
      **/
     constructor(address _vaultManagerParameters, uint _oracleType) internal {
         vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
-        vault = Vault(vaultManagerParameters.vaultParameters().vault());
+        vault = Vault(VaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
         oracleType = _oracleType;
     }
 
@@ -99,7 +100,7 @@ abstract contract LiquidationTriggerUniswapAbstract {
      * @param debt USDP borrowed
      * @return utilization ratio of a position
      **/
-    function UR(uint mainUsdValue, uint colUsdValue, uint debt) public pure returns (uint) {
+    function UR(uint mainUsdValue, uint colUsdValue, uint debt) public view returns (uint) {
         return debt.mul(100).mul(Q112).div(mainUsdValue.add(colUsdValue));
     }
 

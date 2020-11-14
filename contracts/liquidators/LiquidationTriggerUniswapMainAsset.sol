@@ -9,6 +9,7 @@ pragma experimental ABIEncoderV2;
 import "./LiquidationTriggerUniswapAbstract.sol";
 import "../helpers/ERC20Like.sol";
 import "../oracles/ChainlinkedUniswapOracleMainAssetAbstract.sol";
+import "../helpers/ReentrancyGuard.sol";
 
 
 /**
@@ -16,11 +17,11 @@ import "../oracles/ChainlinkedUniswapOracleMainAssetAbstract.sol";
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Manages liquidation process triggering of main asset-based positions
  **/
-contract LiquidationTriggerUniswapMainAsset is LiquidationTriggerUniswapAbstract {
+contract LiquidationTriggerUniswapMainAsset is LiquidationTriggerUniswapAbstract, ReentrancyGuard {
     using SafeMath for uint;
 
     // uniswap-based oracle contract
-    ChainlinkedUniswapOracleMainAssetAbstract public uniswapOracleMainAsset;
+    ChainlinkedUniswapOracleMainAssetAbstract public immutable uniswapOracleMainAsset;
 
     /**
      * @param _vaultManagerParameters The address of the contract with vault manager parameters
@@ -51,6 +52,7 @@ contract LiquidationTriggerUniswapMainAsset is LiquidationTriggerUniswapAbstract
     )
     public
     override
+    nonReentrant
     {
         // USD value of the main collateral
         uint mainUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(asset, vault.collaterals(asset, user), mainProof);
