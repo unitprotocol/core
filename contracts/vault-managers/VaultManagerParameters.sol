@@ -43,10 +43,10 @@ contract VaultManagerParameters is Auth {
      * @param initialCollateralRatioValue The initial collateralization ratio
      * @param liquidationRatioValue The liquidation ratio
      * @param liquidationDiscountValue The liquidation discount (3 decimals)
-     * @param devaluationPeriod The devaluation period in blocks
+     * @param devaluationPeriodValue The devaluation period in blocks
      * @param usdpLimit The USDP token issue limit
-     * @param minColP The min percentage (0 decimals)
-     * @param maxColP The max percentage (0 decimals)
+     * @param minColP The min percentage of COL value in position (0 decimals)
+     * @param maxColP The max percentage of COL value in position (0 decimals)
      **/
     function setCollateral(
         address asset,
@@ -55,7 +55,7 @@ contract VaultManagerParameters is Auth {
         uint initialCollateralRatioValue,
         uint liquidationRatioValue,
         uint liquidationDiscountValue,
-        uint devaluationPeriod,
+        uint devaluationPeriodValue,
         uint usdpLimit,
         uint[] calldata oracles,
         uint minColP,
@@ -64,7 +64,7 @@ contract VaultManagerParameters is Auth {
         vaultParameters.setCollateral(asset, stabilityFeeValue, liquidationFeeValue, usdpLimit, oracles);
         setInitialCollateralRatio(asset, initialCollateralRatioValue);
         setLiquidationRatio(asset, liquidationRatioValue);
-        setDevaluationPeriod(asset, devaluationPeriod);
+        setDevaluationPeriod(asset, devaluationPeriodValue);
         setLiquidationDiscount(asset, liquidationDiscountValue);
         setColPartRange(asset, minColP, maxColP);
     }
