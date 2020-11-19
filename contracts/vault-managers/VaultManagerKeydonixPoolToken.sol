@@ -7,22 +7,22 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
-import "../oracles/ChainlinkedUniswapOraclePoolTokenAbstract.sol";
+import "../oracles/ChainlinkedKeydonixOraclePoolTokenAbstract.sol";
 import "../helpers/Math.sol";
 import "../helpers/ReentrancyGuard.sol";
 import "./VaultManagerParameters.sol";
 
 
 /**
- * @title VaultManagerUniswapPoolToken
+ * @title VaultManagerKeydonixPoolToken
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
-contract VaultManagerUniswapPoolToken is ReentrancyGuard {
+contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
     using SafeMath for uint;
 
     Vault public immutable vault;
     VaultManagerParameters public immutable vaultManagerParameters;
-    ChainlinkedUniswapOraclePoolTokenAbstract public immutable uniswapOraclePoolToken;
+    ChainlinkedKeydonixOraclePoolTokenAbstract public immutable uniswapOraclePoolToken;
     uint public immutable ORACLE_TYPE = 2;
 
     /**
@@ -49,7 +49,7 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
     constructor(address payable _vaultManagerParameters, address _uniswapOraclePoolToken) public {
         vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
         vault = Vault(VaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
-        uniswapOraclePoolToken = ChainlinkedUniswapOraclePoolTokenAbstract(_uniswapOraclePoolToken);
+        uniswapOraclePoolToken = ChainlinkedKeydonixOraclePoolTokenAbstract(_uniswapOraclePoolToken);
     }
 
     /**
@@ -71,8 +71,8 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
-        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory colProof
+        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
+        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory colProof
     )
     public
     nonReentrant
@@ -112,8 +112,8 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
-        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory colProof
+        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
+        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory colProof
     )
     public
     spawned(asset, msg.sender)
@@ -143,8 +143,8 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
-        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory colProof
+        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
+        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory colProof
     )
     public
     spawned(asset, msg.sender)
@@ -190,7 +190,7 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
     function repayUsingCol(
         address asset,
         uint usdpAmount,
-        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory colPriceProof
+        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory colPriceProof
     )
     public
     spawned(asset, msg.sender)
@@ -200,7 +200,7 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         require(usdpAmount != 0, "Unit Protocol: USELESS_TX");
 
         // COL token price in USD
-        uint colUsdValue_q112 = uniswapOraclePoolToken.uniswapOracleMainAsset().assetToUsd(vault.col(), 1, colPriceProof);
+        uint colUsdValue_q112 = uniswapOraclePoolToken.keydonixOracleMainAsset().assetToUsd(vault.col(), 1, colPriceProof);
 
         uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
         uint feeInCol = fee.mul(uniswapOraclePoolToken.Q112()).div(colUsdValue_q112);
@@ -227,8 +227,8 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
-        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory colProof
+        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
+        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory colProof
     )
     public
     spawned(asset, msg.sender)
@@ -258,7 +258,7 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         uint mainUsdValue_q112 = uniswapOraclePoolToken.assetToUsd(asset, vault.collaterals(asset, msg.sender), underlyingProof);
 
         // COL token value of the position in USD
-        uint colUsdValue_q112 = uniswapOraclePoolToken.uniswapOracleMainAsset().assetToUsd(vault.col(), colDeposit, colProof);
+        uint colUsdValue_q112 = uniswapOraclePoolToken.keydonixOracleMainAsset().assetToUsd(vault.col(), colDeposit, colProof);
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
@@ -281,8 +281,8 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
-        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory colProof
+        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
+        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory colProof
     )
     internal
     {
@@ -305,8 +305,8 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
     function _ensureCollateralizationTroughProofs(
         address asset,
         address user,
-        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
-        ChainlinkedUniswapOraclePoolTokenAbstract.ProofDataStruct memory colProof
+        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof,
+        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory colProof
     )
     internal
     view
@@ -315,7 +315,7 @@ contract VaultManagerUniswapPoolToken is ReentrancyGuard {
         uint mainUsdValue_q112 = uniswapOraclePoolToken.assetToUsd(asset, vault.collaterals(asset, user), underlyingProof);
 
         // COL token value of the position in USD
-        uint colUsdValue_q112 = uniswapOraclePoolToken.uniswapOracleMainAsset().assetToUsd(vault.col(), vault.colToken(asset, user), colProof);
+        uint colUsdValue_q112 = uniswapOraclePoolToken.keydonixOracleMainAsset().assetToUsd(vault.col(), vault.colToken(asset, user), colProof);
 
         _ensureCollateralization(asset, user, mainUsdValue_q112, colUsdValue_q112);
     }

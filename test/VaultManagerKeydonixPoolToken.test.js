@@ -8,13 +8,13 @@ const utils = require('./helpers/utils');
 const increaseTime = require('./helpers/timeTravel');
 const time = require('./helpers/time');
 
-contract('VaultManagerUniswapPoolToken', function([
+contract('VaultManagerKeydonixPoolToken', function([
 	deployer,
 	foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
-		this.utils = utils(this);
+		this.utils = utils(this, 'keydonixPoolToken');
 		this.deployer = deployer;
 		this.foundation = foundation;
 		await this.utils.deploy();
@@ -28,7 +28,7 @@ contract('VaultManagerUniswapPoolToken', function([
 				const colAmount = new BN('4');
 				const usdpAmount = new BN('20');
 
-				const { logs } = await this.utils.spawn_Pool(this.poolToken, mainAmount, colAmount, usdpAmount);
+				const { logs } = await this.utils.spawn(this.poolToken, mainAmount, colAmount, usdpAmount);
 
 				expectEvent.inLogs(logs, 'Join', {
 					asset: this.poolToken.address,
@@ -55,7 +55,7 @@ contract('VaultManagerUniswapPoolToken', function([
 				const colAmount = new BN('4');
 				const usdpAmount = new BN('20');
 
-				await this.utils.spawn_Pool(this.poolToken, mainAmount, colAmount, usdpAmount);
+				await this.utils.spawn(this.poolToken, mainAmount, colAmount, usdpAmount);
 
 				const { logs } = await this.utils.repayAllAndWithdraw(this.poolToken, deployer);
 
@@ -80,7 +80,7 @@ contract('VaultManagerUniswapPoolToken', function([
 				const colAmount = new BN('5');
 				const usdpAmount = new BN('20');
 
-				await this.utils.spawn_Pool(this.poolToken, mainAmount, colAmount, usdpAmount);
+				await this.utils.spawn(this.poolToken, mainAmount, colAmount, usdpAmount);
 
 				const timeStart = await time.latest();
 
@@ -107,7 +107,7 @@ contract('VaultManagerUniswapPoolToken', function([
 				);
 
 				// repay debt partially using COL
-				await this.utils.repayUsingCol_Pool(this.poolToken, usdpAmount.div(new BN(4)));
+				await this.utils.repayUsingCol(this.poolToken, usdpAmount.div(new BN(4)));
 				accumulatedDebtAfterRepayment = await this.vault.getTotalDebt(this.poolToken.address, deployer);
 				expect(accumulatedDebtAfterRepayment.div(new BN(10 ** 12))).to.be.bignumber.equal(
 					expectedDebt.sub(expectedDebt.mul(new BN(3)).div(new BN(4))).div(new BN(10 ** 12))
@@ -115,7 +115,7 @@ contract('VaultManagerUniswapPoolToken', function([
 
 				const colBalanceBeforeRepayment = await this.col.balanceOf(deployer);
 				// withdraw&repay debt partially using COL
-				await this.utils.withdrawAndRepayCol_Pool(this.poolToken, new BN('50'), new BN('0'), usdpAmount.div(new BN(8)));
+				await this.utils.withdrawAndRepayCol(this.poolToken, new BN('50'), new BN('0'), usdpAmount.div(new BN(8)));
 
 				expectedDebt = usdpAmount.mul(new BN('3000')).mul((await time.latest()).sub(timeStart)).div(new BN(365*24*60*60)).div(new BN('100000')).add(usdpAmount);
 				accumulatedDebtAfterRepayment = await this.vault.getTotalDebt(this.poolToken.address, deployer);
@@ -141,13 +141,13 @@ contract('VaultManagerUniswapPoolToken', function([
 				const colAmount = new BN('5');
 				const usdpAmount = new BN('20');
 
-				await this.utils.spawn_Pool(this.poolToken, mainAmount, colAmount, usdpAmount);
+				await this.utils.spawn(this.poolToken, mainAmount, colAmount, usdpAmount);
 
 				const mainToWithdraw = new BN('50');
 				const colToWithdraw = new BN('2');
 				const usdpToRepay = new BN('10');
 
-				const { logs } = await this.utils.withdrawAndRepay_Pool(this.poolToken, mainToWithdraw, colToWithdraw, usdpToRepay);
+				const { logs } = await this.utils.withdrawAndRepay(this.poolToken, mainToWithdraw, colToWithdraw, usdpToRepay);
 
 				expectEvent.inLogs(logs, 'Exit', {
 					asset: this.poolToken.address,
@@ -172,9 +172,9 @@ contract('VaultManagerUniswapPoolToken', function([
 			let colAmount = new BN('5');
 			let usdpAmount = new BN('20');
 
-			await this.utils.spawn_Pool(this.poolToken, mainAmount, colAmount, usdpAmount);
+			await this.utils.spawn(this.poolToken, mainAmount, colAmount, usdpAmount);
 
-			const { logs } = await this.utils.join_Pool(this.poolToken, mainAmount, colAmount, usdpAmount);
+			const { logs } = await this.utils.join(this.poolToken, mainAmount, colAmount, usdpAmount);
 
 			expectEvent.inLogs(logs, 'Join', {
 				asset: this.poolToken.address,
@@ -198,11 +198,11 @@ contract('VaultManagerUniswapPoolToken', function([
 			let colAmount = new BN('5');
 			let usdpAmount = new BN('20');
 
-			await this.utils.spawn_Pool(this.poolToken, mainAmount.mul(new BN(2)), colAmount.mul(new BN(2)), usdpAmount.mul(new BN(2)));
+			await this.utils.spawn(this.poolToken, mainAmount.mul(new BN(2)), colAmount.mul(new BN(2)), usdpAmount.mul(new BN(2)));
 
 			const usdpSupplyBefore = await this.usdp.totalSupply();
 
-			await this.utils.exit_Pool(this.poolToken, mainAmount, colAmount, usdpAmount);
+			await this.utils.exit(this.poolToken, mainAmount, colAmount, usdpAmount);
 
 			const usdpSupplyAfter = await this.usdp.totalSupply();
 
@@ -224,9 +224,9 @@ contract('VaultManagerUniswapPoolToken', function([
 				const colAmount = new BN('5');
 				const usdpAmount = new BN('20');
 
-				await this.utils.spawn_Pool(this.poolToken, mainAmount, colAmount, usdpAmount);
+				await this.utils.spawn(this.poolToken, mainAmount, colAmount, usdpAmount);
 				await this.utils.approveCollaterals(this.poolToken, mainAmount, colAmount);
-				const tx = this.vaultManagerUniswapPoolToken.spawn(
+				const tx = this.vaultManagerKeydonixPoolToken.spawn(
 					this.poolToken.address,
 					mainAmount, // main
 					colAmount, // COL
@@ -243,7 +243,7 @@ contract('VaultManagerUniswapPoolToken', function([
 				const usdpAmount = new BN('0');
 
 				await this.utils.approveCollaterals(this.poolToken, mainAmount, colAmount);
-				const tx = this.vaultManagerUniswapPoolToken.spawn(
+				const tx = this.vaultManagerKeydonixPoolToken.spawn(
 					this.poolToken.address,
 					mainAmount, // main
 					colAmount, // COL
@@ -261,7 +261,7 @@ contract('VaultManagerUniswapPoolToken', function([
 					const usdpAmount = new BN('20');
 
 					await this.utils.approveCollaterals(this.poolToken, mainAmount, colAmount);
-					const tx = this.vaultManagerUniswapPoolToken.spawn(
+					const tx = this.vaultManagerKeydonixPoolToken.spawn(
 						this.poolToken.address,
 						mainAmount, // main
 						colAmount, // COL
@@ -277,7 +277,7 @@ contract('VaultManagerUniswapPoolToken', function([
 					const usdpAmount = new BN('20');
 
 					await this.utils.approveCollaterals(this.poolToken, mainAmount, colAmount);
-					const tx = this.vaultManagerUniswapPoolToken.spawn(
+					const tx = this.vaultManagerKeydonixPoolToken.spawn(
 						this.poolToken.address,
 						mainAmount, // main
 						colAmount, // COL
@@ -293,7 +293,7 @@ contract('VaultManagerUniswapPoolToken', function([
 					const colAmount = new BN('5');
 					const usdpAmount = new BN('20');
 
-					const tx = this.vaultManagerUniswapPoolToken.spawn(
+					const tx = this.vaultManagerKeydonixPoolToken.spawn(
 						this.poolToken.address,
 						mainAmount, // main
 						colAmount, // COL
@@ -311,7 +311,7 @@ contract('VaultManagerUniswapPoolToken', function([
 
 					await this.poolToken.approve(this.vault.address, mainAmount);
 
-					const tx = this.vaultManagerUniswapPoolToken.spawn(
+					const tx = this.vaultManagerKeydonixPoolToken.spawn(
 						this.poolToken.address,
 						mainAmount, // main
 						colAmount, // COL
@@ -330,7 +330,7 @@ contract('VaultManagerUniswapPoolToken', function([
 				const colAmount = new BN('5');
 				const usdpAmount = new BN('20');
 
-				const tx = this.vaultManagerUniswapPoolToken.depositAndBorrow(
+				const tx = this.vaultManagerKeydonixPoolToken.depositAndBorrow(
 					this.poolToken.address,
 					mainAmount,
 					colAmount,
@@ -348,7 +348,7 @@ contract('VaultManagerUniswapPoolToken', function([
 				const colAmount = new BN('5');
 				const usdpAmount = new BN('20');
 
-				await this.utils.spawn_Pool(this.poolToken, mainAmount, colAmount, usdpAmount);
+				await this.utils.spawn(this.poolToken, mainAmount, colAmount, usdpAmount);
 
 				const tx = this.utils.exit(this.poolToken, 0, 0, 0);
 				await this.utils.expectRevert(tx, "Unit Protocol: USELESS_TX");
@@ -359,7 +359,7 @@ contract('VaultManagerUniswapPoolToken', function([
 				const colAmount = new BN('5');
 				const usdpAmount = new BN('20');
 
-				await this.utils.spawn_Pool(this.poolToken, mainAmount, colAmount, usdpAmount);
+				await this.utils.spawn(this.poolToken, mainAmount, colAmount, usdpAmount);
 
 				const tx = this.utils.exit(this.poolToken, mainAmount, colAmount, usdpAmount.add(new BN(1)));
 				await expectRevert.unspecified(tx);
@@ -370,9 +370,9 @@ contract('VaultManagerUniswapPoolToken', function([
 				const colAmount = new BN('5');
 				const usdpAmount = new BN('20');
 
-				await this.utils.spawn_Pool(this.poolToken, mainAmount, colAmount, usdpAmount);
+				await this.utils.spawn(this.poolToken, mainAmount, colAmount, usdpAmount);
 
-				const tx = this.utils.exit_Pool(this.poolToken, mainAmount, 0, 0);
+				const tx = this.utils.exit(this.poolToken, mainAmount, 0, 0);
 				await this.utils.expectRevert(tx, "Unit Protocol: UNDERCOLLATERALIZED");
 			})
 		})

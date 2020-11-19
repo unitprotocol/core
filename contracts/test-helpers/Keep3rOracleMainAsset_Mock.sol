@@ -6,29 +6,26 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "../oracles/ChainlinkedUniswapOracleMainAssetAbstract.sol";
 import "../helpers/ERC20Like.sol";
 import "../helpers/SafeMath.sol";
 import "../helpers/AggregatorInterface.sol";
 import "../helpers/IUniswapV2Factory.sol";
+import "../oracles/OracleSimple.sol";
 
 /**
- * @title ChainlinkedUniswapOracleMainAsset_Mock
+ * @title Keep3rOracleMainAsset_Mock
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Calculates the USD price of desired tokens
  **/
-contract ChainlinkedUniswapOracleMainAsset_Mock is ChainlinkedUniswapOracleMainAssetAbstract {
+contract Keep3rOracleMainAsset_Mock is ChainlinkedOracleSimple {
     using SafeMath for uint;
 
-    uint8 public MIN_BLOCKS_BACK = uint8(100);
+    uint public immutable Q112 = 2 ** 112;
+    uint public immutable ETH_USD_DENOMINATOR = 100000000;
 
-    uint8 public constant MAX_BLOCKS_BACK = uint8(255);
+    AggregatorInterface public immutable ethUsdChainlinkAggregator;
 
-    uint public constant ETH_USD_DENOMINATOR = 100000000;
-
-    AggregatorInterface public ethUsdChainlinkAggregator;
-
-    IUniswapV2Factory public uniswapFactory;
+    IUniswapV2Factory public immutable uniswapFactory;
 
     constructor(
         IUniswapV2Factory uniFactory,
@@ -47,7 +44,7 @@ contract ChainlinkedUniswapOracleMainAsset_Mock is ChainlinkedUniswapOracleMainA
     }
 
     // override with mock; only for tests
-    function assetToUsd(address asset, uint amount, ProofDataStruct memory proofData) public override view returns (uint) {
+    function assetToUsd(address asset, uint amount) public override view returns (uint) {
 
         if (asset == WETH) {
             return ethToUsd(amount);
@@ -55,8 +52,6 @@ contract ChainlinkedUniswapOracleMainAsset_Mock is ChainlinkedUniswapOracleMainA
 
         address uniswapPair = uniswapFactory.getPair(asset, WETH);
         require(uniswapPair != address(0), "Unit Protocol: UNISWAP_PAIR_DOES_NOT_EXIST");
-
-        proofData;
 
         // token reserve of {Token}/WETH pool
         uint tokenReserve = ERC20Like(asset).balanceOf(uniswapPair);

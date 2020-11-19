@@ -7,7 +7,7 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
-import "../oracles/UniswapOracleAbstract.sol";
+import "../oracles/KeydonixOracleAbstract.sol";
 import "../vault-managers/VaultManagerParameters.sol";
 import "../helpers/ReentrancyGuard.sol";
 

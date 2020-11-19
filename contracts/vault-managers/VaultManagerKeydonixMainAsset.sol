@@ -7,22 +7,22 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
-import "../oracles/ChainlinkedUniswapOracleMainAssetAbstract.sol";
+import "../oracles/ChainlinkedKeydonixOracleMainAssetAbstract.sol";
 import "../helpers/Math.sol";
 import "../helpers/ReentrancyGuard.sol";
 import "./VaultManagerParameters.sol";
 
 
 /**
- * @title VaultManagerUniswapMainAsset
+ * @title VaultManagerKeydonixMainAsset
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
-contract VaultManagerUniswapMainAsset is ReentrancyGuard {
+contract VaultManagerKeydonixMainAsset is ReentrancyGuard {
     using SafeMath for uint;
 
     Vault public immutable vault;
     VaultManagerParameters public immutable vaultManagerParameters;
-    ChainlinkedUniswapOracleMainAssetAbstract public immutable uniswapOracleMainAsset;
+    ChainlinkedKeydonixOracleMainAssetAbstract public immutable uniswapOracleMainAsset;
     uint public immutable ORACLE_TYPE = 1;
     uint public immutable Q112 = 2 ** 112;
 
@@ -50,7 +50,7 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
     constructor(address _vaultManagerParameters, address _uniswapOracleMainAsset) public {
         vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
         vault = Vault(VaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
-        uniswapOracleMainAsset = ChainlinkedUniswapOracleMainAssetAbstract(_uniswapOracleMainAsset);
+        uniswapOracleMainAsset = ChainlinkedKeydonixOracleMainAssetAbstract(_uniswapOracleMainAsset);
     }
 
     /**
@@ -70,8 +70,8 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
     public
     nonReentrant
@@ -106,7 +106,7 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
     function spawn_Eth(
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
     public
     payable
@@ -146,8 +146,8 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
     public
     spawned(asset, msg.sender)
@@ -173,7 +173,7 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
     function depositAndBorrow_Eth(
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
     public
     payable
@@ -203,8 +203,8 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
     public
     spawned(asset, msg.sender)
@@ -252,7 +252,7 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
         uint ethAmount,
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
     public
     spawned(vault.weth(), msg.sender)
@@ -298,7 +298,7 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
     function repayUsingCol(
         address asset,
         uint usdpAmount,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
     public
     spawned(asset, msg.sender)
@@ -335,8 +335,8 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
     public
     spawned(asset, msg.sender)
@@ -397,8 +397,8 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
         uint ethAmount,
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
     public
     spawned(vault.weth(), msg.sender)
@@ -452,8 +452,8 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
     internal
     {
@@ -476,7 +476,7 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
         address user,
         uint colAmount,
         uint usdpAmount,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
     internal
     {
@@ -497,8 +497,8 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
     function _ensureCollateralizationTroughProofs(
         address asset,
         address user,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
     internal
     view
@@ -514,7 +514,7 @@ contract VaultManagerUniswapMainAsset is ReentrancyGuard {
 
     function _ensureCollateralizationTroughProofs_Eth(
         address user,
-        ChainlinkedUniswapOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
     internal
     view

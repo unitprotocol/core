@@ -8,10 +8,10 @@ pragma experimental ABIEncoderV2;
 
 
 /**
- * @title UniswapOracleAbstract
+ * @title KeydonixOracleAbstract
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
-abstract contract UniswapOracleAbstract {
+abstract contract KeydonixOracleAbstract {
 
     uint public immutable Q112 = 2 ** 112;
 

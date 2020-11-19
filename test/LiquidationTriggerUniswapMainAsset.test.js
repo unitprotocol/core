@@ -7,14 +7,14 @@ const { expect } = require('chai');
 const { nextBlockNumber } = require('./helpers/time');
 const utils = require('./helpers/utils');
 
-contract('LiquidationTriggerUniswapMainAsset', function([
+contract('LiquidationTriggerKeydonixMainAsset', function([
 	positionOwner,
 	liquidator,
 	foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
-		this.utils = utils(this);
+		this.utils = utils(this, 'keydonixMainAsset');
 		this.deployer = positionOwner;
 		this.foundation = foundation;
 		await this.utils.deploy();

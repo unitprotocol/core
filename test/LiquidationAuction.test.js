@@ -14,7 +14,7 @@ contract('LiquidationAuction', function([
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
-		this.utils = utils(this);
+		this.utils = utils(this, 'keep3rMainAsset');
 		this.deployer = positionOwner;
 		this.foundation = foundation;
 		await this.utils.deploy();
@@ -32,15 +32,10 @@ contract('LiquidationAuction', function([
 		await this.col.transfer(liquidator, colAmount.mul(new BN('2')));
 
 		const initialLiquidatorUsdpBalance = usdpAmount.mul(new BN('2'));
-		await this.utils.spawn(this.mainCollateral, mainAmount.mul(new BN('2')), colAmount.mul(new BN('2')), initialLiquidatorUsdpBalance, liquidator);
+		await this.utils.spawn(this.mainCollateral, mainAmount.mul(new BN('2')), colAmount.mul(new BN('2')), initialLiquidatorUsdpBalance, { from: liquidator });
 
 		const mainSwapAmount = new BN(3).mul(new BN(10).pow(new BN(13)))
 		await this.mainCollateral.approve(this.uniswapRouter.address, mainSwapAmount);
-
-		const wethReceive = mainSwapAmount.mul(new BN(997)).mul(new BN(1e12)).div(new BN(125e12).mul(new BN(1000)).add(mainSwapAmount.mul(new BN(997))));
-		const wethReserve = new BN(1e12).sub(wethReceive);
-		const mainReserve = new BN(125e12).add(mainSwapAmount);
-		const mainUsdValueAfterSwap = wethReserve.mul(new BN(250)).mul(mainAmount).div(mainReserve);
 
 		await this.uniswapRouter.swapExactTokensForTokens(
 			mainSwapAmount,

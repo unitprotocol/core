@@ -7,17 +7,17 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
-import "../oracles/UniswapOracleAbstract.sol";
+import "../oracles/KeydonixOracleAbstract.sol";
 import "../vault-managers/VaultManagerParameters.sol";
 import "../helpers/ReentrancyGuard.sol";
 
 
 /**
- * @title LiquidationTriggerUniswapAbstract
+ * @title LiquidationTriggerKeydonixAbstract
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Manages triggering of liquidation process
  **/
-abstract contract LiquidationTriggerUniswapAbstract {
+abstract contract LiquidationTriggerKeydonixAbstract {
     using SafeMath for uint;
 
     uint public immutable Q112 = 2**112;
@@ -57,8 +57,8 @@ abstract contract LiquidationTriggerUniswapAbstract {
     function triggerLiquidation(
         address asset,
         address user,
-        UniswapOracleAbstract.ProofDataStruct calldata assetProof,
-        UniswapOracleAbstract.ProofDataStruct calldata colProof
+        KeydonixOracleAbstract.ProofDataStruct calldata assetProof,
+        KeydonixOracleAbstract.ProofDataStruct calldata colProof
     )
     external
     virtual

@@ -11,7 +11,7 @@ contract('LiquidationTriggerUniswapPoolToken', function([
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
-		this.utils = utils(this);
+		this.utils = utils(this, 'keydonixPoolToken');
 		this.deployer = positionOwner;
 		this.foundation = foundation;
 		await this.utils.deploy();
@@ -30,7 +30,7 @@ contract('LiquidationTriggerUniswapPoolToken', function([
 			 * collateral value = 44.72 * 2 + 5 = 139.16$
 			 * utilization percent = 78 / 139.16 = ~56%
 			 */
-			await this.utils.spawn_Pool(this.poolToken, mainAmount, colAmount, usdpAmount);
+			await this.utils.spawn(this.poolToken, mainAmount, colAmount, usdpAmount);
 
 			// fill liquidator usdp balance
 			await this.usdp.transfer(liquidator, usdpAmount);
@@ -68,7 +68,7 @@ contract('LiquidationTriggerUniswapPoolToken', function([
 			const expectedLiquidationPrice = totalCollateralUsdValue.sub(totalCollateralUsdValue.mul(initialDiscount).div(new BN(1e5)));
 			const expectedLiquidationBlock = await nextBlockNumber();
 
-			const { logs } = await this.utils.triggerLiquidation_Pool(this.poolToken, positionOwner, liquidator);
+			const { logs } = await this.utils.triggerLiquidation(this.poolToken, positionOwner, liquidator);
 			expectEvent.inLogs(logs, 'LiquidationTriggered', {
 				token: this.poolToken.address,
 				user: positionOwner,
