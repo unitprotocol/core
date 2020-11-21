@@ -103,8 +103,9 @@ module.exports = function(context, mode) {
 			},
 		},
 		keydonixPoolToken: {
-			spawn: async (main, mainAmount, colAmount, usdpAmount) => {
-				await context.approveCollaterals(main, mainAmount, colAmount);
+			spawn: async (main, mainAmount, colAmount, usdpAmount, { from = context.deployer, noApprove, noColApprove } = {}) => {
+				if (!noApprove)
+					await context.approveCollaterals(main, mainAmount, noColApprove ? '0' : colAmount, from);
 				return context.vaultManagerKeydonixPoolToken.spawn(
 					main.address,
 					mainAmount, // main
@@ -162,6 +163,8 @@ module.exports = function(context, mode) {
 					mainAmount,
 					colAmount,
 					usdpAmount,
+					['0x', '0x', '0x', '0x'], // main price proof
+					['0x', '0x', '0x', '0x'], // COL price proof
 				);
 			},
 			repayUsingCol: async (main, usdpAmount) => {
@@ -245,75 +248,63 @@ module.exports = function(context, mode) {
 			},
 		},
 		keep3rPoolToken: {
-			spawn: async (main, mainAmount, colAmount, usdpAmount) => {
-				await context.approveCollaterals(main, mainAmount, colAmount);
-				return context.vaultManagerKeydonixPoolToken.spawn(
+			spawn: async (main, mainAmount, colAmount, usdpAmount, { from = context.deployer, noApprove, noColApprove } = {}) => {
+				if (!noApprove)
+					await context.approveCollaterals(main, mainAmount, noColApprove ? '0' : colAmount, from);
+				return context.vaultManagerKeep3rPoolToken.spawn(
 					main.address,
 					mainAmount, // main
 					colAmount, // COL
 					usdpAmount,	// USDP
-					['0x', '0x', '0x', '0x'], // underlying token price proof
-					['0x', '0x', '0x', '0x'], // COL price proof
 				);
 			},
 			join: async (main, mainAmount, colAmount, usdpAmount) => {
 				await main.approve(context.vault.address, mainAmount);
 				await context.col.approve(context.vault.address, colAmount);
-				return context.vaultManagerKeydonixPoolToken.depositAndBorrow(
+				return context.vaultManagerKeep3rPoolToken.depositAndBorrow(
 					main.address,
 					mainAmount, // main
 					colAmount, // COL
 					usdpAmount,	// USDP
-					['0x', '0x', '0x', '0x'], // underlying token price proof
-					['0x', '0x', '0x', '0x'], // COL price proof
 				);
 			},
 			exit: async (main, mainAmount, colAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixPoolToken.withdrawAndRepay(
+				return context.vaultManagerKeep3rPoolToken.withdrawAndRepay(
 					main.address,
 					mainAmount, // main
 					colAmount, // COL
 					usdpAmount,	// USDP
-					['0x', '0x', '0x', '0x'], // main price proof
-					['0x', '0x', '0x', '0x'], // COL price proof
 				);
 			},
 			triggerLiquidation: (main, user, from = context.deployer) => {
-				return context.liquidatorKeydonixPoolToken.triggerLiquidation(
+				return context.liquidatorKeep3rPoolToken.triggerLiquidation(
 					main.address,
 					user,
-					['0x', '0x', '0x', '0x'], // main price proof
-					['0x', '0x', '0x', '0x'], // COL price proof
 					{ from }
 				);
 			},
 			withdrawAndRepay: async (main, mainAmount, colAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixPoolToken.withdrawAndRepay(
+				return context.vaultManagerKeep3rPoolToken.withdrawAndRepay(
 					main.address,
 					mainAmount,
 					colAmount,
 					usdpAmount,
-					['0x', '0x', '0x', '0x'], // main price proof
-					['0x', '0x', '0x', '0x'], // COL price proof
 				);
 			},
 			withdrawAndRepayCol: async (main, mainAmount, colAmount, usdpAmount) => {
 				await context.col.approve(context.vault.address, MAX_UINT);
-				return context.vaultManagerKeydonixPoolToken.withdrawAndRepayUsingCol(
+				return context.vaultManagerKeep3rPoolToken.withdrawAndRepayUsingCol(
 					main.address,
 					mainAmount,
 					colAmount,
 					usdpAmount,
-					['0x', '0x', '0x', '0x'], // main price proof
-					['0x', '0x', '0x', '0x'], // COL price proof
 				);
 			},
 			repayUsingCol: async (main, usdpAmount) => {
 				await context.col.approve(context.vault.address, MAX_UINT);
-				return context.vaultManagerKeydonixPoolToken.repayUsingCol(
+				return context.vaultManagerKeep3rPoolToken.repayUsingCol(
 					main.address,
 					usdpAmount,
-					['0x', '0x', '0x', '0x'], // COL price proof
 				);
 			},
 			spawnEth: spawnEthMainAsset,
