@@ -22,9 +22,9 @@ contract KeydonixOracleMainAsset_Mock is ChainlinkedKeydonixOracleMainAssetAbstr
 
     uint public constant ETH_USD_DENOMINATOR = 100000000;
 
-    AggregatorInterface public ethUsdChainlinkAggregator;
+    AggregatorInterface public immutable ethUsdChainlinkAggregator;
 
-    IUniswapV2Factory public uniswapFactory;
+    IUniswapV2Factory public immutable uniswapFactory;
 
     constructor(
         IUniswapV2Factory uniFactory,
@@ -52,20 +52,27 @@ contract KeydonixOracleMainAsset_Mock is ChainlinkedKeydonixOracleMainAssetAbstr
         address uniswapPair = uniswapFactory.getPair(asset, WETH);
         require(uniswapPair != address(0), "Unit Protocol: UNISWAP_PAIR_DOES_NOT_EXIST");
 
-        proofData;
-
         // token reserve of {Token}/WETH pool
         uint tokenReserve = ERC20Like(asset).balanceOf(uniswapPair);
 
         // revert if there is no liquidity
         require(tokenReserve != 0, "Unit Protocol: UNISWAP_EMPTY_POOL");
 
+        return ethToUsd(assetToEth(asset, amount, proofData)).div(tokenReserve);
+    }
+
+    // override with mock; only for tests
+    function assetToEth(address asset, uint amount, ProofDataStruct memory proofData) public override view returns (uint) {
+
+        address uniswapPair = uniswapFactory.getPair(asset, WETH);
+        require(uniswapPair != address(0), "Unit Protocol: UNISWAP_PAIR_DOES_NOT_EXIST");
+
+        proofData;
+
         // WETH reserve of {Token}/WETH pool
         uint wethReserve = ERC20Like(WETH).balanceOf(uniswapPair);
 
-        uint wethResult = amount.mul(wethReserve).mul(Q112);
-
-        return ethToUsd(wethResult).div(tokenReserve);
+        return amount.mul(wethReserve).mul(Q112);
     }
 
     /**

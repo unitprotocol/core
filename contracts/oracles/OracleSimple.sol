@@ -12,7 +12,7 @@ pragma solidity ^0.7.1;
  **/
 abstract contract OracleSimple {
     // returns Q112-encoded value
-    function assetToUsd(address asset, uint amount) public virtual view returns (uint) {}
+    function assetToUsd(address asset, uint amount) public virtual view returns (uint);
 }
 
 
@@ -32,7 +32,7 @@ abstract contract OracleSimplePoolToken is OracleSimple {
 abstract contract ChainlinkedOracleSimple is OracleSimple {
     address public WETH;
     // returns ordinary value
-    function ethToUsd(uint ethAmount) public virtual view returns (uint) {}
+    function ethToUsd(uint ethAmount) public virtual view returns (uint);
     // returns Q112-encoded value
-    function assetToEth(address asset, uint amount) public virtual view returns (uint) {}
+    function assetToEth(address asset, uint amount) public virtual view returns (uint);
 }

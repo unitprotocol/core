@@ -21,7 +21,7 @@ abstract contract ChainlinkedKeydonixOracleMainAssetAbstract is KeydonixOracleAb
         address asset,
         uint amount,
         ProofDataStruct memory proofData
-    ) public virtual view returns (uint) {}
+    ) public virtual view returns (uint);
 
-    function ethToUsd(uint ethAmount) public virtual view returns (uint) {}
+    function ethToUsd(uint ethAmount) public virtual view returns (uint);
 }

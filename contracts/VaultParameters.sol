@@ -5,8 +5,6 @@
 */
 pragma solidity ^0.7.1;
 
-import "./helpers/ERC20Like.sol";
-
 
 /**
  * @title Auth
@@ -88,7 +86,7 @@ contract VaultParameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Grants and revokes manager's status of any address
      * @param who The target address
      * @param permit The permission flag
@@ -98,7 +96,7 @@ contract VaultParameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets the foundation address
      * @param newFoundation The new foundation address
      **/
@@ -108,7 +106,7 @@ contract VaultParameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets ability to use token as the main collateral
      * @param asset The address of the main collateral token
      * @param stabilityFeeValue The percentage of the year stability fee (3 decimals)
@@ -132,7 +130,7 @@ contract VaultParameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets a permission for an address to modify the Vault
      * @param who The target address
      * @param permit The permission flag
@@ -142,7 +140,7 @@ contract VaultParameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets the percentage of the year stability fee for a particular collateral
      * @param asset The address of the main collateral token
      * @param newValue The stability fee percentage (3 decimals)
@@ -152,7 +150,7 @@ contract VaultParameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets the percentage of the liquidation fee for a particular collateral
      * @param asset The address of the main collateral token
      * @param newValue The liquidation fee percentage (0 decimals)
@@ -163,7 +161,7 @@ contract VaultParameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Enables/disables oracle types
      * @param _type The type of the oracle
      * @param asset The address of the main collateral token
@@ -174,7 +172,7 @@ contract VaultParameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets USDP limit for a specific collateral
      * @param asset The address of the main collateral token
      * @param limit The limit number

@@ -20,9 +20,9 @@ import "../helpers/ReentrancyGuard.sol";
 abstract contract LiquidationTriggerSimple {
     using SafeMath for uint;
 
-    uint public immutable Q112 = 2**112;
-    uint public immutable DENOMINATOR_1E5 = 1e5;
-    uint public immutable DENOMINATOR_1E2 = 1e2;
+    uint public constant Q112 = 2**112;
+    uint public constant DENOMINATOR_1E5 = 1e5;
+    uint public constant DENOMINATOR_1E2 = 1e2;
 
     // vault manager parameters contract
     VaultManagerParameters public immutable vaultManagerParameters;

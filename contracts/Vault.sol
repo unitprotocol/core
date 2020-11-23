@@ -12,17 +12,6 @@ import "./USDP.sol";
 import "./helpers/IWETH.sol";
 
 
-interface LiquidationSystem{
-    function liquidate(
-        address asset,
-        address user,
-        uint mainAmount,
-        uint colAmount,
-        uint debt,
-        uint liquidationFee
-    ) external;
-}
-
 /**
  * @title Vault
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
@@ -40,9 +29,9 @@ contract Vault is Auth {
     // WETH token address
     address payable public immutable weth;
 
-    uint public immutable DENOMINATOR_1E5 = 1e5;
+    uint public constant DENOMINATOR_1E5 = 1e5;
 
-    uint public immutable DENOMINATOR_1E2 = 1e2;
+    uint public constant DENOMINATOR_1E2 = 1e2;
 
     // USDP token address
     address public immutable usdp;
@@ -95,7 +84,7 @@ contract Vault is Auth {
 
     // only accept ETH via fallback from the WETH contract
     receive() external payable {
-        assert(msg.sender == weth);
+        require(msg.sender == weth, "Unit Protocol: RESTRICTED");
     }
 
     /**

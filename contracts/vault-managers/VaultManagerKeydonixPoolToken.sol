@@ -23,7 +23,7 @@ contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
     Vault public immutable vault;
     VaultManagerParameters public immutable vaultManagerParameters;
     ChainlinkedKeydonixOraclePoolTokenAbstract public immutable uniswapOraclePoolToken;
-    uint public immutable ORACLE_TYPE = 2;
+    uint public constant ORACLE_TYPE = 2;
 
     /**
      * @dev Trigger when joins are happened

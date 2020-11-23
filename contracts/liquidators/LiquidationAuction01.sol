@@ -20,7 +20,7 @@ import "../helpers/ReentrancyGuard.sol";
 contract LiquidationAuction01 is ReentrancyGuard {
     using SafeMath for uint;
 
-    uint public immutable DENOMINATOR_1E2 = 1e2;
+    uint public constant DENOMINATOR_1E2 = 1e2;
 
     // vault manager parameters contract
     VaultManagerParameters public immutable vaultManagerParameters;
@@ -31,7 +31,7 @@ contract LiquidationAuction01 is ReentrancyGuard {
     /**
      * @dev Trigger when liquidations are happened
     **/
-    event Liquidated(address indexed token, address indexed user);
+    event Liquidated(address indexed token, address indexed user, uint penalty, uint collateralPrice);
 
     /**
      * @param _vaultManagerParameters The address of the contract with vault manager parameters
@@ -47,6 +47,7 @@ contract LiquidationAuction01 is ReentrancyGuard {
      * @param user The owner of a position
      **/
     function buyout(address asset, address user) public nonReentrant {
+        require(vault.liquidationBlock(asset, user) != 0, "Unit Protocol: LIQUIDATION_NOT_TRIGGERED");
         uint startingPrice = vault.liquidationPrice(asset, user);
         uint blocksPast = block.number.sub(vault.liquidationBlock(asset, user));
         uint devaluationPeriod = vaultManagerParameters.devaluationPeriod(asset);
@@ -105,7 +106,7 @@ contract LiquidationAuction01 is ReentrancyGuard {
             msg.sender
         );
         // fire an liquidation event
-        emit Liquidated(asset, user);
+        emit Liquidated(asset, user, repayment, penalty);
     }
 
     function _calcLiquidationParams(

@@ -23,8 +23,8 @@ contract VaultManagerKeydonixMainAsset is ReentrancyGuard {
     Vault public immutable vault;
     VaultManagerParameters public immutable vaultManagerParameters;
     ChainlinkedKeydonixOracleMainAssetAbstract public immutable uniswapOracleMainAsset;
-    uint public immutable ORACLE_TYPE = 1;
-    uint public immutable Q112 = 2 ** 112;
+    uint public constant ORACLE_TYPE = 1;
+    uint public constant Q112 = 2 ** 112;
 
     /**
      * @dev Trigger when joins are happened

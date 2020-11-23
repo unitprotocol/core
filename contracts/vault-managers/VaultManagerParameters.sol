@@ -35,7 +35,7 @@ contract VaultManagerParameters is Auth {
     constructor(address _vaultParameters) public Auth(_vaultParameters) {}
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets ability to use token as the main collateral
      * @param asset The address of the main collateral token
      * @param stabilityFeeValue The percentage of the year stability fee (3 decimals)
@@ -70,7 +70,7 @@ contract VaultManagerParameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets the initial collateral ratio
      * @param asset The address of the main collateral token
      * @param newValue The collateralization ratio (0 decimals)
@@ -81,7 +81,7 @@ contract VaultManagerParameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets the liquidation ratio
      * @param asset The address of the main collateral token
      * @param newValue The liquidation ratio (0 decimals)
@@ -92,7 +92,7 @@ contract VaultManagerParameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets the liquidation discount
      * @param asset The address of the main collateral token
      * @param newValue The liquidation discount (3 decimals)
@@ -103,7 +103,7 @@ contract VaultManagerParameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets the devaluation period of collateral after liquidation
      * @param asset The address of the main collateral token
      * @param newValue The devaluation period in blocks
@@ -114,7 +114,7 @@ contract VaultManagerParameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets the percentage range of the COL token part for specific collateral token
      * @param asset The address of the main collateral token
      * @param min The min percentage (0 decimals)

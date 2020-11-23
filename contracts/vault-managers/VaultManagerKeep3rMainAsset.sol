@@ -23,8 +23,8 @@ contract VaultManagerKeep3rMainAsset is ReentrancyGuard {
     Vault public immutable vault;
     VaultManagerParameters public immutable vaultManagerParameters;
     ChainlinkedOracleSimple public immutable oracle;
-    uint public immutable ORACLE_TYPE = 3;
-    uint public immutable Q112 = 2 ** 112;
+    uint public constant ORACLE_TYPE = 3;
+    uint public constant Q112 = 2 ** 112;
 
     /**
      * @dev Trigger when joins are happened

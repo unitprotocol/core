@@ -13,7 +13,7 @@ pragma experimental ABIEncoderV2;
  **/
 abstract contract KeydonixOracleAbstract {
 
-    uint public immutable Q112 = 2 ** 112;
+    uint public constant Q112 = 2 ** 112;
 
     struct ProofDataStruct {
         bytes block;
@@ -26,5 +26,5 @@ abstract contract KeydonixOracleAbstract {
         address asset,
         uint amount,
         ProofDataStruct memory proofData
-    ) public virtual view returns (uint) {}
+    ) public virtual view returns (uint);
 }

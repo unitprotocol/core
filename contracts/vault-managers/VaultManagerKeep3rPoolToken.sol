@@ -23,8 +23,8 @@ contract VaultManagerKeep3rPoolToken is ReentrancyGuard {
     Vault public immutable vault;
     VaultManagerParameters public immutable vaultManagerParameters;
     OracleSimplePoolToken public immutable keep3rOraclePoolToken;
-    uint public immutable ORACLE_TYPE = 4;
-    uint public immutable Q112 = 2 ** 112;
+    uint public constant ORACLE_TYPE = 4;
+    uint public constant Q112 = 2 ** 112;
 
     /**
      * @dev Trigger when joins are happened
