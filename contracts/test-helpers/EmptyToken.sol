@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.6.8;
+pragma solidity ^0.7.1;
 
 import "../helpers/SafeMath.sol";
 
@@ -76,6 +76,8 @@ abstract contract ERC20 is ERC20Basic {
  * @dev Based on code by FirstBlood: https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
  */
 contract StandardToken is ERC20, BasicToken {
+    using SafeMath for uint;
+
     mapping (address => mapping (address => uint)) internal allowed;
     /**
      * @dev Transfer tokens from one address to another
@@ -197,7 +199,6 @@ contract EmptyToken is StandardToken {
     )
     public
     {
-        require(_totalSupply > 0, "INVALID_VALUE");
         require(_firstHolder != address(0), "ZERO_ADDRESS");
         checkSymbolAndName(_symbol,_name);
 

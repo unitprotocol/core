@@ -1,73 +1,67 @@
 // SPDX-License-Identifier: bsl-1.1
 
-
-import "../Vault.sol";
-
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.6.8;
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
-import "../oracles/ChainlinkedUniswapOracleMainAsset.sol";
 
+import "../Vault.sol";
+import "../oracles/KeydonixOracleAbstract.sol";
+import "../vault-managers/VaultManagerParameters.sol";
+import "../helpers/ReentrancyGuard.sol";
 
 
 /**
- * @title LiquidatorUniswap
+ * @title LiquidationTriggerKeydonixAbstract
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
- * @dev Manages liquidation process
+ * @dev Manages triggering of liquidation process
  **/
-abstract contract LiquidatorUniswapAbstract {
+abstract contract LiquidationTriggerKeydonixAbstract {
     using SafeMath for uint;
 
     uint public constant Q112 = 2**112;
+    uint public constant DENOMINATOR_1E5 = 1e5;
+    uint public constant DENOMINATOR_1E2 = 1e2;
 
-    // system parameters contract address
-    Parameters public parameters;
+    // vault manager parameters contract
+    VaultManagerParameters public immutable vaultManagerParameters;
 
-    uint public oracleType;
+    uint public immutable oracleType;
 
     // Vault contract
-    Vault public vault;
+    Vault public immutable vault;
 
     /**
-     * @dev Trigger when liquidations are happened
+     * @dev Trigger when liquidations are initiated
     **/
-    event Liquidation(address indexed token, address indexed user);
+    event LiquidationTriggered(address indexed token, address indexed user);
 
     /**
-     * @param _vault The address of the Vault
-     * @param _vault The id of the oracle type
+     * @param _vaultManagerParameters The address of the contract with vault manager parameters
+     * @param _oracleType The id of the oracle type
      **/
-    constructor(
-        address payable _vault,
-        uint _oracleType
-    )
-        public
-    {
-        vault = Vault(_vault);
-        parameters = vault.parameters();
+    constructor(address _vaultManagerParameters, uint _oracleType) internal {
+        vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
+        vault = Vault(VaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
         oracleType = _oracleType;
     }
 
     /**
-     * @dev Liquidates position
+     * @dev Triggers liquidation of a position
      * @param asset The address of the main collateral token of a position
      * @param user The owner of a position
      * @param assetProof The proof data of asset token price
      * @param colProof The proof data of COL token price
      **/
-    function liquidate(
+    function triggerLiquidation(
         address asset,
         address user,
-        UniswapOracle.ProofData calldata assetProof,
-        UniswapOracle.ProofData calldata colProof
+        KeydonixOracleAbstract.ProofDataStruct calldata assetProof,
+        KeydonixOracleAbstract.ProofDataStruct calldata colProof
     )
-        external
-        virtual
-    {
-    }
-
+    external
+    virtual;
 
     /**
      * @dev Determines whether a position is liquidatable
@@ -83,28 +77,28 @@ abstract contract LiquidatorUniswapAbstract {
         uint mainUsdValue_q112,
         uint colUsdValue_q112
     )
-        public
-        view
-        returns (bool)
+    public
+    view
+    returns (bool)
     {
         uint debt = vault.getTotalDebt(asset, user);
 
         // position is collateralized if there is no debt
         if (debt == 0) return false;
 
-        require(vault.oracleType(asset, user) == oracleType, "USDP: INCORRECT_ORACLE_TYPE");
+        require(vault.oracleType(asset, user) == oracleType, "Unit Protocol: INCORRECT_ORACLE_TYPE");
 
         return UR(mainUsdValue_q112, colUsdValue_q112, debt) >= LR(asset, mainUsdValue_q112, colUsdValue_q112);
     }
 
     /**
-     * @dev Calculates position's collateral ratio
+     * @dev Calculates position's utilization ratio
      * @param mainUsdValue USD value of main collateral
      * @param colUsdValue USD value of COL amount
      * @param debt USDP borrowed
-     * @return collateralization ratio of a position
+     * @return utilization ratio of a position
      **/
-    function UR(uint mainUsdValue, uint colUsdValue, uint debt) public pure returns (uint) {
+    function UR(uint mainUsdValue, uint colUsdValue, uint debt) public view returns (uint) {
         return debt.mul(100).mul(Q112).div(mainUsdValue.add(colUsdValue));
     }
 
@@ -116,8 +110,8 @@ abstract contract LiquidatorUniswapAbstract {
      * @return liquidation ratio of a position
      **/
     function LR(address asset, uint mainUsdValue, uint colUsdValue) public view returns(uint) {
-        uint lrMain = parameters.liquidationRatio(asset);
-        uint lrCol = parameters.liquidationRatio(vault.col());
+        uint lrMain = vaultManagerParameters.liquidationRatio(asset);
+        uint lrCol = vaultManagerParameters.liquidationRatio(vault.col());
 
         return lrMain.mul(mainUsdValue).add(lrCol.mul(colUsdValue)).div(mainUsdValue.add(colUsdValue));
     }

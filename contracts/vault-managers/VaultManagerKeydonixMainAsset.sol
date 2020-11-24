@@ -3,24 +3,26 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.6.8;
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
-import "../oracles/ChainlinkedUniswapOracleMainAsset.sol";
+import "../oracles/ChainlinkedKeydonixOracleMainAssetAbstract.sol";
 import "../helpers/Math.sol";
+import "../helpers/ReentrancyGuard.sol";
+import "./VaultManagerParameters.sol";
 
 
 /**
- * @title VaultManagerUniswapMainAsset
+ * @title VaultManagerKeydonixMainAsset
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
-contract VaultManagerUniswapMainAsset is Auth {
-    using ERC20SafeTransfer for address;
+contract VaultManagerKeydonixMainAsset is ReentrancyGuard {
     using SafeMath for uint;
 
-    Vault public vault;
-    ChainlinkedUniswapOracleMainAsset public uniswapOracle;
+    Vault public immutable vault;
+    VaultManagerParameters public immutable vaultManagerParameters;
+    ChainlinkedKeydonixOracleMainAssetAbstract public immutable uniswapOracleMainAsset;
     uint public constant ORACLE_TYPE = 1;
     uint public constant Q112 = 2 ** 112;
 
@@ -37,25 +39,18 @@ contract VaultManagerUniswapMainAsset is Auth {
     modifier spawned(address asset, address user) {
 
         // check the existence of a position
-        require(vault.getTotalDebt(asset, user) != 0, "USDP: NOT_SPAWNED_POSITION");
+        require(vault.getTotalDebt(asset, user) != 0, "Unit Protocol: NOT_SPAWNED_POSITION");
         _;
     }
 
     /**
-     * @param _vault The address of the Vault
-     * @param _parameters The address of the contract with system parameters
-     * @param _uniswapOracle The address of Uniswap-based Oracle
+     * @param _vaultManagerParameters The address of the contract with vault manager parameters
+     * @param _uniswapOracleMainAsset The address of Uniswap-based Oracle for main assets
      **/
-    constructor(
-        address payable _vault,
-        address _parameters,
-        address _uniswapOracle
-    )
-        Auth(_parameters)
-        public
-    {
-        vault = Vault(_vault);
-        uniswapOracle = ChainlinkedUniswapOracleMainAsset(_uniswapOracle);
+    constructor(address _vaultManagerParameters, address _uniswapOracleMainAsset) public {
+        vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
+        vault = Vault(VaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
+        uniswapOracleMainAsset = ChainlinkedKeydonixOracleMainAssetAbstract(_uniswapOracleMainAsset);
     }
 
     /**
@@ -75,21 +70,23 @@ contract VaultManagerUniswapMainAsset is Auth {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
-        public
+    public
+    nonReentrant
     {
-        require(usdpAmount != 0, "USDP: ZERO_BORROWING");
+        require(usdpAmount != 0, "Unit Protocol: ZERO_BORROWING");
 
         // check whether the position is spawned
-        require(vault.getTotalDebt(asset, msg.sender) == 0, "USDP: SPAWNED_POSITION");
+        require(vault.getTotalDebt(asset, msg.sender) == 0, "Unit Protocol: SPAWNED_POSITION");
 
         // oracle availability check
-        require(parameters.isOracleTypeEnabled(ORACLE_TYPE, asset), "USDP: WRONG_ORACLE_TYPE");
+        require(vault.vaultParameters().isOracleTypeEnabled(ORACLE_TYPE, asset), "Unit Protocol: WRONG_ORACLE_TYPE");
 
         // USDP minting triggers the spawn of a position
         vault.spawn(asset, msg.sender, ORACLE_TYPE);
+
 
         _depositAndBorrow(asset, msg.sender, mainAmount, colAmount, usdpAmount, mainPriceProof, colPriceProof);
 
@@ -109,18 +106,19 @@ contract VaultManagerUniswapMainAsset is Auth {
     function spawn_Eth(
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
-        public
-        payable
+    public
+    payable
+    nonReentrant
     {
-        require(usdpAmount != 0, "USDP: ZERO_BORROWING");
+        require(usdpAmount != 0, "Unit Protocol: ZERO_BORROWING");
 
         // check whether the position is spawned
-        require(vault.getTotalDebt(vault.weth(), msg.sender) == 0, "USDP: SPAWNED_POSITION");
+        require(vault.getTotalDebt(vault.weth(), msg.sender) == 0, "Unit Protocol: SPAWNED_POSITION");
 
         // oracle availability check
-        require(parameters.isOracleTypeEnabled(ORACLE_TYPE, vault.weth()), "USDP: WRONG_ORACLE_TYPE");
+        require(vault.vaultParameters().isOracleTypeEnabled(ORACLE_TYPE, vault.weth()), "Unit Protocol: WRONG_ORACLE_TYPE");
 
         // USDP minting triggers the spawn of a position
         vault.spawn(vault.weth(), msg.sender, ORACLE_TYPE);
@@ -148,13 +146,14 @@ contract VaultManagerUniswapMainAsset is Auth {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
-        public
-        spawned(asset, msg.sender)
+    public
+    spawned(asset, msg.sender)
+    nonReentrant
     {
-        require(usdpAmount != 0, "USDP: ZERO_BORROWING");
+        require(usdpAmount != 0, "Unit Protocol: ZERO_BORROWING");
 
         _depositAndBorrow(asset, msg.sender, mainAmount, colAmount, usdpAmount, mainPriceProof, colPriceProof);
 
@@ -174,13 +173,14 @@ contract VaultManagerUniswapMainAsset is Auth {
     function depositAndBorrow_Eth(
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
-        public
-        payable
-        spawned(vault.weth(), msg.sender)
+    public
+    payable
+    spawned(vault.weth(), msg.sender)
+    nonReentrant
     {
-        require(usdpAmount != 0, "USDP: ZERO_BORROWING");
+        require(usdpAmount != 0, "Unit Protocol: ZERO_BORROWING");
 
         _depositAndBorrow_Eth(msg.sender, colAmount, usdpAmount, colPriceProof);
 
@@ -203,17 +203,18 @@ contract VaultManagerUniswapMainAsset is Auth {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
-        public
-        spawned(asset, msg.sender)
+    public
+    spawned(asset, msg.sender)
+    nonReentrant
     {
         // check usefulness of tx
-        require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
+        require(mainAmount != 0 || colAmount != 0, "Unit Protocol: USELESS_TX");
 
         uint debt = vault.debts(asset, msg.sender);
-        require(debt != 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
+        require(debt != 0 && usdpAmount != debt, "Unit Protocol: USE_REPAY_ALL_INSTEAD");
 
         if (mainAmount != 0) {
             // withdraw main collateral to the user address
@@ -227,7 +228,7 @@ contract VaultManagerUniswapMainAsset is Auth {
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
-            vault.chargeFee(address(vault.usdp()), msg.sender, fee);
+            vault.chargeFee(vault.usdp(), msg.sender, fee);
             vault.repay(asset, msg.sender, usdpAmount);
         }
 
@@ -251,16 +252,17 @@ contract VaultManagerUniswapMainAsset is Auth {
         uint ethAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
-        public
-        spawned(vault.weth(), msg.sender)
+    public
+    spawned(vault.weth(), msg.sender)
+    nonReentrant
     {
         // check usefulness of tx
-        require(ethAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
+        require(ethAmount != 0 || colAmount != 0, "Unit Protocol: USELESS_TX");
 
         uint debt = vault.debts(vault.weth(), msg.sender);
-        require(debt != 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
+        require(debt != 0 && usdpAmount != debt, "Unit Protocol: USE_REPAY_ALL_INSTEAD");
 
         if (ethAmount != 0) {
             // withdraw main collateral to the user address
@@ -274,7 +276,7 @@ contract VaultManagerUniswapMainAsset is Auth {
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(vault.weth(), msg.sender, usdpAmount);
-            vault.chargeFee(address(vault.usdp()), msg.sender, fee);
+            vault.chargeFee(vault.usdp(), msg.sender, fee);
             vault.repay(vault.weth(), msg.sender, usdpAmount);
         }
 
@@ -296,16 +298,17 @@ contract VaultManagerUniswapMainAsset is Auth {
     function repayUsingCol(
         address asset,
         uint usdpAmount,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
-        public
-        spawned(asset, msg.sender)
+    public
+    spawned(asset, msg.sender)
+    nonReentrant
     {
         // check usefulness of tx
-        require(usdpAmount != 0, "USDP: USELESS_TX");
+        require(usdpAmount != 0, "Unit Protocol: USELESS_TX");
 
         // COL token price in USD
-        uint colUsdPrice_q112 = uniswapOracle.assetToUsd(vault.col(), 1, colPriceProof);
+        uint colUsdPrice_q112 = uniswapOracleMainAsset.assetToUsd(vault.col(), 1, colPriceProof);
 
         uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
         uint feeInCol = fee.mul(Q112).div(colUsdPrice_q112);
@@ -332,19 +335,20 @@ contract VaultManagerUniswapMainAsset is Auth {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
-        public
-        spawned(asset, msg.sender)
+    public
+    spawned(asset, msg.sender)
+    nonReentrant
     {
         // check usefulness of tx
-        require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
+        require(mainAmount != 0 || colAmount != 0, "Unit Protocol: USELESS_TX");
 
         // fix 'Stack too deep'
         {
             uint debt = vault.debts(asset, msg.sender);
-            require(debt != 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
+            require(debt != 0 && usdpAmount != debt, "Unit Protocol: USE_REPAY_ALL_INSTEAD");
 
             if (mainAmount != 0) {
                 // withdraw main collateral to the user address
@@ -360,10 +364,10 @@ contract VaultManagerUniswapMainAsset is Auth {
         uint colDeposit = vault.colToken(asset, msg.sender);
 
         // main collateral value of the position in USD
-        uint mainUsdValue_q112 = uniswapOracle.assetToUsd(asset, vault.collaterals(asset, msg.sender), mainPriceProof);
+        uint mainUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(asset, vault.collaterals(asset, msg.sender), mainPriceProof);
 
         // COL token value of the position in USD
-        uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), colDeposit, colPriceProof);
+        uint colUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(vault.col(), colDeposit, colPriceProof);
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
@@ -393,19 +397,20 @@ contract VaultManagerUniswapMainAsset is Auth {
         uint ethAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
-        public
-        spawned(vault.weth(), msg.sender)
+    public
+    spawned(vault.weth(), msg.sender)
+    nonReentrant
     {
         // fix 'Stack too deep'
         {
             // check usefulness of tx
-            require(ethAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
+            require(ethAmount != 0 || colAmount != 0, "Unit Protocol: USELESS_TX");
 
             uint debt = vault.debts(vault.weth(), msg.sender);
-            require(debt != 0 && usdpAmount != debt, "USDP: USE_REPAY_ALL_INSTEAD");
+            require(debt != 0 && usdpAmount != debt, "Unit Protocol: USE_REPAY_ALL_INSTEAD");
 
             if (ethAmount != 0) {
                 // withdraw main collateral to the user address
@@ -421,10 +426,10 @@ contract VaultManagerUniswapMainAsset is Auth {
         uint colDeposit = vault.colToken(vault.weth(), msg.sender);
 
         // main collateral value of the position in USD
-        uint mainUsdValue_q112 = uniswapOracle.assetToUsd(vault.weth(), vault.collaterals(vault.weth(), msg.sender), mainPriceProof);
+        uint mainUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(vault.weth(), vault.collaterals(vault.weth(), msg.sender), mainPriceProof);
 
         // COL token value of the position in USD
-        uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), colDeposit, colPriceProof);
+        uint colUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(vault.col(), colDeposit, colPriceProof);
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(vault.weth(), msg.sender, usdpAmount);
@@ -447,10 +452,10 @@ contract VaultManagerUniswapMainAsset is Auth {
         uint mainAmount,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
-        internal
+    internal
     {
         if (mainAmount != 0) {
             vault.depositMain(asset, user, mainAmount);
@@ -471,9 +476,9 @@ contract VaultManagerUniswapMainAsset is Auth {
         address user,
         uint colAmount,
         uint usdpAmount,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
-        internal
+    internal
     {
         if (msg.value != 0) {
             vault.depositEth{value:msg.value}(user);
@@ -492,33 +497,33 @@ contract VaultManagerUniswapMainAsset is Auth {
     function _ensureCollateralizationTroughProofs(
         address asset,
         address user,
-        UniswapOracle.ProofData memory mainPriceProof,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory mainPriceProof,
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
-        internal
-        view
+    internal
+    view
     {
         // main collateral value of the position in USD
-        uint mainUsdValue_q112 = uniswapOracle.assetToUsd(asset, vault.collaterals(asset, user), mainPriceProof);
+        uint mainUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(asset, vault.collaterals(asset, user), mainPriceProof);
 
         // COL token value of the position in USD
-        uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), vault.colToken(asset, user), colPriceProof);
+        uint colUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(vault.col(), vault.colToken(asset, user), colPriceProof);
 
         _ensureCollateralization(asset, user, mainUsdValue_q112, colUsdValue_q112);
     }
 
     function _ensureCollateralizationTroughProofs_Eth(
         address user,
-        UniswapOracle.ProofData memory colPriceProof
+        ChainlinkedKeydonixOracleMainAssetAbstract.ProofDataStruct memory colPriceProof
     )
-        internal
-        view
+    internal
+    view
     {
         // ETH value of the position in USD
-        uint ethUsdValue_q112 = uniswapOracle.ethToUsd(vault.collaterals(vault.weth(), user).mul(Q112));
+        uint ethUsdValue_q112 = uniswapOracleMainAsset.ethToUsd(vault.collaterals(vault.weth(), user).mul(Q112));
 
         // COL token value of the position in USD
-        uint colUsdValue_q112 = uniswapOracle.assetToUsd(vault.col(), vault.colToken(vault.weth(), user), colPriceProof);
+        uint colUsdValue_q112 = uniswapOracleMainAsset.assetToUsd(vault.col(), vault.colToken(vault.weth(), user), colPriceProof);
 
         _ensureCollateralization(vault.weth(), user, ethUsdValue_q112, colUsdValue_q112);
     }
@@ -530,13 +535,13 @@ contract VaultManagerUniswapMainAsset is Auth {
         uint mainUsdValue_q112,
         uint colUsdValue_q112
     )
-        internal
-        view
+    internal
+    view
     {
         uint mainUsdUtilized_q112;
         uint colUsdUtilized_q112;
 
-        uint minColPercent = parameters.minColPercent(asset);
+        uint minColPercent = vaultManagerParameters.minColPercent(asset);
         if (minColPercent != 0) {
             // main limit by COL
             uint mainUsdLimit_q112 = colUsdValue_q112 * (100 - minColPercent) / minColPercent;
@@ -545,7 +550,7 @@ contract VaultManagerUniswapMainAsset is Auth {
             mainUsdUtilized_q112 = mainUsdValue_q112;
         }
 
-        uint maxColPercent = parameters.maxColPercent(asset);
+        uint maxColPercent = vaultManagerParameters.maxColPercent(asset);
         if (maxColPercent < 100) {
             // COL limit by main
             uint colUsdLimit_q112 = mainUsdValue_q112 * maxColPercent / (100 - maxColPercent);
@@ -556,11 +561,11 @@ contract VaultManagerUniswapMainAsset is Auth {
 
         // USD limit of the position
         uint usdLimit = (
-            mainUsdUtilized_q112 * parameters.initialCollateralRatio(asset) +
-            colUsdUtilized_q112 * parameters.initialCollateralRatio(vault.col())
+            mainUsdUtilized_q112 * vaultManagerParameters.initialCollateralRatio(asset) +
+            colUsdUtilized_q112 * vaultManagerParameters.initialCollateralRatio(vault.col())
         ) / Q112 / 100;
 
         // revert if collateralization is not enough
-        require(vault.getTotalDebt(asset, user) <= usdLimit, "USDP: UNDERCOLLATERALIZED");
+        require(vault.getTotalDebt(asset, user) <= usdLimit, "Unit Protocol: UNDERCOLLATERALIZED");
     }
 }

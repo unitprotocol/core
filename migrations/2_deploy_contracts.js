@@ -1,13 +1,12 @@
 const Vault = artifacts.require('Vault');
-const Parameters = artifacts.require('Parameters');
+const Parameters = artifacts.require('VaultParameters');
 const USDP = artifacts.require('USDP');
 const WETH = artifacts.require('WETH');
 const DummyToken = artifacts.require('DummyToken');
-const UniswapOracle = artifacts.require('UniswapOracle');
 const IUniswapV2Factory = artifacts.require('IUniswapV2Factory');
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
-const VaultManagerUniswap = artifacts.require('VaultManagerUniswapMainAsset');
-const Liquidator = artifacts.require('LiquidatorUniswapMainAsset');
+// const VaultManagerUniswap = artifacts.require('VaultManagerKeydonixMainAsset');
+const Liquidator = artifacts.require('LiquidationTriggerKeydonixMainAsset');
 const { constants : { ZERO_ADDRESS }, ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce, deployContractBytecode } = require('../test/helpers/deployUtils');
 const UniswapV2FactoryDeployCode = require('../test/helpers/UniswapV2DeployCode');

@@ -3,22 +3,22 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.6.8;
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
 import "../helpers/Math.sol";
+import "../helpers/ReentrancyGuard.sol";
 
 
 /**
  * @title VaultManagerStandard
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
-contract VaultManagerStandard is Auth {
-    using ERC20SafeTransfer for address;
+contract VaultManagerStandard is ReentrancyGuard {
     using SafeMath for uint;
 
-    Vault public vault;
+    Vault public immutable vault;
 
     /**
      * @dev Trigger when params joins are happened
@@ -32,9 +32,8 @@ contract VaultManagerStandard is Auth {
 
     /**
      * @param _vault The address of the Vault
-     * @param _parameters The address of the contract with system parameters
      **/
-    constructor(address payable _vault, address _parameters) Auth(_parameters) public {
+    constructor(address payable _vault) public {
         vault = Vault(_vault);
     }
 
@@ -46,10 +45,10 @@ contract VaultManagerStandard is Auth {
      * @param mainAmount The amount of main collateral to deposit
      * @param colAmount The amount of COL token to deposit
      **/
-    function deposit(address asset, uint mainAmount, uint colAmount) public {
+    function deposit(address asset, uint mainAmount, uint colAmount) public nonReentrant {
 
         // check usefulness of tx
-        require(mainAmount != 0 || colAmount != 0, "USDP: USELESS_TX");
+        require(mainAmount != 0 || colAmount != 0, "Unit Protocol: USELESS_TX");
 
         if (mainAmount != 0) {
             vault.depositMain(asset, msg.sender, mainAmount);
@@ -69,10 +68,10 @@ contract VaultManagerStandard is Auth {
      * @dev Deposits collaterals converting ETH to WETH
      * @param colAmount The amount of COL token to deposit
      **/
-    function deposit_Eth(uint colAmount) public payable {
+    function deposit_Eth(uint colAmount) public payable nonReentrant {
 
         // check usefulness of tx
-        require(msg.value != 0 || colAmount != 0, "USDP: USELESS_TX");
+        require(msg.value != 0 || colAmount != 0, "Unit Protocol: USELESS_TX");
 
         if (msg.value != 0) {
             vault.depositEth{value: msg.value}(msg.sender);
@@ -92,10 +91,10 @@ contract VaultManagerStandard is Auth {
       * @param asset The address of token using as main collateral
       * @param usdpAmount The amount of USDP token to repay
       **/
-    function repay(address asset, uint usdpAmount) public {
+    function repay(address asset, uint usdpAmount) public nonReentrant {
 
         // check usefulness of tx
-        require(usdpAmount != 0, "USDP: USELESS_TX");
+        require(usdpAmount != 0, "Unit Protocol: USELESS_TX");
 
         _repay(asset, msg.sender, usdpAmount);
 
@@ -105,8 +104,7 @@ contract VaultManagerStandard is Auth {
 
     /**
       * @notice Tx sender must have a sufficient USDP balance to pay the debt
-      * @notice Token approwal is NOT needed
-      * @notice Merkle proofs are NOT needed since we don't need to check collateralization (cause there is no debt)
+      * @notice USDP approval is NOT needed
       * @dev Repays total debt and withdraws collaterals
       * @param asset The address of token using as main collateral
       * @param mainAmount The amount of main collateral token to withdraw
@@ -117,7 +115,8 @@ contract VaultManagerStandard is Auth {
         uint mainAmount,
         uint colAmount
     )
-        external
+    external
+    nonReentrant
     {
         uint debtAmount = vault.debts(asset, msg.sender);
 
@@ -147,8 +146,7 @@ contract VaultManagerStandard is Auth {
 
     /**
       * @notice Tx sender must have a sufficient USDP balance to pay the debt
-      * @notice Token approwal is NOT needed
-      * @notice Merkle proofs are NOT needed since we don't need to check collateralization (cause there is no debt)
+      * @notice USDP approval is NOT needed
       * @dev Repays total debt and withdraws collaterals
       * @param ethAmount The ETH amount to withdraw
       * @param colAmount The amount of COL token to withdraw
@@ -157,7 +155,8 @@ contract VaultManagerStandard is Auth {
         uint ethAmount,
         uint colAmount
     )
-        external
+    external
+    nonReentrant
     {
         uint debtAmount = vault.debts(vault.weth(), msg.sender);
 
@@ -188,7 +187,7 @@ contract VaultManagerStandard is Auth {
     // decreases debt
     function _repay(address asset, address user, uint usdpAmount) internal {
         uint fee = vault.calculateFee(asset, user, usdpAmount);
-        vault.chargeFee(address(vault.usdp()), user, fee);
+        vault.chargeFee(vault.usdp(), user, fee);
 
         // burn USDP from the user's balance
         uint debtAfter = vault.repay(asset, user, usdpAmount);

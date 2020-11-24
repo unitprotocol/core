@@ -3,9 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.6.8;
-
-import "./helpers/ERC20Like.sol";
+pragma solidity ^0.7.1;
 
 
 /**
@@ -15,53 +13,41 @@ import "./helpers/ERC20Like.sol";
  **/
 contract Auth {
 
-    // address of the the contract with parameters
-    Parameters public parameters;
+    // address of the the contract with vault parameters
+    VaultParameters public vaultParameters;
 
     constructor(address _parameters) public {
-        parameters = Parameters(_parameters);
+        vaultParameters = VaultParameters(_parameters);
     }
 
     // ensures tx's sender is a manager
     modifier onlyManager() {
-        require(parameters.isManager(msg.sender), "USDP: AUTH_FAILED");
+        require(vaultParameters.isManager(msg.sender), "Unit Protocol: AUTH_FAILED");
         _;
     }
 
     // ensures tx's sender is able to modify the Vault
     modifier hasVaultAccess() {
-        require(parameters.canModifyVault(msg.sender), "USDP: AUTH_FAILED");
+        require(vaultParameters.canModifyVault(msg.sender), "Unit Protocol: AUTH_FAILED");
         _;
     }
 
     // ensures tx's sender is the Vault
     modifier onlyVault() {
-        require(msg.sender == parameters.vault(), "USDP: AUTH_FAILED");
+        require(msg.sender == vaultParameters.vault(), "Unit Protocol: AUTH_FAILED");
         _;
     }
 }
 
 
 /**
- * @title Parameters
+ * @title VaultParameters
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
-contract Parameters is Auth {
-
-    // determines the minimum percentage of COL token part in collateral, 0 decimals
-    mapping(address => uint) public minColPercent;
-
-    // determines the maximum percentage of COL token part in collateral, 0 decimals
-    mapping(address => uint) public maxColPercent;
+contract VaultParameters is Auth {
 
     // map token to stability fee percentage; 3 decimals
     mapping(address => uint) public stabilityFee;
-
-    // map token to initial collateralization ratio; 0 decimals
-    mapping(address => uint) public initialCollateralRatio;
-
-    // map token to liquidation ratio; 0 decimals
-    mapping(address => uint) public liquidationRatio;
 
     // map token to liquidation fee percentage, 0 decimals
     mapping(address => uint) public liquidationFee;
@@ -91,8 +77,8 @@ contract Parameters is Auth {
      * Therefore, the Vault address can be pre-computed and passed as an argument before deployment.
     **/
     constructor(address payable _vault, address _foundation) public Auth(address(this)) {
-        require(_vault != address(0), "USDP: ZERO_ADDRESS");
-        require(_foundation != address(0), "USDP: ZERO_ADDRESS");
+        require(_vault != address(0), "Unit Protocol: ZERO_ADDRESS");
+        require(_foundation != address(0), "Unit Protocol: ZERO_ADDRESS");
 
         isManager[msg.sender] = true;
         vault = _vault;
@@ -100,7 +86,7 @@ contract Parameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Grants and revokes manager's status of any address
      * @param who The target address
      * @param permit The permission flag
@@ -110,71 +96,41 @@ contract Parameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets the foundation address
      * @param newFoundation The new foundation address
      **/
     function setFoundation(address newFoundation) external onlyManager {
-        require(newFoundation != address(0), "USDP: ZERO_ADDRESS");
+        require(newFoundation != address(0), "Unit Protocol: ZERO_ADDRESS");
         foundation = newFoundation;
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets ability to use token as the main collateral
      * @param asset The address of the main collateral token
      * @param stabilityFeeValue The percentage of the year stability fee (3 decimals)
      * @param liquidationFeeValue The liquidation fee percentage (0 decimals)
-     * @param initialCollateralRatioValue The initial collateralization ratio
-     * @param liquidationRatioValue The liquidation ratio
      * @param usdpLimit The USDP token issue limit
+     * @param oracles The enables oracle types
      **/
     function setCollateral(
         address asset,
         uint stabilityFeeValue,
         uint liquidationFeeValue,
-        uint initialCollateralRatioValue,
-        uint liquidationRatioValue,
         uint usdpLimit,
-        uint[] calldata oracles,
-        uint minColP,
-        uint maxColP
+        uint[] calldata oracles
     ) external onlyManager {
         setStabilityFee(asset, stabilityFeeValue);
         setLiquidationFee(asset, liquidationFeeValue);
-        setInitialCollateralRatio(asset, initialCollateralRatioValue);
-        setLiquidationRatio(asset, liquidationRatioValue);
         setTokenDebtLimit(asset, usdpLimit);
         for (uint i=0; i < oracles.length; i++) {
             setOracleType(oracles[i], asset, true);
         }
-        setColPartRange(asset, minColP, maxColP);
     }
 
     /**
-     * notice Only manager is able to call this function
-     * @dev Sets the initial collateral ratio
-     * @param asset The address of the main collateral token
-     * @param newValue The collateralization ratio (0 decimals)
-     **/
-    function setInitialCollateralRatio(address asset, uint newValue) public onlyManager {
-        require(newValue != 0 && newValue <= 100, "USDP: INCORRECT_COLLATERALIZATION_VALUE");
-        initialCollateralRatio[asset] = newValue;
-    }
-
-    /**
-     * notice Only manager is able to call this function
-     * @dev Sets the liquidation ratio
-     * @param asset The address of the main collateral token
-     * @param newValue The liquidation ratio (0 decimals)
-     **/
-    function setLiquidationRatio(address asset, uint newValue) public onlyManager {
-        require(newValue != 0 && newValue >= initialCollateralRatio[asset], "USDP: INCORRECT_COLLATERALIZATION_VALUE");
-        liquidationRatio[asset] = newValue;
-    }
-
-    /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets a permission for an address to modify the Vault
      * @param who The target address
      * @param permit The permission flag
@@ -184,7 +140,7 @@ contract Parameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets the percentage of the year stability fee for a particular collateral
      * @param asset The address of the main collateral token
      * @param newValue The stability fee percentage (3 decimals)
@@ -194,31 +150,18 @@ contract Parameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets the percentage of the liquidation fee for a particular collateral
      * @param asset The address of the main collateral token
      * @param newValue The liquidation fee percentage (0 decimals)
      **/
     function setLiquidationFee(address asset, uint newValue) public onlyManager {
-        require(newValue <= 100, "USDP: OUT OF RANGE");
+        require(newValue <= 100, "Unit Protocol: VALUE_OUT_OF_RANGE");
         liquidationFee[asset] = newValue;
     }
 
     /**
-     * notice Only manager is able to call this function
-     * @dev Sets the percentage range of the COL token part for specific collateral token
-     * @param asset The address of the main collateral token
-     * @param min The min percentage (0 decimals)
-     * @param max The max percentage (0 decimals)
-     **/
-    function setColPartRange(address asset, uint min, uint max) public onlyManager {
-        require(max <= 100 && min <= max, "USDP: WRONG_RANGE");
-        minColPercent[asset] = min;
-        maxColPercent[asset] = max;
-    }
-
-    /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Enables/disables oracle types
      * @param _type The type of the oracle
      * @param asset The address of the main collateral token
@@ -229,7 +172,7 @@ contract Parameters is Auth {
     }
 
     /**
-     * notice Only manager is able to call this function
+     * @notice Only manager is able to call this function
      * @dev Sets USDP limit for a specific collateral
      * @param asset The address of the main collateral token
      * @param limit The limit number

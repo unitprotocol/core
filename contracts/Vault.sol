@@ -3,52 +3,38 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.6.8;
+pragma solidity ^0.7.1;
 
 import "./helpers/SafeMath.sol";
-import "./Parameters.sol";
-import "./helpers/ERC20SafeTransfer.sol";
+import "./VaultParameters.sol";
+import "./helpers/TransferHelper.sol";
 import "./USDP.sol";
-import "./test-helpers/WETH.sol";
+import "./helpers/IWETH.sol";
 
-
-interface LiquidationSystem{
-    function liquidate(
-        address asset,
-        address user,
-        uint mainAmount,
-        uint colAmount,
-        uint debt,
-        uint liquidationFee
-    ) external;
-}
 
 /**
  * @title Vault
  * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
- * @notice Vault is the core of USD ThePay.cash Stablecoin distribution system
+ * @notice Vault is the core of Unit Protocol USDP Stablecoin system
  * @notice Vault stores and manages collateral funds of all positions and counts debts
  * @notice Only Vault can manage supply of USDP token
  * @notice Vault will not be changed/upgraded after initial deployment for the current stablecoin version
  **/
 contract Vault is Auth {
-    using ERC20SafeTransfer for address;
     using SafeMath for uint;
 
     // COL token address
-    address public col;
+    address public immutable col;
 
     // WETH token address
-    address payable public weth;
+    address payable public immutable weth;
 
-    uint public constant STABILITY_FEE_DENOMINATOR = 100000;
+    uint public constant DENOMINATOR_1E5 = 1e5;
 
-    uint public constant LIQUIDATION_FEE_DENOMINATOR = 100;
-
-    bool public canReceiveEth = false;
+    uint public constant DENOMINATOR_1E2 = 1e2;
 
     // USDP token address
-    USDP public usdp;
+    address public immutable usdp;
 
     // collaterals whitelist
     mapping(address => mapping(address => uint)) public collaterals;
@@ -59,13 +45,19 @@ contract Vault is Auth {
     // user debts
     mapping(address => mapping(address => uint)) public debts;
 
+    // block number of liquidation trigger
+    mapping(address => mapping(address => uint)) public liquidationBlock;
+
+    // initial price of collateral
+    mapping(address => mapping(address => uint)) public liquidationPrice;
+
     // debts of tokens
     mapping(address => uint) public tokenDebts;
 
     // stability fee pinned to each position
     mapping(address => mapping(address => uint)) public stabilityFee;
 
-    // liquidation fee pinned to each position
+    // liquidation fee pinned to each position, 0 decimals
     mapping(address => mapping(address => uint)) public liquidationFee;
 
     // type of using oracle pinned for each position
@@ -74,19 +66,25 @@ contract Vault is Auth {
     // timestamp of the last update
     mapping(address => mapping(address => uint)) public lastUpdate;
 
+    modifier notLiquidating(address asset, address user) {
+        require(liquidationBlock[asset][user] == 0, "Unit Protocol: LIQUIDATING_POSITION");
+        _;
+    }
+
     /**
      * @param _parameters The address of the system parameters
      * @param _col COL token address
      * @param _usdp USDP token address
      **/
-    constructor(address _parameters, address _col, USDP _usdp, address payable _weth) public Auth(_parameters) {
+    constructor(address _parameters, address _col, address _usdp, address payable _weth) public Auth(_parameters) {
         col = _col;
         usdp = _usdp;
         weth = _weth;
     }
 
+    // only accept ETH via fallback from the WETH contract
     receive() external payable {
-        require(canReceiveEth, "Contract does not accept donations");
+        require(msg.sender == weth, "Unit Protocol: RESTRICTED");
     }
 
     /**
@@ -94,15 +92,15 @@ contract Vault is Auth {
      * @param asset The address of the main collateral token
      * @param user The owner of a position
      **/
-    function update(address asset, address user) public hasVaultAccess {
+    function update(address asset, address user) public hasVaultAccess notLiquidating(asset, user) {
 
         // calculate fee using stored stability fee
         uint debtWithFee = getTotalDebt(asset, user);
         tokenDebts[asset] = tokenDebts[asset].sub(debts[asset][user]).add(debtWithFee);
         debts[asset][user] = debtWithFee;
 
-        stabilityFee[asset][user] = parameters.stabilityFee(asset);
-        liquidationFee[asset][user] = parameters.liquidationFee(asset);
+        stabilityFee[asset][user] = vaultParameters.stabilityFee(asset);
+        liquidationFee[asset][user] = vaultParameters.liquidationFee(asset);
         lastUpdate[asset][user] = block.timestamp;
     }
 
@@ -110,9 +108,11 @@ contract Vault is Auth {
      * @dev Creates new position for user
      * @param asset The address of the main collateral token
      * @param user The address of a position's owner
+     * @param _oracleType The type of an oracle
      **/
-    function spawn(address asset, address user, uint _oracleType) external hasVaultAccess {
+    function spawn(address asset, address user, uint _oracleType) external hasVaultAccess notLiquidating(asset, user) {
         oracleType[asset][user] = _oracleType;
+        delete liquidationBlock[asset][user];
     }
 
     /**
@@ -120,7 +120,7 @@ contract Vault is Auth {
      * @param asset The address of the main collateral token
      * @param user The address of a position's owner
      **/
-    function destroy(address asset, address user) public hasVaultAccess {
+    function destroy(address asset, address user) public hasVaultAccess notLiquidating(asset, user) {
         delete stabilityFee[asset][user];
         delete oracleType[asset][user];
         delete lastUpdate[asset][user];
@@ -134,17 +134,17 @@ contract Vault is Auth {
      * @param user The address of a position's owner
      * @param amount The amount of tokens to deposit
      **/
-    function depositMain(address asset, address user, uint amount) external hasVaultAccess {
+    function depositMain(address asset, address user, uint amount) external hasVaultAccess notLiquidating(asset, user) {
         collaterals[asset][user] = collaterals[asset][user].add(amount);
-        asset.safeTransferFromAndVerify(user, address(this), amount);
+        TransferHelper.safeTransferFrom(asset, user, address(this), amount);
     }
 
     /**
      * @dev Converts ETH to WETH and adds main collateral to a position
      * @param user The address of a position's owner
      **/
-    function depositEth(address user) external payable {
-        WETH(weth).deposit{value: msg.value}();
+    function depositEth(address user) external payable notLiquidating(weth, user) {
+        IWETH(weth).deposit{value: msg.value}();
         collaterals[weth][user] = collaterals[weth][user].add(msg.value);
     }
 
@@ -154,9 +154,9 @@ contract Vault is Auth {
      * @param user The address of a position's owner
      * @param amount The amount of tokens to withdraw
      **/
-    function withdrawMain(address asset, address user, uint amount) external hasVaultAccess {
+    function withdrawMain(address asset, address user, uint amount) external hasVaultAccess notLiquidating(asset, user) {
         collaterals[asset][user] = collaterals[asset][user].sub(amount);
-        asset.safeTransferAndVerify(user, amount);
+        TransferHelper.safeTransfer(asset, user, amount);
     }
 
     /**
@@ -164,14 +164,10 @@ contract Vault is Auth {
      * @param user The address of a position's owner
      * @param amount The amount of ETH to withdraw
      **/
-    function withdrawEth(address payable user, uint amount) external hasVaultAccess {
+    function withdrawEth(address payable user, uint amount) external hasVaultAccess notLiquidating(weth, user) {
         collaterals[weth][user] = collaterals[weth][user].sub(amount);
-
-        canReceiveEth = true;
-        WETH(weth).withdraw(amount);
-        canReceiveEth = false;
-
-        user.transfer(amount);
+        IWETH(weth).withdraw(amount);
+        TransferHelper.safeTransferETH(user, amount);
     }
 
     /**
@@ -181,9 +177,9 @@ contract Vault is Auth {
      * @param user The address of a position's owner
      * @param amount The amount of tokens to deposit
      **/
-    function depositCol(address asset, address user, uint amount) external hasVaultAccess {
+    function depositCol(address asset, address user, uint amount) external hasVaultAccess notLiquidating(asset, user) {
         colToken[asset][user] = colToken[asset][user].add(amount);
-        col.safeTransferFromAndVerify(user, address(this), amount);
+        TransferHelper.safeTransferFrom(col, user, address(this), amount);
     }
 
     /**
@@ -192,9 +188,9 @@ contract Vault is Auth {
      * @param user The address of a position's owner
      * @param amount The amount of tokens to withdraw
      **/
-    function withdrawCol(address asset, address user, uint amount) external hasVaultAccess {
+    function withdrawCol(address asset, address user, uint amount) external hasVaultAccess notLiquidating(asset, user) {
         colToken[asset][user] = colToken[asset][user].sub(amount);
-        col.safeTransferAndVerify(user, amount);
+        TransferHelper.safeTransfer(col, user, amount);
     }
 
     /**
@@ -203,15 +199,25 @@ contract Vault is Auth {
      * @param user The address of a position's owner
      * @param amount The amount of USDP to borrow
      **/
-    function borrow(address asset, address user, uint amount) external hasVaultAccess returns(uint) {
+    function borrow(
+        address asset,
+        address user,
+        uint amount
+    )
+    external
+    hasVaultAccess
+    notLiquidating(asset, user)
+    returns(uint)
+    {
+        require(vaultParameters.isOracleTypeEnabled(oracleType[asset][user], asset), "Unit Protocol: WRONG_ORACLE_TYPE");
         update(asset, user);
         debts[asset][user] = debts[asset][user].add(amount);
         tokenDebts[asset] = tokenDebts[asset].add(amount);
 
         // check USDP limit for token
-        require(tokenDebts[asset] <= parameters.tokenDebtLimit(asset), "USDP: TOKEN_DEBT_LIMIT");
+        require(tokenDebts[asset] <= vaultParameters.tokenDebtLimit(asset), "Unit Protocol: ASSET_DEBT_LIMIT");
 
-        usdp.mint(user, amount);
+        USDP(usdp).mint(user, amount);
 
         return debts[asset][user];
     }
@@ -223,11 +229,20 @@ contract Vault is Auth {
      * @param amount The amount of USDP to repay
      * @return updated debt of a position
      **/
-    function repay(address asset, address user, uint amount) external hasVaultAccess returns(uint) {
+    function repay(
+        address asset,
+        address user,
+        uint amount
+    )
+    external
+    hasVaultAccess
+    notLiquidating(asset, user)
+    returns(uint)
+    {
         uint debt = debts[asset][user];
         debts[asset][user] = debt.sub(amount);
         tokenDebts[asset] = tokenDebts[asset].sub(amount);
-        usdp.burn(user, amount);
+        USDP(usdp).burn(user, amount);
 
         return debts[asset][user];
     }
@@ -238,9 +253,9 @@ contract Vault is Auth {
      * @param user The address to transfer funds from
      * @param amount The amount of asset to transfer
      **/
-    function chargeFee(address asset, address user, uint amount) external hasVaultAccess {
+    function chargeFee(address asset, address user, uint amount) external hasVaultAccess notLiquidating(asset, user) {
         if (amount != 0) {
-            asset.safeTransferFromAndVerify(user, parameters.foundation(), amount);
+            TransferHelper.safeTransferFrom(asset, user, vaultParameters.foundation(), amount);
         }
     }
 
@@ -248,57 +263,106 @@ contract Vault is Auth {
      * @dev Deletes position and transfers collateral to liquidation system
      * @param asset The address of the main collateral token
      * @param positionOwner The address of a position's owner
-     * @param liquidator The liquidator address
-     * @param usdCollateralValue The total USD value of liquidation collateral
+     * @param initialPrice The starting price of collateral in USDP
+     **/
+    function triggerLiquidation(
+        address asset,
+        address positionOwner,
+        uint initialPrice
+    )
+    external
+    hasVaultAccess
+    notLiquidating(asset, positionOwner)
+    {
+        // reverts if oracle type is disabled
+        require(vaultParameters.isOracleTypeEnabled(oracleType[asset][positionOwner], asset), "Unit Protocol: WRONG_ORACLE_TYPE");
+
+        // fix the debt
+        debts[asset][positionOwner] = getTotalDebt(asset, positionOwner);
+
+        liquidationBlock[asset][positionOwner] = block.number;
+        liquidationPrice[asset][positionOwner] = initialPrice;
+    }
+
+    /**
+     * @dev Internal liquidation process
+     * @param asset The address of the main collateral token
+     * @param positionOwner The address of a position's owner
+     * @param mainAssetToLiquidator The amount of main asset to send to a liquidator
+     * @param colToLiquidator The amount of COL to send to a liquidator
+     * @param mainAssetToPositionOwner The amount of main asset to send to a position owner
+     * @param colToPositionOwner The amount of COL to send to a position owner
+     * @param repayment The repayment in USDP
+     * @param penalty The liquidation penalty in USDP
+     * @param liquidator The address of a liquidator
      **/
     function liquidate(
         address asset,
         address positionOwner,
-        address liquidator,
-        uint usdCollateralValue
+        uint mainAssetToLiquidator,
+        uint colToLiquidator,
+        uint mainAssetToPositionOwner,
+        uint colToPositionOwner,
+        uint repayment,
+        uint penalty,
+        address liquidator
     )
         external
         hasVaultAccess
     {
-        // reverts if oracle type is disabled
-        require(parameters.isOracleTypeEnabled(oracleType[asset][positionOwner], asset), "USDP: WRONG_ORACLE_TYPE");
+        require(liquidationBlock[asset][positionOwner] != 0, "Unit Protocol: NOT_TRIGGERED_LIQUIDATION");
 
-        uint debt = debts[asset][positionOwner];
-        uint assetAmount = collaterals[asset][positionOwner];
-        uint colAmount = colToken[asset][positionOwner];
+        uint mainAssetInPosition = collaterals[asset][positionOwner];
+        uint mainAssetToFoundation = mainAssetInPosition.sub(mainAssetToLiquidator).sub(mainAssetToPositionOwner);
 
-        uint totalDebt = getTotalDebt(asset, positionOwner);
-        uint debtWithPenalty = totalDebt.add(totalDebt.mul(parameters.liquidationFee(asset)).div(LIQUIDATION_FEE_DENOMINATOR));
+        uint colInPosition = colToken[asset][positionOwner];
+        uint colToFoundation = colInPosition.sub(colToLiquidator).sub(colToPositionOwner);
 
-        tokenDebts[asset] = tokenDebts[asset].sub(debt);
-
+        delete liquidationPrice[asset][positionOwner];
+        delete liquidationBlock[asset][positionOwner];
         delete debts[asset][positionOwner];
         delete collaterals[asset][positionOwner];
         delete colToken[asset][positionOwner];
+
         destroy(asset, positionOwner);
 
-        uint colToLiquidator;
-        uint assetToLiquidator;
-
-        if (usdCollateralValue > debtWithPenalty) {
-            colToLiquidator = colAmount.mul(debtWithPenalty).div(usdCollateralValue);
-            assetToLiquidator = assetAmount.mul(debtWithPenalty).div(usdCollateralValue);
-
-            col.safeTransferAndVerify(positionOwner, colAmount.sub(colToLiquidator));
-            asset.safeTransferAndVerify(positionOwner, assetAmount.sub(assetToLiquidator));
+        // charge liquidation fee and burn USDP
+        if (repayment > penalty) {
+            if (penalty != 0) {
+                TransferHelper.safeTransferFrom(usdp, liquidator, vaultParameters.foundation(), penalty);
+            }
+            USDP(usdp).burn(liquidator, repayment.sub(penalty));
         } else {
-            colToLiquidator = colAmount;
-            assetToLiquidator = assetAmount;
+            if (repayment != 0) {
+                TransferHelper.safeTransferFrom(usdp, liquidator, vaultParameters.foundation(), repayment);
+            }
         }
 
-        usdp.burn(liquidator, debt);
-
-        if (totalDebt > debt) {
-            address(usdp).safeTransferFromAndVerify(liquidator, parameters.foundation(), totalDebt.sub(debt));
+        // send the part of collateral to a liquidator
+        if (mainAssetToLiquidator != 0) {
+            TransferHelper.safeTransfer(asset, liquidator, mainAssetToLiquidator);
         }
 
-        col.safeTransferAndVerify(liquidator, colToLiquidator);
-        asset.safeTransferAndVerify(liquidator, assetToLiquidator);
+        if (colToLiquidator != 0) {
+            TransferHelper.safeTransfer(col, liquidator, colToLiquidator);
+        }
+
+        // send the rest of collateral to a position owner
+        if (mainAssetToPositionOwner != 0) {
+            TransferHelper.safeTransfer(asset, positionOwner, mainAssetToPositionOwner);
+        }
+
+        if (colToPositionOwner != 0) {
+            TransferHelper.safeTransfer(col, positionOwner, colToPositionOwner);
+        }
+
+        if (mainAssetToFoundation != 0) {
+            TransferHelper.safeTransfer(asset, vaultParameters.foundation(), mainAssetToFoundation);
+        }
+
+        if (colToFoundation != 0) {
+            TransferHelper.safeTransfer(col, vaultParameters.foundation(), colToFoundation);
+        }
     }
 
     /**
@@ -312,17 +376,6 @@ contract Vault is Auth {
         oracleType[asset][user] = newOracleType;
     }
 
-    function isContract(address account) internal view returns (bool) {
-        // This method relies in extcodesize, which returns 0 for contracts in
-        // construction, since the code is only stored at the end of the
-        // constructor execution.
-
-        uint256 size;
-        // solhint-disable-next-line no-inline-assembly
-        assembly { size := extcodesize(account) }
-        return size != 0;
-    }
-
     /**
      * @dev Calculates the total amount of position's debt based on elapsed time
      * @param asset The address of the main collateral token
@@ -331,6 +384,7 @@ contract Vault is Auth {
      **/
     function getTotalDebt(address asset, address user) public view returns (uint) {
         uint debt = debts[asset][user];
+        if (liquidationBlock[asset][user] != 0) return debt;
         uint fee = calculateFee(asset, user, debt);
         return debt.add(fee);
     }
@@ -346,6 +400,6 @@ contract Vault is Auth {
         uint sFeePercent = stabilityFee[asset][user];
         uint timePast = block.timestamp.sub(lastUpdate[asset][user]);
 
-        return amount.mul(sFeePercent).mul(timePast).div(365 days).div(STABILITY_FEE_DENOMINATOR);
+        return amount.mul(sFeePercent).mul(timePast).div(365 days).div(DENOMINATOR_1E5);
     }
 }
