@@ -58,7 +58,7 @@ contract LiquidationTriggerKeydonixPoolToken is LiquidationTriggerKeydonixAbstra
         uint mainUsdValue_q112 = uniswapOraclePool.assetToUsd(asset, vault.collaterals(asset, user), underlyingProof);
 
         // USD value of the COL amount of a position
-        uint colUsdValue_q112 = uniswapOraclePool.keydonixOracleMainAsset().assetToUsd(vault.col(), vault.colToken(asset, user), colProof);
+        uint colUsdValue_q112 = uniswapOraclePool.uniswapOracleMainAsset().assetToUsd(vault.col(), vault.colToken(asset, user), colProof);
 
         // reverts if a position is safe
         require(isLiquidatablePosition(asset, user, mainUsdValue_q112, colUsdValue_q112), "Unit Protocol: SAFE_POSITION");

@@ -13,7 +13,7 @@ LEND                                0xd070437A0C4c97F4E2FF6EF9010DA2ec4fc830Eb
 WBTC                                0x03f1A5d11cB1C698d865756EBEdeb144898bB319
 
 UniswapFactory                      0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
-ChainlinkAggregaor mock             0x8692e13F484e10b0A6e3Cc97BB87a8eceA6EB9AE
+ChainlinkAggregator mock             0x8692e13F484e10b0A6e3Cc97BB87a8eceA6EB9AE
 ChainLinkedUniswapOracleMainAsset   0x7DbB5b5064B2f2A660140c095B862960Eebfa596
 ChainLinkedUniswapOraclePoolToken   0x4CBbDDB323fe79800C491fc72090D980F5E09465
 UniswapV2Router02                   0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
@@ -27,3 +27,25 @@ LiquidatorUniswapPoolToken          0xd360Dddb01eBB3e95aa4e9De756a569A9BA00CD4
 VaultManagerStandard                0x0a5BcB9d6dDc4e1489c535E49D7fc89dee953F96
 VaultManagerUniswapMainAsset        0xbf80cd628769E477BAc0C28fFb3c6f859FCd2C98
 VaultManagerUniswapPoolToken        0xcA348BCA9621a2A71733254d8AE01a853723F1c9
+
+// MAINNET // solidity 0.7.5+commit.eb77ed08 // deployed at 23.11.2020
+WETH                                0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
+COL                                 0xc76fb75950536d98fa62ea968e1d6b45ffea2a55
+UniswapFactory                      0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
+ChainlinkAggregator                 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
+
+Main asset mock for COL             0x6aade8A8A6b85921009D2CaA25Dc69348f4c009e
+
+ChainLinkedKeydonixOracleMainAsset  0xA2790A32E611aF1F653F2E2f151244f1DC2086Eb
+ChainLinkedKeydonixOraclePoolToken  0x11586e3b20239EF471134A0DA4a4239010A1c500
+
+VaultParameters                     0xB46F8CF42e504Efe8BEf895f848741daA55e9f1D
+VaultManagerParameters              0x203153522B9EAef4aE17c6e99851EE7b2F7D312E
+USDP                                0x1456688345527bE1f37E9e627DA0837D6f08C925
+Vault                               0xb1cFF81b9305166ff1EFc49A129ad2AfCd7BCf19
+LiquidationTriggerKeydonixMainAsset 0x701A228b0D7A3FC740462E9b2Af13F2A5C16c882
+LiquidationTriggerKeydonixPoolToken 0xF6F90336666413C73a940E0a53CB2f762326Ab10
+LiquidationAuction01                0xa41a3625c02c60Ae932515E7F921ada1811aF6a5
+VaultManagerStandard                0x2726ebDf958cC15f5adB01aAd22741329948fbDB
+VaultManagerKeydonixMainAsset       0x7f50d78062304B6f523f20E9bACa8F3C72197424
+VaultManagerKeydonixPoolToken       0x754106b2f312c987Dd34161F8b4735392fa93F06

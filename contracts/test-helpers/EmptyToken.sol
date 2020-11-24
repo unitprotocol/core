@@ -199,7 +199,6 @@ contract EmptyToken is StandardToken {
     )
     public
     {
-        require(_totalSupply > 0, "INVALID_VALUE");
         require(_firstHolder != address(0), "ZERO_ADDRESS");
         checkSymbolAndName(_symbol,_name);
 

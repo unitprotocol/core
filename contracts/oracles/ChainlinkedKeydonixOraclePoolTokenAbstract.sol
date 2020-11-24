@@ -16,5 +16,5 @@ import "./KeydonixOracleAbstract.sol";
  **/
 abstract contract ChainlinkedKeydonixOraclePoolTokenAbstract is KeydonixOracleAbstract {
 
-    ChainlinkedKeydonixOracleMainAssetAbstract public keydonixOracleMainAsset;
+    ChainlinkedKeydonixOracleMainAssetAbstract public uniswapOracleMainAsset;
 }

@@ -200,7 +200,7 @@ contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
         require(usdpAmount != 0, "Unit Protocol: USELESS_TX");
 
         // COL token price in USD
-        uint colUsdValue_q112 = uniswapOraclePoolToken.keydonixOracleMainAsset().assetToUsd(vault.col(), 1, colPriceProof);
+        uint colUsdValue_q112 = uniswapOraclePoolToken.uniswapOracleMainAsset().assetToUsd(vault.col(), 1, colPriceProof);
 
         uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
         uint feeInCol = fee.mul(uniswapOraclePoolToken.Q112()).div(colUsdValue_q112);
@@ -258,7 +258,7 @@ contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
         uint mainUsdValue_q112 = uniswapOraclePoolToken.assetToUsd(asset, vault.collaterals(asset, msg.sender), underlyingProof);
 
         // COL token value of the position in USD
-        uint colUsdValue_q112 = uniswapOraclePoolToken.keydonixOracleMainAsset().assetToUsd(vault.col(), colDeposit, colProof);
+        uint colUsdValue_q112 = uniswapOraclePoolToken.uniswapOracleMainAsset().assetToUsd(vault.col(), colDeposit, colProof);
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
@@ -315,7 +315,7 @@ contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
         uint mainUsdValue_q112 = uniswapOraclePoolToken.assetToUsd(asset, vault.collaterals(asset, user), underlyingProof);
 
         // COL token value of the position in USD
-        uint colUsdValue_q112 = uniswapOraclePoolToken.keydonixOracleMainAsset().assetToUsd(vault.col(), vault.colToken(asset, user), colProof);
+        uint colUsdValue_q112 = uniswapOraclePoolToken.uniswapOracleMainAsset().assetToUsd(vault.col(), vault.colToken(asset, user), colProof);
 
         _ensureCollateralization(asset, user, mainUsdValue_q112, colUsdValue_q112);
     }
