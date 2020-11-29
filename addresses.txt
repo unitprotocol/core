@@ -47,5 +47,18 @@ LiquidationTriggerKeydonixMainAsset 0x701A228b0D7A3FC740462E9b2Af13F2A5C16c882
 LiquidationTriggerKeydonixPoolToken 0xF6F90336666413C73a940E0a53CB2f762326Ab10
 LiquidationAuction01                0xa41a3625c02c60Ae932515E7F921ada1811aF6a5
 VaultManagerStandard                0x2726ebDf958cC15f5adB01aAd22741329948fbDB
-VaultManagerKeydonixMainAsset       0x7f50d78062304B6f523f20E9bACa8F3C72197424
-VaultManagerKeydonixPoolToken       0x754106b2f312c987Dd34161F8b4735392fa93F06
+VaultManagerKeydonixMainAsset       0x78727A77028d9130D2772713d570780231E64ECf
+VaultManagerKeydonixPoolToken       0xf1cA03Aae24C4865d09643cb929141D8d3c60A75
+
+Keep3rV1Oracle                      0x73353801921417F465377c8d898c6f4C0270282C
+
+ChainlinkedKeep3rOracleMainAsset    0xCC5e2CCcf2Ee61ef84893Ca1e6CBB5636753C21b
+ChainlinkedKeep3rOraclePoolToken    0x5f324B7152427a5C593AC41622EA5f8Af0eE19c9
+
+VaultManagerKeep3rMainAsset         0x16c3AD40950acfb0910452d0C537F91570cC8f76
+VaultManagerKeep3rPoolToken         0x240892DB3f143757f83fDb20EE77a9859053E681
+
+LiquidationTriggerKeep3rMainAsset   0x2B6369fb4fAaa3c0b2b766a5E1073fec6b176270
+LiquidationTriggerKeep3rPoolToken   0x61ad09b18c192834859e1a8c22abc457f5d38f5f
+
+ParametersBatchUpdater              0xD3F605dC4F8cDc7c199b73FdEf814DfA86058cD3

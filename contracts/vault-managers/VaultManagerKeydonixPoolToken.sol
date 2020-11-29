@@ -39,6 +39,7 @@ contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
 
         // check the existence of a position
         require(vault.getTotalDebt(asset, user) != 0, "Unit Protocol: NOT_SPAWNED_POSITION");
+        require(vault.oracleType(asset, user) == ORACLE_TYPE, "Unit Protocol: WRONG_ORACLE_TYPE");
         _;
     }
 
