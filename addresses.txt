@@ -59,6 +59,6 @@ VaultManagerKeep3rMainAsset         0x16c3AD40950acfb0910452d0C537F91570cC8f76
 VaultManagerKeep3rPoolToken         0x240892DB3f143757f83fDb20EE77a9859053E681
 
 LiquidationTriggerKeep3rMainAsset   0x2B6369fb4fAaa3c0b2b766a5E1073fec6b176270
-LiquidationTriggerKeep3rPoolToken   0x61ad09b18c192834859e1a8c22abc457f5d38f5f
+LiquidationTriggerKeep3rPoolToken   0xC39c00474956E4A098A50bF796b8BE07203E55bA
 
 ParametersBatchUpdater              0xD3F605dC4F8cDc7c199b73FdEf814DfA86058cD3
