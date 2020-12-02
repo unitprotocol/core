@@ -55,8 +55,8 @@ Keep3rV1Oracle                      0x73353801921417F465377c8d898c6f4C0270282C
 ChainlinkedKeep3rOracleMainAsset    0x90052A5A46137636d6366b4F0CB184C6f411bD53
 ChainlinkedKeep3rOraclePoolToken    0x3b5f4d33845d546c76DFb624ef002cb3a58391e9
 
-VaultManagerKeep3rMainAsset         0x21781023d62B5931474FB9CB95caD1aC8934037C
-VaultManagerKeep3rPoolToken         0x1Ee32424CD66c23386cf511c8b749C1E92043B0C
+VaultManagerKeep3rMainAsset         0x211A6d4D4F49c0C5814451589d6378FdA614Adb9
+VaultManagerKeep3rPoolToken         0x3052764f1af2f8B7a887dEAfA42153530676079B
 
 LiquidationTriggerKeep3rMainAsset   0xa7e17e0E06544A1A281ffCe2B86090e6fE5F91Ed
 LiquidationTriggerKeep3rPoolToken   0xb5927cAE19572166BfD19a0Ad18af825760Fb75b
