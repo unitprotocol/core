@@ -5,7 +5,8 @@
 */
 pragma solidity ^0.7.1;
 
-import "./VaultParameters.sol";
+import "./vault-managers/VaultManagerParameters.sol";
+import "./Vault.sol";
 
 
 /**
@@ -14,8 +15,11 @@ import "./VaultParameters.sol";
  **/
 contract ParametersBatchUpdater is Auth {
 
-    constructor(address _vaultParameters) public Auth(_vaultParameters) {
-        require(_vaultParameters != address(0), "Unit Protocol: ZERO_ADDRESS");
+    VaultManagerParameters immutable vaultManagerParameters;
+
+    constructor(address _vaultManagerParameters) public Auth(address(VaultManagerParameters(_vaultManagerParameters).vaultParameters())) {
+        require(_vaultManagerParameters != address(0), "Unit Protocol: ZERO_ADDRESS");
+        vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
     }
 
     /**
@@ -78,8 +82,7 @@ contract ParametersBatchUpdater is Auth {
      * @param flags The array of control flags
      **/
     function setOracleTypes(uint[] calldata _types, address[] calldata assets, bool[] calldata flags) public onlyManager {
-        require(_types.length == assets.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
-        require(_types.length == flags.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+        require(_types.length == assets.length && _types.length == flags.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < _types.length; i++) {
             vaultParameters.setOracleType(_types[i], assets[i], flags[i]);
         }
@@ -95,6 +98,48 @@ contract ParametersBatchUpdater is Auth {
         require(assets.length == limits.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < assets.length; i++) {
             vaultParameters.setTokenDebtLimit(assets[i], limits[i]);
+        }
+    }
+
+    function changeOracleTypes(address[] calldata assets, address[] calldata users, uint[] calldata oracleTypes) public onlyManager {
+        require(assets.length == users.length && assets.length == oracleTypes.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+        for (uint i = 0; i < assets.length; i++) {
+            Vault(vaultParameters.vault()).changeOracleType(assets[i], users[i], oracleTypes[i]);
+        }
+    }
+
+    function setInitialCollateralRatios(address[] calldata assets, uint[] calldata values) public onlyManager {
+        require(assets.length == values.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+        for (uint i = 0; i < assets.length; i++) {
+            vaultManagerParameters.setInitialCollateralRatio(assets[i], values[i]);
+        }
+    }
+
+    function setLiquidationRatios(address[] calldata assets, uint[] calldata values) public onlyManager {
+        require(assets.length == values.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+        for (uint i = 0; i < assets.length; i++) {
+            vaultManagerParameters.setLiquidationRatio(assets[i], values[i]);
+        }
+    }
+
+    function setLiquidationDiscounts(address[] calldata assets, uint[] calldata values) public onlyManager {
+        require(assets.length == values.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+        for (uint i = 0; i < assets.length; i++) {
+            vaultManagerParameters.setLiquidationDiscount(assets[i], values[i]);
+        }
+    }
+
+    function setDevaluationPeriods(address[] calldata assets, uint[] calldata values) public onlyManager {
+        require(assets.length == values.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+        for (uint i = 0; i < assets.length; i++) {
+            vaultManagerParameters.setDevaluationPeriod(assets[i], values[i]);
+        }
+    }
+
+    function setColPartRange(address[] calldata assets, uint[] calldata minValues, uint[] calldata maxValues) public onlyManager {
+        require(assets.length == minValues.length && assets.length == maxValues.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+        for (uint i = 0; i < assets.length; i++) {
+            vaultManagerParameters.setColPartRange(assets[i], minValues[i], maxValues[i]);
         }
     }
 }
