@@ -52,13 +52,13 @@ VaultManagerKeydonixPoolToken       0xf1cA03Aae24C4865d09643cb929141D8d3c60A75
 
 Keep3rV1Oracle                      0x73353801921417F465377c8d898c6f4C0270282C
 
-ChainlinkedKeep3rOracleMainAsset    0xCC5e2CCcf2Ee61ef84893Ca1e6CBB5636753C21b
-ChainlinkedKeep3rOraclePoolToken    0x5f324B7152427a5C593AC41622EA5f8Af0eE19c9
+ChainlinkedKeep3rOracleMainAsset    0x90052A5A46137636d6366b4F0CB184C6f411bD53
+ChainlinkedKeep3rOraclePoolToken    0x3b5f4d33845d546c76DFb624ef002cb3a58391e9
 
-VaultManagerKeep3rMainAsset         0x16c3AD40950acfb0910452d0C537F91570cC8f76
-VaultManagerKeep3rPoolToken         0x240892DB3f143757f83fDb20EE77a9859053E681
+VaultManagerKeep3rMainAsset         0x21781023d62B5931474FB9CB95caD1aC8934037C
+VaultManagerKeep3rPoolToken         0x1Ee32424CD66c23386cf511c8b749C1E92043B0C
 
-LiquidationTriggerKeep3rMainAsset   0x2B6369fb4fAaa3c0b2b766a5E1073fec6b176270
-LiquidationTriggerKeep3rPoolToken   0xC39c00474956E4A098A50bF796b8BE07203E55bA
+LiquidationTriggerKeep3rMainAsset   0xa7e17e0E06544A1A281ffCe2B86090e6fE5F91Ed
+LiquidationTriggerKeep3rPoolToken   0xb5927cAE19572166BfD19a0Ad18af825760Fb75b
 
 ParametersBatchUpdater              0xD3F605dC4F8cDc7c199b73FdEf814DfA86058cD3
