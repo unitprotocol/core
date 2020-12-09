@@ -120,11 +120,6 @@ contract VaultManagerStandard is ReentrancyGuard {
     {
         uint debtAmount = vault.debts(asset, msg.sender);
 
-        if (mainAmount == 0 && colAmount == 0) {
-            // just repay the debt
-            return repay(asset, debtAmount);
-        }
-
         if (mainAmount != 0) {
             // withdraw main collateral to the user address
             vault.withdrawMain(asset, msg.sender, mainAmount);
@@ -159,11 +154,6 @@ contract VaultManagerStandard is ReentrancyGuard {
     nonReentrant
     {
         uint debtAmount = vault.debts(vault.weth(), msg.sender);
-
-        if (ethAmount == 0 && colAmount == 0) {
-            // just repay the debt
-            return repay(vault.weth(), debtAmount);
-        }
 
         if (ethAmount != 0) {
             // withdraw ETH to the user address
