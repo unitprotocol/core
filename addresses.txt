@@ -46,7 +46,7 @@ Vault                               0xb1cFF81b9305166ff1EFc49A129ad2AfCd7BCf19
 LiquidationTriggerKeydonixMainAsset 0x701A228b0D7A3FC740462E9b2Af13F2A5C16c882
 LiquidationTriggerKeydonixPoolToken 0xF6F90336666413C73a940E0a53CB2f762326Ab10
 LiquidationAuction01                0xa41a3625c02c60Ae932515E7F921ada1811aF6a5
-VaultManagerStandard                0x2726ebDf958cC15f5adB01aAd22741329948fbDB
+VaultManagerStandard                0x56DD677842214CbB97Ad88dBAA58DD55e1b179Ea  old dapp address - 0x2726ebDf958cC15f5adB01aAd22741329948fbDB
 VaultManagerKeydonixMainAsset       0x78727A77028d9130D2772713d570780231E64ECf
 VaultManagerKeydonixPoolToken       0xf1cA03Aae24C4865d09643cb929141D8d3c60A75
 
