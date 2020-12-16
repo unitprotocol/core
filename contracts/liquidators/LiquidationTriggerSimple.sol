@@ -59,14 +59,12 @@ abstract contract LiquidationTriggerSimple {
      * @param asset The address of the main collateral token of a position
      * @param user The owner of a position
      * @param mainUsdValue_q112 Q112-encoded USD value of the main collateral
-     * @param colUsdValue_q112 Q112-encoded USD value of the COL amount
      * @return boolean value, whether a position is liquidatable
      **/
     function isLiquidatablePosition(
         address asset,
         address user,
-        uint mainUsdValue_q112,
-        uint colUsdValue_q112
+        uint mainUsdValue_q112
     ) public view returns (bool){
         uint debt = vault.getTotalDebt(asset, user);
 
@@ -75,31 +73,16 @@ abstract contract LiquidationTriggerSimple {
 
         require(vault.oracleType(asset, user) == oracleType, "Unit Protocol: INCORRECT_ORACLE_TYPE");
 
-        return UR(mainUsdValue_q112, colUsdValue_q112, debt) >= LR(asset, mainUsdValue_q112, colUsdValue_q112);
+        return UR(mainUsdValue_q112, debt) >= vaultManagerParameters.liquidationRatio(asset);
     }
 
     /**
      * @dev Calculates position's utilization ratio
      * @param mainUsdValue USD value of main collateral
-     * @param colUsdValue USD value of COL amount
      * @param debt USDP borrowed
      * @return utilization ratio of a position
      **/
-    function UR(uint mainUsdValue, uint colUsdValue, uint debt) public view returns (uint) {
-        return debt.mul(100).mul(Q112).div(mainUsdValue.add(colUsdValue));
-    }
-
-    /**
-     * @dev Calculates position's liquidation ratio based on collateral proportion
-     * @param asset The address of the main collateral token of a position
-     * @param mainUsdValue USD value of main collateral in position
-     * @param colUsdValue USD value of COL amount in position
-     * @return liquidation ratio of a position
-     **/
-    function LR(address asset, uint mainUsdValue, uint colUsdValue) public view returns(uint) {
-        uint lrMain = vaultManagerParameters.liquidationRatio(asset);
-        uint lrCol = vaultManagerParameters.liquidationRatio(vault.col());
-
-        return lrMain.mul(mainUsdValue).add(lrCol.mul(colUsdValue)).div(mainUsdValue.add(colUsdValue));
+    function UR(uint mainUsdValue, uint debt) public pure returns (uint) {
+        return debt.mul(100).mul(Q112).div(mainUsdValue);
     }
 }

@@ -46,17 +46,14 @@ contract LiquidationTriggerKeep3rMainAsset is LiquidationTriggerSimple, Reentran
         // USD value of the main collateral
         uint mainUsdValue_q112 = keep3rOracleMainAsset.assetToUsd(asset, vault.collaterals(asset, user));
 
-        // USD value of the COL amount of a position
-        uint colUsdValue_q112 = keep3rOracleMainAsset.assetToUsd(vault.col(), vault.colToken(asset, user));
-
         // reverts if a position is not liquidatable
-        require(isLiquidatablePosition(asset, user, mainUsdValue_q112, colUsdValue_q112), "Unit Protocol: SAFE_POSITION");
+        require(isLiquidatablePosition(asset, user, mainUsdValue_q112), "Unit Protocol: SAFE_POSITION");
 
-        uint liquidationDiscount_q112 = mainUsdValue_q112.add(colUsdValue_q112).mul(
+        uint liquidationDiscount_q112 = mainUsdValue_q112.mul(
             vaultManagerParameters.liquidationDiscount(asset)
         ).div(DENOMINATOR_1E5);
 
-        uint initialLiquidationPrice = mainUsdValue_q112.add(colUsdValue_q112).sub(liquidationDiscount_q112).div(Q112);
+        uint initialLiquidationPrice = mainUsdValue_q112.sub(liquidationDiscount_q112).div(Q112);
 
         // sends liquidation command to the Vault
         vault.triggerLiquidation(asset, user, initialLiquidationPrice);
