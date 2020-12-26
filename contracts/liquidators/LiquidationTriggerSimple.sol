@@ -78,7 +78,7 @@ abstract contract LiquidationTriggerSimple {
 
     /**
      * @dev Calculates position's utilization ratio
-     * @param mainUsdValue USD value of main collateral
+     * @param mainUsdValue USD value of main collateral, q112 format
      * @param debt USDP borrowed
      * @return utilization ratio of a position
      **/

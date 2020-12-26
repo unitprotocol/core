@@ -308,6 +308,115 @@ module.exports = function(context, mode) {
 				);
 			},
 			spawnEth: spawnEthMainAsset,
+		},
+		chainlinkMainAsset: {
+			spawn: async (main, mainAmount, usdpAmount, { from = context.deployer, noApprove } = {}) => {
+				if (!noApprove)
+					await main.approve(context.vault.address, mainAmount, { from });
+				return context.vaultManagerChainlinkMainAsset.spawn(
+					main.address,
+					mainAmount, // main
+					usdpAmount,	// USDP
+					{ from },
+				);
+			},
+			spawnEth: async (mainAmount, usdpAmount) => {
+				return context.vaultManagerChainlinkMainAsset.spawn_Eth(
+					usdpAmount,	// USDP
+					{ value: mainAmount	}
+				);
+			},
+			join: async (main, mainAmount, usdpAmount) => {
+				await main.approve(context.vault.address, mainAmount);
+				return context.vaultManagerChainlinkMainAsset.depositAndBorrow(
+					main.address,
+					mainAmount, // main
+					usdpAmount,	// USDP
+				)
+			},
+			exit: async (main, mainAmount, usdpAmount) => {
+				return context.vaultManagerChainlinkMainAsset.withdrawAndRepay(
+					main.address,
+					mainAmount, // main
+					usdpAmount,	// USDP
+				);
+			},
+			triggerLiquidation: (main, user, from = context.deployer) => {
+				return context.liquidatorChainlinkMainAsset.triggerLiquidation(
+					main.address,
+					user,
+					{ from }
+				);
+			},
+			withdrawAndRepay: async (main, mainAmount, usdpAmount) => {
+				return context.vaultManagerChainlinkMainAsset.withdrawAndRepay(
+					main.address,
+					mainAmount,
+					usdpAmount,
+				);
+			},
+			withdrawAndRepayEth: async (mainAmount, usdpAmount) => {
+				return context.vaultManagerChainlinkMainAsset.withdrawAndRepay_Eth(
+					mainAmount,
+					usdpAmount,
+				);
+			},
+		},
+		chainlinkPoolToken: {
+			spawn: async (main, mainAmount, usdpAmount, { from = context.deployer, noApprove } = {}) => {
+				if (!noApprove)
+					await main.approve(context.vault.address, mainAmount, { from });
+				return context.vaultManagerChainlinkPoolToken.spawn(
+					main.address,
+					mainAmount, // main
+					usdpAmount,	// USDP
+				);
+			},
+			join: async (main, mainAmount, usdpAmount) => {
+				await main.approve(context.vault.address, mainAmount);
+				return context.vaultManagerChainlinkPoolToken.depositAndBorrow(
+					main.address,
+					mainAmount, // main
+					usdpAmount,	// USDP
+				);
+			},
+			exit: async (main, mainAmount, usdpAmount) => {
+				return context.vaultManagerChainlinkPoolToken.withdrawAndRepay(
+					main.address,
+					mainAmount, // main
+					usdpAmount,	// USDP
+				);
+			},
+			triggerLiquidation: (main, user, from = context.deployer) => {
+				return context.liquidatorChainlinkPoolToken.triggerLiquidation(
+					main.address,
+					user,
+					{ from }
+				);
+			},
+			withdrawAndRepay: async (main, mainAmount, usdpAmount) => {
+				return context.vaultManagerChainlinkPoolToken.withdrawAndRepay(
+					main.address,
+					mainAmount,
+					usdpAmount,
+				);
+			},
+			withdrawAndRepayCol: async (main, mainAmount, usdpAmount) => {
+				await context.col.approve(context.vault.address, MAX_UINT);
+				return context.vaultManagerChainlinkPoolToken.withdrawAndRepayUsingCol(
+					main.address,
+					mainAmount,
+					usdpAmount,
+				);
+			},
+			repayUsingCol: async (main, usdpAmount) => {
+				await context.col.approve(context.vault.address, MAX_UINT);
+				return context.vaultManagerChainlinkPoolToken.repayUsingCol(
+					main.address,
+					usdpAmount,
+				);
+			},
+			spawnEth: spawnEthMainAsset,
 		}
 	}
 	return wrappers[mode];

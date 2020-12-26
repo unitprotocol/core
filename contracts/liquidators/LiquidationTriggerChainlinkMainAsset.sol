@@ -31,7 +31,7 @@ contract LiquidationTriggerChainlinkMainAsset is LiquidationTriggerSimple, Reent
         address _chainlinkedOracleMainAsset
     )
     public
-    LiquidationTriggerSimple(_vaultManagerParameters, 3)
+    LiquidationTriggerSimple(_vaultManagerParameters, 5)
     {
         chainlinkedOracleMainAsset = ChainlinkedOracleSimple(_chainlinkedOracleMainAsset);
     }

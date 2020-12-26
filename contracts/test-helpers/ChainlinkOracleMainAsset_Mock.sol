@@ -15,7 +15,7 @@ import "../oracles/OracleSimple.sol";
  * @title ChainlinkOracleMainAsset_Mock
  * @dev Calculates the USD price of desired tokens
  **/
-contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple {
+contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
     using SafeMath for uint;
 
     uint public immutable Q112 = 2 ** 112;
@@ -34,8 +34,8 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple {
         public
         Auth(vaultParameters)
     {
-        require(tokenAddresses1.length != _usdAggregators.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
-        require(tokenAddresses2.length != _ethAggregators.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+        require(tokenAddresses1.length == _usdAggregators.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+        require(tokenAddresses2.length == _ethAggregators.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH2");
         require(weth != address(0), "Unit Protocol: ZERO_ADDRESS");
         require(vaultParameters != address(0), "Unit Protocol: ZERO_ADDRESS");
 
@@ -63,8 +63,8 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple {
 
     function _assetToUsd(address asset, uint amount) internal view returns (uint) {
         AggregatorInterface agg = AggregatorInterface(usdAggregators[asset]);
-        require(agg.latestTimestamp() > now - 24 hours, "Unit Protocol: STALE_CHAINLINK_PRICE");
-        return amount.mul(uint(agg.latestAnswer())).mul(Q112).div(agg.decimals());
+        require(agg.latestTimestamp() > block.timestamp - 24 hours, "Unit Protocol: STALE_CHAINLINK_PRICE");
+        return amount.mul(uint(agg.latestAnswer())).mul(Q112).div(10 ** agg.decimals());
     }
 
     /**
@@ -82,8 +82,8 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple {
         }
         AggregatorInterface agg = AggregatorInterface(ethAggregators[asset]);
         require(address(agg) != address (0), "Unit Protocol: AGGREGATOR_DOES_NOT_EXIST");
-        require(agg.latestTimestamp() > now - 24 hours, "Unit Protocol: STALE_CHAINLINK_PRICE");
-        return amount.mul(uint(agg.latestAnswer())).mul(Q112).div(agg.decimals());
+        require(agg.latestTimestamp() > block.timestamp - 24 hours, "Unit Protocol: STALE_CHAINLINK_PRICE");
+        return amount.mul(uint(agg.latestAnswer())).mul(Q112).div(10 ** agg.decimals());
     }
 
     /**
@@ -92,8 +92,8 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple {
      **/
     function ethToUsd(uint ethAmount) public override view returns (uint) {
         AggregatorInterface agg = AggregatorInterface(usdAggregators[WETH]);
-        require(agg.latestTimestamp() > now - 6 hours, "Unit Protocol: STALE_CHAINLINK_PRICE");
+        require(agg.latestTimestamp() > block.timestamp - 6 hours, "Unit Protocol: STALE_CHAINLINK_PRICE");
         uint ethUsdPrice = uint(agg.latestAnswer());
-        return ethAmount.mul(ethUsdPrice).div(agg.decimals());
+        return ethAmount.mul(ethUsdPrice).div(10 ** agg.decimals());
     }
 }
