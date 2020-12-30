@@ -9,7 +9,6 @@ const KeydonixOraclePoolTokenMock = artifacts.require('KeydonixOraclePoolToken_M
 const Keep3rOracleMainAssetMock = artifacts.require('Keep3rOracleMainAsset_Mock');
 const Keep3rOraclePoolTokenMock = artifacts.require('Keep3rOraclePoolToken_Mock');
 const ChainlinkOracleMainAssetMock = artifacts.require('ChainlinkOracleMainAsset_Mock');
-const ChainlinkOraclePoolTokenMock = artifacts.require('ChainlinkOraclePoolToken_Mock');
 const ChainlinkAggregator = artifacts.require('ChainlinkAggregator_Mock');
 const UniswapV2FactoryDeployCode = require('./UniswapV2DeployCode');
 const IUniswapV2Factory = artifacts.require('IUniswapV2Factory');
@@ -21,13 +20,11 @@ const VaultManagerKeydonixPoolToken = artifacts.require('VaultManagerKeydonixPoo
 const VaultManagerKeep3rMainAsset = artifacts.require('VaultManagerKeep3rMainAsset');
 const VaultManagerKeep3rPoolToken = artifacts.require('VaultManagerKeep3rPoolToken');
 const VaultManagerChainlinkMainAsset = artifacts.require('VaultManagerChainlinkMainAsset');
-const VaultManagerChainlinkPoolToken = artifacts.require('VaultManagerChainlinkPoolToken');
 const LiquidatorKeydonixMainAsset = artifacts.require('LiquidationTriggerKeydonixMainAsset');
 const LiquidatorKeydonixPoolToken = artifacts.require('LiquidationTriggerKeydonixPoolToken');
 const LiquidatorKeep3rMainAsset = artifacts.require('LiquidationTriggerKeep3rMainAsset');
 const LiquidatorKeep3rPoolToken = artifacts.require('LiquidationTriggerKeep3rPoolToken');
 const LiquidatorChainlinkMainAsset = artifacts.require('LiquidationTriggerChainlinkMainAsset');
-const LiquidatorChainlinkPoolToken = artifacts.require('LiquidationTriggerChainlinkPoolToken');
 const LiquidationAuction01 = artifacts.require('LiquidationAuction01');
 const { ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce, deployContractBytecode } = require('./deployUtils');
@@ -191,9 +188,6 @@ module.exports = (context, mode) => {
 				context.weth.address,
 				context.vaultParameters.address
 			);
-			context.chainlinkOraclePoolTokenMock = await ChainlinkOraclePoolTokenMock.new(
-				context.chainlinkOracleMainAssetMock.address
-			);
 		}
 
 		context.vaultManagerParameters = await VaultManagerParameters.new(context.vaultParameters.address);
@@ -206,7 +200,6 @@ module.exports = (context, mode) => {
 			context.liquidatorKeep3rPoolToken = await LiquidatorKeep3rPoolToken.new(context.vaultManagerParameters.address, context.keep3rOraclePoolTokenMock.address);
 		} else if (chainlink) {
 			context.liquidatorChainlinkMainAsset = await LiquidatorChainlinkMainAsset.new(context.vaultManagerParameters.address, context.chainlinkOracleMainAssetMock.address);
-			context.liquidatorChainlinkPoolToken = await LiquidatorChainlinkPoolToken.new(context.vaultManagerParameters.address, context.chainlinkOraclePoolTokenMock.address);
 		}
 
 		context.liquidationAuction = await LiquidationAuction01.new(context.vaultManagerParameters.address);
@@ -233,10 +226,6 @@ module.exports = (context, mode) => {
 			context.vaultManagerChainlinkMainAsset = await VaultManagerChainlinkMainAsset.new(
 				context.vaultManagerParameters.address,
 				context.chainlinkOracleMainAssetMock.address,
-			);
-			context.vaultManagerChainlinkPoolToken = await VaultManagerChainlinkPoolToken.new(
-				context.vaultManagerParameters.address,
-				context.chainlinkOraclePoolTokenMock.address,
 			);
 		}
 
@@ -268,9 +257,7 @@ module.exports = (context, mode) => {
 			await context.vaultParameters.setVaultAccess(context.liquidatorKeep3rPoolToken.address, true);
 		} else if (chainlink) {
 			await context.vaultParameters.setVaultAccess(context.vaultManagerChainlinkMainAsset.address, true);
-			await context.vaultParameters.setVaultAccess(context.vaultManagerChainlinkPoolToken.address, true);
 			await context.vaultParameters.setVaultAccess(context.liquidatorChainlinkMainAsset.address, true);
-			await context.vaultParameters.setVaultAccess(context.liquidatorChainlinkPoolToken.address, true);
 		}
 
 		await context.vaultParameters.setVaultAccess(context.vaultManagerStandard.address, true);

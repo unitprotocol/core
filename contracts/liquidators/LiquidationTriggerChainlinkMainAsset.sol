@@ -41,18 +41,18 @@ contract LiquidationTriggerChainlinkMainAsset is LiquidationTriggerSimple, Reent
      * @param asset The address of the main collateral token of a position
      * @param user The owner of a position
      **/
-    function triggerLiquidation(address asset, address user) public override nonReentrant{
+    function triggerLiquidation(address asset, address user) public override nonReentrant {
         // USD value of the main collateral
-        uint mainUsdValue_q112 = chainlinkedOracleMainAsset.assetToUsd(asset, vault.collaterals(asset, user));
+        uint mainUsdValue = chainlinkedOracleMainAsset.assetToUsd(asset, vault.collaterals(asset, user));
 
         // reverts if a position is not liquidatable
-        require(isLiquidatablePosition(asset, user, mainUsdValue_q112), "Unit Protocol: SAFE_POSITION");
+        require(isLiquidatablePosition(asset, user, mainUsdValue), "Unit Protocol: SAFE_POSITION");
 
-        uint liquidationDiscount_q112 = mainUsdValue_q112.mul(
+        uint liquidationDiscount = mainUsdValue.mul(
             vaultManagerParameters.liquidationDiscount(asset)
         ).div(DENOMINATOR_1E5);
 
-        uint initialLiquidationPrice = mainUsdValue_q112.sub(liquidationDiscount_q112).div(Q112);
+        uint initialLiquidationPrice = mainUsdValue.sub(liquidationDiscount);
 
         // sends liquidation command to the Vault
         vault.triggerLiquidation(asset, user, initialLiquidationPrice);

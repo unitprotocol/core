@@ -23,7 +23,6 @@ contract VaultManagerChainlinkMainAsset is ReentrancyGuard {
     VaultManagerParameters public immutable vaultManagerParameters;
     ChainlinkedOracleSimple public immutable oracle;
     uint public constant ORACLE_TYPE = 5;
-    uint public constant Q112 = 2 ** 112;
 
     /**
      * @dev Trigger when joins are happened
@@ -286,29 +285,29 @@ contract VaultManagerChainlinkMainAsset is ReentrancyGuard {
     view
     {
         // main collateral value of the position in USD
-        uint mainUsdValue_q112 = oracle.assetToUsd(asset, vault.collaterals(asset, user));
+        uint mainUsdValue = oracle.assetToUsd(asset, vault.collaterals(asset, user));
 
-        _ensureCollateralization(asset, user, mainUsdValue_q112);
+        _ensureCollateralization(asset, user, mainUsdValue);
     }
 
     function _ensurePositionCollateralization_Eth(address user) internal view {
         // ETH value of the position in USD
-        uint ethUsdValue_q112 = oracle.ethToUsd(vault.collaterals(vault.weth(), user).mul(Q112));
+        uint ethUsdValue = oracle.ethToUsd(vault.collaterals(vault.weth(), user));
 
-        _ensureCollateralization(vault.weth(), user, ethUsdValue_q112);
+        _ensureCollateralization(vault.weth(), user, ethUsdValue);
     }
 
     // ensures that borrowed value is in desired range
     function _ensureCollateralization(
         address asset,
         address user,
-        uint mainUsdValue_q112
+        uint mainUsdValue
     )
     internal
     view
     {
         // USD limit of the position
-        uint usdLimit = mainUsdValue_q112 * vaultManagerParameters.initialCollateralRatio(asset) / Q112 / 100;
+        uint usdLimit = mainUsdValue * vaultManagerParameters.initialCollateralRatio(asset) / 100;
 
         // revert if collateralization is not enough
         require(vault.getTotalDebt(asset, user) <= usdLimit, "Unit Protocol: UNDERCOLLATERALIZED");
