@@ -1,22 +1,6 @@
 const MAX_UINT = new web3.utils.BN('0x' + 'ff'.repeat(32));
 
 module.exports = function(context, mode) {
-	const spawnEthMainAsset = async (mainAmount, colAmount, usdpAmount) => {
-		await context.col.approve(context.vault.address, colAmount);
-		if (mode.startsWith('keydonix')) {
-			return context.vaultManagerKeydonixMainAsset.spawn_Eth(
-				colAmount, // COL
-				usdpAmount,	// USDP
-				['0x', '0x', '0x', '0x'], // COL price proof
-				{ value: mainAmount }
-			);
-		}
-		return context.vaultManagerKeep3rMainAsset.spawn_Eth(
-			colAmount, // COL
-			usdpAmount,	// USDP
-			{ value: mainAmount	}
-		);
-	};
 	const wrappers = {
 		keydonixMainAsset: {
 			spawn: async (main, mainAmount, colAmount, usdpAmount, { from = context.deployer, noApprove, noColApprove } = {}) => {
@@ -32,7 +16,17 @@ module.exports = function(context, mode) {
 					{ from },
 				);
 			},
-			spawnEth: spawnEthMainAsset,
+			spawnEth: async (mainAmount, colAmount, usdpAmount) => {
+				await context.col.approve(context.vault.address, colAmount);
+				if (mode.startsWith('keydonix')) {
+					return context.vaultManagerKeydonixMainAsset.spawn_Eth(
+						colAmount, // COL
+						usdpAmount,	// USDP
+						['0x', '0x', '0x', '0x'], // COL price proof
+						{ value: mainAmount }
+					);
+				}
+			},
 			join: async (main, mainAmount, colAmount, usdpAmount) => {
 				await main.approve(context.vault.address, mainAmount);
 				await context.col.approve(context.vault.address, colAmount);
@@ -175,7 +169,17 @@ module.exports = function(context, mode) {
 					['0x', '0x', '0x', '0x'], // COL price proof
 				);
 			},
-			spawnEth: spawnEthMainAsset,
+			spawnEth: async (mainAmount, colAmount, usdpAmount) => {
+				await context.col.approve(context.vault.address, colAmount);
+				if (mode.startsWith('keydonix')) {
+					return context.vaultManagerKeydonixMainAsset.spawn_Eth(
+						colAmount, // COL
+						usdpAmount,	// USDP
+						['0x', '0x', '0x', '0x'], // COL price proof
+						{ value: mainAmount }
+					);
+				}
+			},
 		},
 		keep3rMainAsset: {
 			spawn: async (main, mainAmount, colAmount, usdpAmount, { from = context.deployer, noApprove, noColApprove } = {}) => {
@@ -189,7 +193,14 @@ module.exports = function(context, mode) {
 					{ from },
 				);
 			},
-			spawnEth: spawnEthMainAsset,
+			spawnEth: async (mainAmount, colAmount, usdpAmount) => {
+				await context.col.approve(context.vault.address, colAmount);
+				return context.vaultManagerKeep3rMainAsset.spawn_Eth(
+					colAmount, // main
+					usdpAmount,	// USDP
+					{ value: mainAmount	}
+				);
+			},
 			join: async (main, mainAmount, colAmount, usdpAmount) => {
 				await main.approve(context.vault.address, mainAmount);
 				await context.col.approve(context.vault.address, colAmount);
@@ -307,7 +318,14 @@ module.exports = function(context, mode) {
 					usdpAmount,
 				);
 			},
-			spawnEth: spawnEthMainAsset,
+			spawnEth: async (mainAmount, colAmount, usdpAmount) => {
+				await context.col.approve(context.vault.address, colAmount);
+				return context.vaultManagerKeep3rMainAsset.spawn_Eth(
+					colAmount, // main
+					usdpAmount,	// USDP
+					{ value: mainAmount	}
+				);
+			},
 		},
 		chainlinkMainAsset: {
 			spawn: async (main, mainAmount, usdpAmount, { from = context.deployer, noApprove } = {}) => {
@@ -362,11 +380,64 @@ module.exports = function(context, mode) {
 				);
 			},
 		},
-		chainlinkPoolToken: {
+		sushiswapKeep3rMainAsset: {
 			spawn: async (main, mainAmount, usdpAmount, { from = context.deployer, noApprove } = {}) => {
 				if (!noApprove)
 					await main.approve(context.vault.address, mainAmount, { from });
-				return context.vaultManagerChainlinkPoolToken.spawn(
+				return context.vaultManagerKeep3rSushiSwapMainAsset.spawn(
+					main.address,
+					mainAmount, // main
+					usdpAmount,	// USDP
+					{ from },
+				);
+			},
+			spawnEth: async (mainAmount, usdpAmount) => {
+				return context.vaultManagerKeep3rSushiSwapMainAsset.spawn_Eth(
+					usdpAmount,	// USDP
+					{ value: mainAmount	}
+				);
+			},
+			join: async (main, mainAmount, usdpAmount) => {
+				await main.approve(context.vault.address, mainAmount);
+				return context.vaultManagerKeep3rSushiSwapMainAsset.depositAndBorrow(
+					main.address,
+					mainAmount, // main
+					usdpAmount,	// USDP
+				)
+			},
+			exit: async (main, mainAmount, usdpAmount) => {
+				return context.vaultManagerKeep3rSushiSwapMainAsset.withdrawAndRepay(
+					main.address,
+					mainAmount, // main
+					usdpAmount,	// USDP
+				);
+			},
+			triggerLiquidation: (main, user, from = context.deployer) => {
+				return context.liquidatorKeep3rSushiSwapMainAsset.triggerLiquidation(
+					main.address,
+					user,
+					{ from }
+				);
+			},
+			withdrawAndRepay: async (main, mainAmount, usdpAmount) => {
+				return context.vaultManagerKeep3rSushiSwapMainAsset.withdrawAndRepay(
+					main.address,
+					mainAmount,
+					usdpAmount,
+				);
+			},
+			withdrawAndRepayEth: async (mainAmount, usdpAmount) => {
+				return context.vaultManagerKeep3rSushiSwapMainAsset.withdrawAndRepay_Eth(
+					mainAmount,
+					usdpAmount,
+				);
+			},
+		},
+		sushiswapKeep3rPoolToken: {
+			spawn: async (main, mainAmount, usdpAmount, { from = context.deployer, noApprove } = {}) => {
+				if (!noApprove)
+					await main.approve(context.vault.address, mainAmount, { from });
+				return context.vaultManagerKeep3rSushiSwapPoolToken.spawn(
 					main.address,
 					mainAmount, // main
 					usdpAmount,	// USDP
@@ -374,50 +445,34 @@ module.exports = function(context, mode) {
 			},
 			join: async (main, mainAmount, usdpAmount) => {
 				await main.approve(context.vault.address, mainAmount);
-				return context.vaultManagerChainlinkPoolToken.depositAndBorrow(
+				return context.vaultManagerKeep3rSushiSwapPoolToken.depositAndBorrow(
 					main.address,
 					mainAmount, // main
 					usdpAmount,	// USDP
 				);
 			},
 			exit: async (main, mainAmount, usdpAmount) => {
-				return context.vaultManagerChainlinkPoolToken.withdrawAndRepay(
+				return context.vaultManagerKeep3rSushiSwapPoolToken.withdrawAndRepay(
 					main.address,
 					mainAmount, // main
 					usdpAmount,	// USDP
 				);
 			},
 			triggerLiquidation: (main, user, from = context.deployer) => {
-				return context.liquidatorChainlinkPoolToken.triggerLiquidation(
+				return context.liquidatorKeep3rSushiSwapPoolToken.triggerLiquidation(
 					main.address,
 					user,
 					{ from }
 				);
 			},
 			withdrawAndRepay: async (main, mainAmount, usdpAmount) => {
-				return context.vaultManagerChainlinkPoolToken.withdrawAndRepay(
+				return context.vaultManagerKeep3rSushiSwapPoolToken.withdrawAndRepay(
 					main.address,
 					mainAmount,
 					usdpAmount,
 				);
 			},
-			withdrawAndRepayCol: async (main, mainAmount, usdpAmount) => {
-				await context.col.approve(context.vault.address, MAX_UINT);
-				return context.vaultManagerChainlinkPoolToken.withdrawAndRepayUsingCol(
-					main.address,
-					mainAmount,
-					usdpAmount,
-				);
-			},
-			repayUsingCol: async (main, usdpAmount) => {
-				await context.col.approve(context.vault.address, MAX_UINT);
-				return context.vaultManagerChainlinkPoolToken.repayUsingCol(
-					main.address,
-					usdpAmount,
-				);
-			},
-			spawnEth: spawnEthMainAsset,
-		}
+		},
 	}
 	return wrappers[mode];
 }
