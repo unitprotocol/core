@@ -1,64 +1,44 @@
-// RINKEBY // Deployed at 3.10
+WETH                                                0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
+COL                                                 0xc76fb75950536d98fa62ea968e1d6b45ffea2a55
+UniswapFactory                                      0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
+SushiSwapFactory                                    0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac
+ChainlinkAggregator                                 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
 
-COL                                 0x0F235462cA4a41EA92Fca6b7c4d67dAe0DA8d1D6
-STAKE                               0xeED5B67BEf854D8Cb7FCa3e8220c54b3b48C461B
-WETH                                0xc778417e063141139fce010982780140aa0cd5ab
+Main asset mock for COL                             0x6aade8A8A6b85921009D2CaA25Dc69348f4c009e
 
-STAKE/WETH                          0x1B50B21225c2C7B3449fF776C368d14D51d05c5a
+ChainLinkedKeydonixOracleMainAsset                  0xA2790A32E611aF1F653F2E2f151244f1DC2086Eb
+ChainLinkedKeydonixOraclePoolToken                  0x11586e3b20239EF471134A0DA4a4239010A1c500
 
-YFI                                 0x62289C64a943416205142BDCcF1D752792A687e3
-MKR                                 0xC5d9497Fd3fa13549026f2fC8048DbaE11D7114c
-UMA                                 0xb34aDe076f9e5B40AaB8bD31694d37aec1C6f12F
-LEND                                0xd070437A0C4c97F4E2FF6EF9010DA2ec4fc830Eb
-WBTC                                0x03f1A5d11cB1C698d865756EBEdeb144898bB319
+VaultParameters                                     0xB46F8CF42e504Efe8BEf895f848741daA55e9f1D
+VaultManagerParameters                              0x203153522B9EAef4aE17c6e99851EE7b2F7D312E
+USDP                                                0x1456688345527bE1f37E9e627DA0837D6f08C925
+Vault                                               0xb1cFF81b9305166ff1EFc49A129ad2AfCd7BCf19
+LiquidationTriggerKeydonixMainAsset                 0x701A228b0D7A3FC740462E9b2Af13F2A5C16c882
+LiquidationTriggerKeydonixPoolToken                 0xF6F90336666413C73a940E0a53CB2f762326Ab10
+LiquidationAuction01                                0xa41a3625c02c60Ae932515E7F921ada1811aF6a5
+VaultManagerStandard                                0x56DD677842214CbB97Ad88dBAA58DD55e1b179Ea  old dapp address - 0x2726ebDf958cC15f5adB01aAd22741329948fbDB
+VaultManagerKeydonixMainAsset                       0x78727A77028d9130D2772713d570780231E64ECf
+VaultManagerKeydonixPoolToken                       0xf1cA03Aae24C4865d09643cb929141D8d3c60A75
 
-UniswapFactory                      0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
-ChainlinkAggregator mock             0x8692e13F484e10b0A6e3Cc97BB87a8eceA6EB9AE
-ChainLinkedUniswapOracleMainAsset   0x7DbB5b5064B2f2A660140c095B862960Eebfa596
-ChainLinkedUniswapOraclePoolToken   0x4CBbDDB323fe79800C491fc72090D980F5E09465
-UniswapV2Router02                   0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
+Keep3rV1Oracle Uniswap                              0x73353801921417F465377c8d898c6f4C0270282C
+Keep3rV1Oracle SushiSwap                            0xf67Ab1c914deE06Ba0F264031885Ea7B276a7cDa
 
-USDP                                0x2905F3Dd1406797b6214Ee0654E2FB6e694C8773
+ChainlinkedKeep3rOracleMainAsset for Uniswap        0x90052A5A46137636d6366b4F0CB184C6f411bD53
+ChainlinkedKeep3rOraclePoolToken for Uniswap        0x3b5f4d33845d546c76DFb624ef002cb3a58391e9
 
-Parameters                          0x84ebb5b662A3d6F5d5e3a7a2d887F07d8b466aF3
-Vault                               0x09c53FdF34696844F197ABbbFbd259FFe81Ec24E
-LiquidatorUniswapMainAsset          0xD15636cAbD0b18Cb90DB64eFf93C00F3022b1FA8
-LiquidatorUniswapPoolToken          0xd360Dddb01eBB3e95aa4e9De756a569A9BA00CD4
-VaultManagerStandard                0x0a5BcB9d6dDc4e1489c535E49D7fc89dee953F96
-VaultManagerUniswapMainAsset        0xbf80cd628769E477BAc0C28fFb3c6f859FCd2C98
-VaultManagerUniswapPoolToken        0xcA348BCA9621a2A71733254d8AE01a853723F1c9
+ChainlinkedKeep3rOracleMainAsset for SushiSwap      0x0Ca3de93dE71E4A28EB5d04B72970d69458a3D21
+ChainlinkedKeep3rOraclePoolToken for SushiSwap      0xEa2e09CEC87C7cD8f6Ae09d1906a7526f159e538
 
-// MAINNET // solidity 0.7.5+commit.eb77ed08 // deployed at 23.11.2020
-WETH                                0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
-COL                                 0xc76fb75950536d98fa62ea968e1d6b45ffea2a55
-UniswapFactory                      0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
-ChainlinkAggregator                 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
+VaultManagerKeep3rMainAsset for Uniswap             0x211A6d4D4F49c0C5814451589d6378FdA614Adb9
+VaultManagerKeep3rPoolToken for Uniswap             0x3052764f1af2f8B7a887dEAfA42153530676079B
 
-Main asset mock for COL             0x6aade8A8A6b85921009D2CaA25Dc69348f4c009e
+VaultManagerKeep3rMainAsset for SushiSwap           0x54ba276a62e7e3e76d362f672f00ed31a983067b
+VaultManagerKeep3rPoolToken for SushiSwap           0xB993e2982eC5f6d8925C7dF34A581005E7148993
 
-ChainLinkedKeydonixOracleMainAsset  0xA2790A32E611aF1F653F2E2f151244f1DC2086Eb
-ChainLinkedKeydonixOraclePoolToken  0x11586e3b20239EF471134A0DA4a4239010A1c500
+LiquidationTriggerKeep3rMainAsset for Uniswap       0x989AC9c8353C3F01412705d7E50B4Ab9E804c227
+LiquidationTriggerKeep3rPoolToken for Uniswap       0x0ca1A59a987922375234df94919A456F61e93E1e
 
-VaultParameters                     0xB46F8CF42e504Efe8BEf895f848741daA55e9f1D
-VaultManagerParameters              0x203153522B9EAef4aE17c6e99851EE7b2F7D312E
-USDP                                0x1456688345527bE1f37E9e627DA0837D6f08C925
-Vault                               0xb1cFF81b9305166ff1EFc49A129ad2AfCd7BCf19
-LiquidationTriggerKeydonixMainAsset 0x701A228b0D7A3FC740462E9b2Af13F2A5C16c882
-LiquidationTriggerKeydonixPoolToken 0xF6F90336666413C73a940E0a53CB2f762326Ab10
-LiquidationAuction01                0xa41a3625c02c60Ae932515E7F921ada1811aF6a5
-VaultManagerStandard                0x56DD677842214CbB97Ad88dBAA58DD55e1b179Ea  old dapp address - 0x2726ebDf958cC15f5adB01aAd22741329948fbDB
-VaultManagerKeydonixMainAsset       0x78727A77028d9130D2772713d570780231E64ECf
-VaultManagerKeydonixPoolToken       0xf1cA03Aae24C4865d09643cb929141D8d3c60A75
+LiquidationTriggerKeep3rMainAsset for SushiSwap     0x20c854cdd322d3a501da91374027b4b257de57dd
+LiquidationTriggerKeep3rPoolToken for SushiSwap     0x78d09b58402c29016425497289e12fdd12f06027
 
-Keep3rV1Oracle                      0x73353801921417F465377c8d898c6f4C0270282C
-
-ChainlinkedKeep3rOracleMainAsset    0x90052A5A46137636d6366b4F0CB184C6f411bD53
-ChainlinkedKeep3rOraclePoolToken    0x3b5f4d33845d546c76DFb624ef002cb3a58391e9
-
-VaultManagerKeep3rMainAsset         0x211A6d4D4F49c0C5814451589d6378FdA614Adb9
-VaultManagerKeep3rPoolToken         0x3052764f1af2f8B7a887dEAfA42153530676079B
-
-LiquidationTriggerKeep3rMainAsset   0x989AC9c8353C3F01412705d7E50B4Ab9E804c227
-LiquidationTriggerKeep3rPoolToken   0x0ca1A59a987922375234df94919A456F61e93E1e
-
-ParametersBatchUpdater              0xaD5FD513e62fA67D03e4518f0a6bffdB238263B0
+ParametersBatchUpdater                              0xaD5FD513e62fA67D03e4518f0a6bffdB238263B0
