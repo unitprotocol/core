@@ -4,7 +4,6 @@
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
 pragma solidity ^0.7.1;
-pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
 import "../helpers/Math.sol";
