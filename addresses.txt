@@ -33,7 +33,7 @@ VaultManagerKeep3rMainAsset for Uniswap             0x211A6d4D4F49c0C5814451589d
 VaultManagerKeep3rPoolToken for Uniswap             0x3052764f1af2f8B7a887dEAfA42153530676079B
 
 VaultManagerKeep3rMainAsset for SushiSwap           0x54ba276a62e7e3e76d362f672f00ed31a983067b
-VaultManagerKeep3rPoolToken for SushiSwap           0xB993e2982eC5f6d8925C7dF34A581005E7148993
+VaultManagerKeep3rPoolToken for SushiSwap           0xD90332DB0FE0e5eA1A195A5Ba6fc8949EaB8AB4E
 
 LiquidationTriggerKeep3rMainAsset for Uniswap       0x989AC9c8353C3F01412705d7E50B4Ab9E804c227
 LiquidationTriggerKeep3rPoolToken for Uniswap       0x0ca1A59a987922375234df94919A456F61e93E1e
