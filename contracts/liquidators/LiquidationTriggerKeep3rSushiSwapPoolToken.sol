@@ -11,11 +11,10 @@ import "../oracles/OracleSimple.sol";
 
 
 /**
- * @title LiquidationTriggerKeep3rPoolToken
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
- * @dev Manages liquidation process triggering of main asset-based positions
+ * @title LiquidationTriggerKeep3rSushiSwapPoolToken
+ * @dev Manages liquidation process triggering of pool tokens based positions
  **/
-contract LiquidationTriggerKeep3rPoolToken is LiquidationTriggerKeep3rBase {
+contract LiquidationTriggerKeep3rSushiSwapPoolToken is LiquidationTriggerKeep3rBase {
 
 
     /**
@@ -27,6 +26,6 @@ contract LiquidationTriggerKeep3rPoolToken is LiquidationTriggerKeep3rBase {
         address _keep3rOraclePoolToken
     )
     public
-    LiquidationTriggerKeep3rBase(_vaultManagerParameters, _keep3rOraclePoolToken, 4)
+    LiquidationTriggerKeep3rBase(_vaultManagerParameters, _keep3rOraclePoolToken, 8)
     {}
 }

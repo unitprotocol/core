@@ -4,7 +4,7 @@ const { expect } = require('chai');
 const { nextBlockNumber } = require('./helpers/time');
 const utils = require('./helpers/utils');
 
-contract('LiquidationTriggerUniswapPoolToken', function([
+contract('LiquidationTriggerKeydonixPoolToken', function([
 	positionOwner,
 	liquidator,
 	foundation,

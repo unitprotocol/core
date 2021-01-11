@@ -4,10 +4,8 @@
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
 pragma solidity ^0.7.1;
-pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
-import "../oracles/KeydonixOracleAbstract.sol";
 import "../vault-managers/VaultManagerParameters.sol";
 import "../helpers/ReentrancyGuard.sol";
 
@@ -78,7 +76,7 @@ abstract contract LiquidationTriggerSimple {
 
     /**
      * @dev Calculates position's utilization ratio
-     * @param mainUsdValue USD value of main collateral
+     * @param mainUsdValue USD value of main collateral, q112 format
      * @param debt USDP borrowed
      * @return utilization ratio of a position
      **/
