@@ -13,11 +13,10 @@ import "../helpers/ReentrancyGuard.sol";
 
 
 /**
- * @title LiquidationAuction01
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
+ * @title LiquidationAuction02
  * @dev Manages liquidation auction of position collateral
  **/
-contract LiquidationAuction01 is ReentrancyGuard {
+contract LiquidationAuction02 is ReentrancyGuard {
     using SafeMath for uint;
 
     uint public constant DENOMINATOR_1E2 = 1e2;
@@ -29,9 +28,9 @@ contract LiquidationAuction01 is ReentrancyGuard {
     Vault public immutable vault;
 
     /**
-     * @dev Trigger when liquidations are happened
+     * @dev Trigger when buyouts are happened
     **/
-    event Liquidated(address indexed token, address indexed user, uint penalty, uint collateralPrice);
+    event Buyout(address indexed token, address indexed owner, address indexed buyer, uint amount, uint price, uint penalty);
 
     /**
      * @param _vaultManagerParameters The address of the contract with vault manager parameters
@@ -50,34 +49,28 @@ contract LiquidationAuction01 is ReentrancyGuard {
         require(vault.liquidationBlock(asset, user) != 0, "Unit Protocol: LIQUIDATION_NOT_TRIGGERED");
         uint startingPrice = vault.liquidationPrice(asset, user);
         uint blocksPast = block.number.sub(vault.liquidationBlock(asset, user));
-        uint devaluationPeriod = vaultManagerParameters.devaluationPeriod(asset);
+        uint depreciationPeriod = vaultManagerParameters.devaluationPeriod(asset);
         uint debt = vault.getTotalDebt(asset, user);
         uint penalty = debt.mul(vault.liquidationFee(asset, user)).div(DENOMINATOR_1E2);
-        uint mainAssetInPosition = vault.collaterals(asset, user);
-        uint colInPosition = vault.colToken(asset, user);
+        uint collateralInPosition = vault.collaterals(asset, user);
 
-        uint mainToLiquidator;
-        uint colToLiquidator;
-        uint mainToOwner;
-        uint colToOwner;
+        uint collateralToLiquidator;
+        uint collateralToOwner;
         uint repayment;
 
-        (mainToLiquidator, colToLiquidator, mainToOwner, colToOwner, repayment) = _calcLiquidationParams(
-            devaluationPeriod,
+        (collateralToLiquidator, collateralToOwner, repayment) = _calcLiquidationParams(
+            depreciationPeriod,
             blocksPast,
             startingPrice,
             debt.add(penalty),
-            mainAssetInPosition,
-            colInPosition
+            collateralInPosition
         );
 
         _liquidate(
             asset,
             user,
-            mainToLiquidator,
-            colToLiquidator,
-            mainToOwner,
-            colToOwner,
+            collateralToLiquidator,
+            collateralToOwner,
             repayment,
             penalty
         );
@@ -86,10 +79,8 @@ contract LiquidationAuction01 is ReentrancyGuard {
     function _liquidate(
         address asset,
         address user,
-        uint mainAssetToLiquidator,
-        uint colToLiquidator,
-        uint mainAssetToPositionOwner,
-        uint colToPositionOwner,
+        uint collateralToBuyer,
+        uint collateralToOwner,
         uint repayment,
         uint penalty
     ) private {
@@ -97,53 +88,45 @@ contract LiquidationAuction01 is ReentrancyGuard {
         vault.liquidate(
             asset,
             user,
-            mainAssetToLiquidator,
-            colToLiquidator,
-            mainAssetToPositionOwner,
-            colToPositionOwner,
+            collateralToBuyer,
+            0, // colToLiquidator
+            collateralToOwner,
+            0, // colToPositionOwner
             repayment,
             penalty,
             msg.sender
         );
-        // fire an liquidation event
-        emit Liquidated(asset, user, repayment, penalty);
+        // fire an buyout event
+        emit Buyout(asset, user, msg.sender, collateralToBuyer, repayment, penalty);
     }
 
     function _calcLiquidationParams(
-        uint devaluationPeriod,
+        uint depreciationPeriod,
         uint blocksPast,
         uint startingPrice,
         uint debtWithPenalty,
-        uint mainAssetInPosition,
-        uint colInPosition
+        uint collateralInPosition
     )
     internal
     pure
     returns(
-        uint mainToLiquidator,
-        uint colToLiquidator,
-        uint mainToOwner,
-        uint colToOwner,
-        uint repayment
+        uint collateralToBuyer,
+        uint collateralToOwner,
+        uint price
     ) {
-        if (devaluationPeriod > blocksPast) {
-            uint valuation = devaluationPeriod.sub(blocksPast);
-            uint collateralPrice = startingPrice.mul(valuation).div(devaluationPeriod);
+        if (depreciationPeriod > blocksPast) {
+            uint valuation = depreciationPeriod.sub(blocksPast);
+            uint collateralPrice = startingPrice.mul(valuation).div(depreciationPeriod);
             if (collateralPrice > debtWithPenalty) {
-                uint ownerShare = collateralPrice.sub(debtWithPenalty);
-                mainToLiquidator = mainAssetInPosition.mul(debtWithPenalty).div(collateralPrice);
-                colToLiquidator = colInPosition.mul(debtWithPenalty).div(collateralPrice);
-                mainToOwner = mainAssetInPosition.mul(ownerShare).div(collateralPrice);
-                colToOwner = colInPosition.mul(ownerShare).div(collateralPrice);
-                repayment = debtWithPenalty;
+                collateralToBuyer = collateralInPosition.mul(debtWithPenalty).div(collateralPrice);
+                collateralToOwner = collateralInPosition.sub(collateralToBuyer);
+                price = debtWithPenalty;
             } else {
-                mainToLiquidator = mainAssetInPosition;
-                colToLiquidator = colInPosition;
-                repayment = collateralPrice;
+                collateralToBuyer = collateralInPosition;
+                price = collateralPrice;
             }
         } else {
-            mainToLiquidator = mainAssetInPosition;
-            colToLiquidator = colInPosition;
+            collateralToBuyer = collateralInPosition;
         }
     }
 }

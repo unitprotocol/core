@@ -13,7 +13,6 @@ import "../helpers/ReentrancyGuard.sol";
 
 /**
  * @title VaultManagerStandard
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
 contract VaultManagerStandard is ReentrancyGuard {
     using SafeMath for uint;
@@ -23,12 +22,12 @@ contract VaultManagerStandard is ReentrancyGuard {
     /**
      * @dev Trigger when params joins are happened
     **/
-    event Join(address indexed asset, address indexed user, uint main, uint col, uint usdp);
+    event Join(address indexed asset, address indexed user, uint main, uint usdp);
 
     /**
      * @dev Trigger when params exits are happened
     **/
-    event Exit(address indexed asset, address indexed user, uint main, uint col, uint usdp);
+    event Exit(address indexed asset, address indexed user, uint main, uint usdp);
 
     /**
      * @param _vault The address of the Vault
@@ -38,51 +37,40 @@ contract VaultManagerStandard is ReentrancyGuard {
     }
 
     /**
-     * @notice Depositing tokens must be pre-approved to vault address
+     * @notice Depositing token must be pre-approved to vault address
      * @notice Token using as main collateral must be whitelisted
      * @dev Deposits collaterals
      * @param asset The address of token using as main collateral
      * @param mainAmount The amount of main collateral to deposit
-     * @param colAmount The amount of COL token to deposit
      **/
-    function deposit(address asset, uint mainAmount, uint colAmount) public nonReentrant {
+    function deposit(address asset, uint mainAmount) public nonReentrant {
 
         // check usefulness of tx
-        require(mainAmount != 0 || colAmount != 0, "Unit Protocol: USELESS_TX");
+        require(mainAmount != 0, "Unit Protocol: USELESS_TX");
 
         if (mainAmount != 0) {
             vault.depositMain(asset, msg.sender, mainAmount);
         }
 
-        if (colAmount != 0) {
-            vault.depositCol(asset, msg.sender, colAmount);
-        }
-
         // fire an event
-        emit Join(asset, msg.sender, mainAmount, colAmount, 0);
+        emit Join(asset, msg.sender, mainAmount, 0);
     }
 
     /**
-     * @notice COL token must be pre-approved to vault address (if being deposited)
      * @notice Token using as main collateral must be whitelisted
      * @dev Deposits collaterals converting ETH to WETH
-     * @param colAmount The amount of COL token to deposit
      **/
-    function deposit_Eth(uint colAmount) public payable nonReentrant {
+    function deposit_Eth() public payable nonReentrant {
 
         // check usefulness of tx
-        require(msg.value != 0 || colAmount != 0, "Unit Protocol: USELESS_TX");
+        require(msg.value != 0, "Unit Protocol: USELESS_TX");
 
         if (msg.value != 0) {
             vault.depositEth{value: msg.value}(msg.sender);
         }
 
-        if (colAmount != 0) {
-            vault.depositCol(vault.weth(), msg.sender, colAmount);
-        }
-
         // fire an event
-        emit Join(vault.weth(), msg.sender, msg.value, colAmount, 0);
+        emit Join(vault.weth(), msg.sender, msg.value, 0);
     }
 
     /**
@@ -108,12 +96,10 @@ contract VaultManagerStandard is ReentrancyGuard {
       * @dev Repays total debt and withdraws collaterals
       * @param asset The address of token using as main collateral
       * @param mainAmount The amount of main collateral token to withdraw
-      * @param colAmount The amount of COL token to withdraw
       **/
     function repayAllAndWithdraw(
         address asset,
-        uint mainAmount,
-        uint colAmount
+        uint mainAmount
     )
     external
     nonReentrant
@@ -125,18 +111,13 @@ contract VaultManagerStandard is ReentrancyGuard {
             vault.withdrawMain(asset, msg.sender, mainAmount);
         }
 
-        if (colAmount != 0) {
-            // withdraw COL tokens to the user's address
-            vault.withdrawCol(asset, msg.sender, colAmount);
-        }
-
         if (debtAmount != 0) {
             // burn USDP from the user's address
             _repay(asset, msg.sender, debtAmount);
         }
 
         // fire an event
-        emit Exit(asset, msg.sender, mainAmount, colAmount, debtAmount);
+        emit Exit(asset, msg.sender, mainAmount, debtAmount);
     }
 
     /**
@@ -144,11 +125,9 @@ contract VaultManagerStandard is ReentrancyGuard {
       * @notice USDP approval is NOT needed
       * @dev Repays total debt and withdraws collaterals
       * @param ethAmount The ETH amount to withdraw
-      * @param colAmount The amount of COL token to withdraw
       **/
     function repayAllAndWithdraw_Eth(
-        uint ethAmount,
-        uint colAmount
+        uint ethAmount
     )
     external
     nonReentrant
@@ -160,18 +139,13 @@ contract VaultManagerStandard is ReentrancyGuard {
             vault.withdrawEth(msg.sender, ethAmount);
         }
 
-        if (colAmount != 0) {
-            // withdraw COL tokens to the user's address
-            vault.withdrawCol(vault.weth(), msg.sender, colAmount);
-        }
-
         if (debtAmount != 0) {
             // burn USDP from the user's address
             _repay(vault.weth(), msg.sender, debtAmount);
         }
 
         // fire an event
-        emit Exit(vault.weth(), msg.sender, ethAmount, colAmount, debtAmount);
+        emit Exit(vault.weth(), msg.sender, ethAmount, debtAmount);
     }
 
     // decreases debt
