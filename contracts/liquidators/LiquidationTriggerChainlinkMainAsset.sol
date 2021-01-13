@@ -60,4 +60,36 @@ contract LiquidationTriggerChainlinkMainAsset is LiquidationTriggerSimple, Reent
         // fire an liquidation event
         emit LiquidationTriggered(asset, user);
     }
+
+    /**
+     * @dev Determines whether a position is liquidatable
+     * @param asset The address of the main collateral token of a position
+     * @param user The owner of a position
+     * @param mainUsdValue USD value of the main collateral
+     * @return boolean value, whether a position is liquidatable
+     **/
+    function isLiquidatablePosition(
+        address asset,
+        address user,
+        uint mainUsdValue
+    ) public override view returns (bool) {
+        uint debt = vault.getTotalDebt(asset, user);
+
+        // position is collateralized if there is no debt
+        if (debt == 0) return false;
+
+        require(vault.oracleType(asset, user) == oracleType, "Unit Protocol: INCORRECT_ORACLE_TYPE");
+
+        return UR(mainUsdValue, debt) >= vaultManagerParameters.liquidationRatio(asset);
+    }
+
+    /**
+     * @dev Calculates position's utilization ratio
+     * @param mainUsdValue USD value of main collateral
+     * @param debt USDP borrowed
+     * @return utilization ratio of a position
+     **/
+    function UR(uint mainUsdValue, uint debt) public override pure returns (uint) {
+        return debt.mul(100).div(mainUsdValue);
+    }
 }
