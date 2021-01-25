@@ -87,7 +87,7 @@ contract VaultManagerStandard is ReentrancyGuard {
         _repay(asset, msg.sender, usdpAmount);
 
         // fire an event
-        emit Exit(asset, msg.sender, 0, 0, usdpAmount);
+        emit Exit(asset, msg.sender, 0, usdpAmount);
     }
 
     /**

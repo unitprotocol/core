@@ -8,13 +8,17 @@ const BN = web3.utils.BN;
 const { expect } = require('chai');
 const utils = require('./helpers/utils');
 
-	contract(`VaultManager with SushiSwap Keep3r oracle wrapper for main asset`, function([
+[
+	// 'sushiswapKeep3rMainAsset',
+	'uniswapKeep3rMainAsset'
+].forEach(oracleMode =>
+	contract(`VaultManager with ${oracleMode} oracle wrapper`, function([
 		deployer,
 		foundation,
 	]) {
 		// deploy & initial settings
 		beforeEach(async function() {
-			this.utils = utils(this, 'sushiswapKeep3rMainAsset');
+			this.utils = utils(this, oracleMode);
 			this.deployer = deployer;
 			this.foundation = foundation;
 			await this.utils.deploy();
@@ -346,3 +350,4 @@ const utils = require('./helpers/utils');
 			})
 		})
 	})
+)

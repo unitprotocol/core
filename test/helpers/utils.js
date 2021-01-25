@@ -17,8 +17,8 @@ const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const VaultManagerStandard = artifacts.require('VaultManagerStandard');
 const VaultManagerKeydonixMainAsset = artifacts.require('VaultManagerKeydonixMainAsset');
 const VaultManagerKeydonixPoolToken = artifacts.require('VaultManagerKeydonixPoolToken');
-const VaultManagerKeep3rMainAsset = artifacts.require('VaultManagerKeep3rMainAsset');
-const VaultManagerKeep3rPoolToken = artifacts.require('VaultManagerKeep3rPoolToken');
+const VaultManagerKeep3rUniswapMainAsset = artifacts.require('VaultManagerKeep3rUniswapMainAsset');
+const vaultManagerKeep3rUniswapPoolToken = artifacts.require('VaultManagerKeep3rUniswapPoolToken');
 const VaultManagerKeep3rSushiSwapMainAsset = artifacts.require('VaultManagerKeep3rSushiSwapMainAsset');
 const VaultManagerKeep3rSushiSwapPoolToken = artifacts.require('VaultManagerKeep3rSushiSwapPoolToken');
 const VaultManagerChainlinkMainAsset = artifacts.require('VaultManagerChainlinkMainAsset');
@@ -29,7 +29,7 @@ const LiquidatorKeep3rPoolToken = artifacts.require('LiquidationTriggerKeep3rPoo
 const LiquidatorKeep3rSushiSwapMainAsset = artifacts.require('LiquidationTriggerKeep3rSushiSwapMainAsset');
 const LiquidatorKeep3rSushiSwapPoolToken = artifacts.require('LiquidationTriggerKeep3rSushiSwapPoolToken');
 const LiquidatorChainlinkMainAsset = artifacts.require('LiquidationTriggerChainlinkMainAsset');
-const LiquidationAuction01 = artifacts.require('LiquidationAuction01');
+const LiquidationAuction02 = artifacts.require('LiquidationAuction02');
 const { ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce, deployContractBytecode } = require('./deployUtils');
 const BN = web3.utils.BN;
@@ -57,7 +57,7 @@ async function expectRevert(promise, expectedError) {
 
 module.exports = (context, mode) => {
 	const keydonix = mode.startsWith('keydonix');
-	const uniswapKeep3r = mode.startsWith('keep3r');
+	const uniswapKeep3r = mode.startsWith('uniswapKeep3r');
 	const sushiswapKeep3r = mode.startsWith('sushiswapKeep3r');
 	const chainlink = mode.startsWith('chainlink');
 
@@ -80,9 +80,8 @@ module.exports = (context, mode) => {
 		);
 	};
 
-	context.approveCollaterals = async (main, mainAmount, colAmount, from = context.deployer) => {
-		await main.approve(context.vault.address, mainAmount, { from });
-		return context.col.approve(context.vault.address, colAmount, { from });
+	context.approveCollaterals = async (main, mainAmount, from = context.deployer) => {
+		return main.approve(context.vault.address, mainAmount, { from });
 	};
 
 	const getPoolToken = async (mainAddress) => {
@@ -94,14 +93,12 @@ module.exports = (context, mode) => {
 		const totalDebt = await context.vault.getTotalDebt(main.address, user);
 		await context.usdp.approve(context.vault.address, totalDebt);
 		const mainAmount = await context.vault.collaterals(main.address, user);
-		const colAmount = await context.vault.colToken(main.address, user);
-		return context.vaultManagerStandard.repayAllAndWithdraw(main.address, mainAmount, colAmount);
+		return context.vaultManagerStandard.repayAllAndWithdraw(main.address, mainAmount);
 	};
 
 	const repayAllAndWithdrawEth = async (user) => {
 		const mainAmount = await context.vault.collaterals(context.weth.address, user);
-		const colAmount = await context.vault.colToken(context.weth.address, user);
-		return context.vaultManagerStandard.repayAllAndWithdraw_Eth(mainAmount, colAmount);
+		return context.vaultManagerStandard.repayAllAndWithdraw_Eth(mainAmount);
 	};
 
 	const repay = async (main, user, usdpAmount) => {
@@ -218,7 +215,7 @@ module.exports = (context, mode) => {
 			context.liquidatorChainlinkMainAsset = await LiquidatorChainlinkMainAsset.new(context.vaultManagerParameters.address, context.chainlinkOracleMainAssetMock.address);
 		}
 
-		context.liquidationAuction = await LiquidationAuction01.new(context.vaultManagerParameters.address);
+		context.liquidationAuction = await LiquidationAuction02.new(context.vaultManagerParameters.address);
 
 		if (keydonix) {
 			context.vaultManagerKeydonixMainAsset = await VaultManagerKeydonixMainAsset.new(
@@ -230,11 +227,11 @@ module.exports = (context, mode) => {
 				context.keydonixOraclePoolTokenMock.address,
 			);
 		} else if (uniswapKeep3r) {
-			context.vaultManagerKeep3rMainAsset = await VaultManagerKeep3rMainAsset.new(
+			context.vaultManagerKeep3rUniswapMainAsset = await VaultManagerKeep3rUniswapMainAsset.new(
 				context.vaultManagerParameters.address,
 				context.keep3rOracleMainAssetMock.address,
 			);
-			context.vaultManagerKeep3rPoolToken = await VaultManagerKeep3rPoolToken.new(
+			context.vaultManagerKeep3rUniswapPoolToken = await vaultManagerKeep3rUniswapPoolToken.new(
 				context.vaultManagerParameters.address,
 				context.keep3rOraclePoolTokenMock.address,
 			);
@@ -276,8 +273,8 @@ module.exports = (context, mode) => {
 			await context.vaultParameters.setVaultAccess(context.liquidatorKeydonixMainAsset.address, true);
 			await context.vaultParameters.setVaultAccess(context.liquidatorKeydonixPoolToken.address, true);
 		} else if (uniswapKeep3r) {
-			await context.vaultParameters.setVaultAccess(context.vaultManagerKeep3rMainAsset.address, true);
-			await context.vaultParameters.setVaultAccess(context.vaultManagerKeep3rPoolToken.address, true);
+			await context.vaultParameters.setVaultAccess(context.vaultManagerKeep3rUniswapMainAsset.address, true);
+			await context.vaultParameters.setVaultAccess(context.vaultManagerKeep3rUniswapPoolToken.address, true);
 			await context.vaultParameters.setVaultAccess(context.liquidatorKeep3rMainAsset.address, true);
 			await context.vaultParameters.setVaultAccess(context.liquidatorKeep3rPoolToken.address, true);
 		} else if (sushiswapKeep3r) {

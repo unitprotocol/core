@@ -9,9 +9,9 @@ import "./VaultManagerKeep3rPoolTokenBase.sol";
 
 
 /**
- * @title VaultManagerKeep3rSushiSwapPoolToken
+ * @title VaultManagerKeep3rUniswapPoolToken
  **/
-contract VaultManagerKeep3rSushiSwapPoolToken is VaultManagerKeep3rPoolTokenBase {
+contract VaultManagerKeep3rUniswapPoolToken is VaultManagerKeep3rPoolTokenBase {
 
     /**
      * @param _vaultManagerParameters The address of the contract with vault manager parameters
@@ -19,6 +19,6 @@ contract VaultManagerKeep3rSushiSwapPoolToken is VaultManagerKeep3rPoolTokenBase
      **/
     constructor(address payable _vaultManagerParameters, address _keep3rPoolToken)
     public
-    VaultManagerKeep3rPoolTokenBase(_vaultManagerParameters, _keep3rPoolToken, 8)
+    VaultManagerKeep3rPoolTokenBase(_vaultManagerParameters, _keep3rPoolToken, 4)
     {}
 }
