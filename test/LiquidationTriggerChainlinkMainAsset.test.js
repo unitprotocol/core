@@ -58,4 +58,19 @@ contract('LiquidationTriggerChainlinkMainAsset', function([
 		expect(liquidationBlock).to.be.bignumber.equal(expectedLiquidationBlock);
 		expect(liquidationPrice).to.be.bignumber.equal(expectedLiquidationPrice);
 	})
+
+	it('Should fail to trigger liquidation of collateralized position', async function () {
+		const mainAmount = ether('60');
+		const usdpAmount = ether('70');
+
+		/*
+		 * Spawned position params:
+		 * collateral value = 60 * 2 = 120$
+		 * utilization percent = 70 / 120 = 58.3%
+		 */
+		await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+
+		const tx = this.utils.triggerLiquidation(this.mainCollateral, positionOwner, liquidator);
+		await this.utils.expectRevert(tx, "Unit Protocol: SAFE_POSITION");
+	})
 });

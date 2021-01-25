@@ -61,7 +61,7 @@ abstract contract LiquidationTriggerSimple {
         address asset,
         address user,
         uint collateralUsdValue
-    ) public virtual view returns (bool) {}
+    ) public virtual view returns (bool);
 
     /**
      * @dev Calculates position's utilization ratio
@@ -69,5 +69,5 @@ abstract contract LiquidationTriggerSimple {
      * @param debt USDP borrowed
      * @return utilization ratio of a position
      **/
-    function UR(uint collateralUsdValue, uint debt) public virtual pure returns (uint) {}
+    function UR(uint collateralUsdValue, uint debt) public virtual pure returns (uint);
 }
