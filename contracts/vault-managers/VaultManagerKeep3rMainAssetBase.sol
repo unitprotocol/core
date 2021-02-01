@@ -171,10 +171,8 @@ contract VaultManagerKeep3rMainAssetBase is ReentrancyGuard {
         uint debt = vault.debts(asset, msg.sender);
         require(debt != 0 && usdpAmount != debt, "Unit Protocol: USE_REPAY_ALL_INSTEAD");
 
-        if (mainAmount != 0) {
-            // withdraw main collateral to the user address
-            vault.withdrawMain(asset, msg.sender, mainAmount);
-        }
+        // withdraw main collateral to the user address
+        vault.withdrawMain(asset, msg.sender, mainAmount);
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
@@ -210,10 +208,8 @@ contract VaultManagerKeep3rMainAssetBase is ReentrancyGuard {
         uint debt = vault.debts(vault.weth(), msg.sender);
         require(debt != 0 && usdpAmount != debt, "Unit Protocol: USE_REPAY_ALL_INSTEAD");
 
-        if (ethAmount != 0) {
-            // withdraw main collateral to the user address
-            vault.withdrawEth(msg.sender, ethAmount);
-        }
+        // withdraw main collateral to the user address
+        vault.withdrawEth(msg.sender, ethAmount);
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(vault.weth(), msg.sender, usdpAmount);

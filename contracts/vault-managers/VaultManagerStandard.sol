@@ -48,9 +48,7 @@ contract VaultManagerStandard is ReentrancyGuard {
         // check usefulness of tx
         require(mainAmount != 0, "Unit Protocol: USELESS_TX");
 
-        if (mainAmount != 0) {
-            vault.depositMain(asset, msg.sender, mainAmount);
-        }
+        vault.depositMain(asset, msg.sender, mainAmount);
 
         // fire an event
         emit Join(asset, msg.sender, mainAmount, 0);
@@ -65,9 +63,7 @@ contract VaultManagerStandard is ReentrancyGuard {
         // check usefulness of tx
         require(msg.value != 0, "Unit Protocol: USELESS_TX");
 
-        if (msg.value != 0) {
-            vault.depositEth{value: msg.value}(msg.sender);
-        }
+        vault.depositEth{value: msg.value}(msg.sender);
 
         // fire an event
         emit Join(vault.weth(), msg.sender, msg.value, 0);

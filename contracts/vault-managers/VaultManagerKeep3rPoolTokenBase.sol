@@ -47,7 +47,7 @@ contract VaultManagerKeep3rPoolTokenBase is ReentrancyGuard {
      * @param _keep3rPoolToken The address of Keep3r-based Oracle for pool tokens
      * @param _oracleType The oracle type ID
      **/
-    constructor(address payable _vaultManagerParameters, address _keep3rPoolToken, uint _oracleType) public {
+    constructor(address _vaultManagerParameters, address _keep3rPoolToken, uint _oracleType) public {
         vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
         vault = Vault(VaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
         oracle = OracleSimplePoolToken(_keep3rPoolToken);
@@ -133,10 +133,8 @@ contract VaultManagerKeep3rPoolTokenBase is ReentrancyGuard {
         uint debt = vault.debts(asset, msg.sender);
         require(debt != 0 && usdpAmount != debt, "Unit Protocol: USE_REPAY_ALL_INSTEAD");
 
-        if (mainAmount != 0) {
-            // withdraw main collateral to the user address
-            vault.withdrawMain(asset, msg.sender, mainAmount);
-        }
+        // withdraw main collateral to the user address
+        vault.withdrawMain(asset, msg.sender, mainAmount);
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
