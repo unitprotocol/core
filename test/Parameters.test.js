@@ -8,11 +8,13 @@ const { expect } = require('chai');
 
 const VaultParameters = artifacts.require('VaultParameters');
 const VaultManagerParameters = artifacts.require('VaultManagerParameters');
+const AssetParametersViewer = artifacts.require('AssetParametersViewer');
 
 contract('Parameters', function([
 	deployer,
 	secondAccount,
 	thirdAccount,
+	fourthAccount,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
@@ -127,18 +129,126 @@ contract('Parameters', function([
 
 			expect(tokenDebtLimit).to.be.bignumber.equal(expectedTokenDebtLimit);
 		})
-	});
 
+		it('Should view parameters', async function () {
+		    const viewer = await AssetParametersViewer.new(this.vaultManagerParameters.address);
 
-	describe('Optimistic cases', function() {
-		it('Should set another account as manager', async function() {
-			await this.vaultParameters.setManager(thirdAccount, true);
+			await this.vaultManagerParameters.setCollateral(
+				thirdAccount,
+				1000,
+				10,
+				67,
+				68,
+				5000,
+				3600,
+				ether('1000000'),
+				[1, 5], // enabled oracles
+				3,
+				5,
+			);
 
-			const isManager = await this.vaultParameters.isManager(thirdAccount);
+			await this.vaultManagerParameters.setCollateral(
+				fourthAccount,
+				1500,
+				0,
+				17,
+				18,
+				0,
+				36000,
+				ether('10000'),
+				[7, 5, 28], // enabled oracles
+				0,
+				0,
+			);
 
-			expect(isManager).to.equal(true);
+            const [asset1, asset2] = await viewer.getMultiAssetParameters.call([thirdAccount, fourthAccount], 50);
+
+            expect(asset1.asset).to.be.equal(thirdAccount);
+            expect(asset1.stabilityFee).to.be.bignumber.equal(new BN('1000'));
+            expect(asset1.liquidationFee).to.be.bignumber.equal(new BN('10'));
+            expect(asset1.initialCollateralRatio).to.be.bignumber.equal(new BN('67'));
+            expect(asset1.liquidationRatio).to.be.bignumber.equal(new BN('68'));
+            expect(asset1.liquidationDiscount).to.be.bignumber.equal(new BN('5000'));
+            expect(asset1.devaluationPeriod).to.be.bignumber.equal(new BN('3600'));
+            expect(asset1.tokenDebtLimit).to.be.bignumber.equal(ether('1000000'));
+            expect(asset1.oracles).to.deep.equal(['1', '5']);
+            expect(asset1.minColPercent).to.be.bignumber.equal(new BN('3'));
+            expect(asset1.maxColPercent).to.be.bignumber.equal(new BN('5'));
+
+            expect(asset2.asset).to.be.equal(fourthAccount);
+            expect(asset2.stabilityFee).to.be.bignumber.equal(new BN('1500'));
+            expect(asset2.liquidationFee).to.be.bignumber.equal(new BN('0'));
+            expect(asset2.initialCollateralRatio).to.be.bignumber.equal(new BN('17'));
+            expect(asset2.liquidationRatio).to.be.bignumber.equal(new BN('18'));
+            expect(asset2.liquidationDiscount).to.be.bignumber.equal(new BN('0'));
+            expect(asset2.devaluationPeriod).to.be.bignumber.equal(new BN('36000'));
+            expect(asset2.tokenDebtLimit).to.be.bignumber.equal(ether('10000'));
+            expect(asset2.oracles).to.deep.equal(['5', '7', '28']);
+            expect(asset2.minColPercent).to.be.bignumber.equal(new BN('0'));
+            expect(asset2.maxColPercent).to.be.bignumber.equal(new BN('0'));
+
+			const asset1copy = await viewer.getAssetParameters.call(thirdAccount, 50);
+
+            expect(asset1copy.asset).to.be.equal(thirdAccount);
+            expect(asset1copy.stabilityFee).to.be.bignumber.equal(new BN('1000'));
+            expect(asset1copy.liquidationFee).to.be.bignumber.equal(new BN('10'));
+            expect(asset1copy.initialCollateralRatio).to.be.bignumber.equal(new BN('67'));
+            expect(asset1copy.liquidationRatio).to.be.bignumber.equal(new BN('68'));
+            expect(asset1copy.liquidationDiscount).to.be.bignumber.equal(new BN('5000'));
+            expect(asset1copy.devaluationPeriod).to.be.bignumber.equal(new BN('3600'));
+            expect(asset1copy.tokenDebtLimit).to.be.bignumber.equal(ether('1000000'));
+            expect(asset1copy.oracles).to.deep.equal(['1', '5']);
+            expect(asset1copy.minColPercent).to.be.bignumber.equal(new BN('3'));
+            expect(asset1copy.maxColPercent).to.be.bignumber.equal(new BN('5'));
+
+            const nonexistent = await viewer.getAssetParameters.call(deployer, 50);
+            expect(nonexistent.asset).to.be.equal(deployer);
+            expect(nonexistent.tokenDebtLimit).to.be.bignumber.equal(ether('0'));
+		})
+
+		it('Should view parameters without oracles search', async function () {
+		    const viewer = await AssetParametersViewer.new(this.vaultManagerParameters.address);
+
+			await this.vaultManagerParameters.setCollateral(
+				thirdAccount,
+				1000,
+				10,
+				67,
+				68,
+				5000,
+				3600,
+				ether('1000000'),
+				[1, 5], // enabled oracles
+				3,
+				5,
+			);
+
+			await this.vaultManagerParameters.setCollateral(
+				fourthAccount,
+				1500,
+				0,
+				17,
+				18,
+				0,
+				36000,
+				ether('10000'),
+				[7, 5, 28], // enabled oracles
+				0,
+				0,
+			);
+
+            const [asset1, asset2] = await viewer.getMultiAssetParameters.call([thirdAccount, fourthAccount], 0);
+
+            expect(asset1.asset).to.be.equal(thirdAccount);
+            expect(asset1.stabilityFee).to.be.bignumber.equal(new BN('1000'));
+            expect(asset1.oracles).to.deep.equal([]);
+
+            expect(asset2.asset).to.be.equal(fourthAccount);
+            expect(asset2.stabilityFee).to.be.bignumber.equal(new BN('1500'));
+            expect(asset2.oracles).to.deep.equal([]);
 		})
 	});
+
 
 	describe('Pessimistic cases', function() {
 		const describeUnauthorized = function(contract, method, args) {
