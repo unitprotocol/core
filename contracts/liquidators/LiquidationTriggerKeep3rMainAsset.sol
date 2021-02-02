@@ -12,7 +12,6 @@ import "../oracles/OracleSimple.sol";
 
 /**
  * @title LiquidationTriggerKeep3rMainAsset
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Manages liquidation process triggering of main asset-based positions
  **/
 contract LiquidationTriggerKeep3rMainAsset is LiquidationTriggerKeep3rBase {

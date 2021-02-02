@@ -9,9 +9,9 @@ import "./VaultManagerKeep3rMainAssetBase.sol";
 
 
 /**
- * @title VaultManagerKeep3rSushiSwapMainAsset
+ * @title VaultManagerKeep3rUniswapMainAsset
  **/
-contract VaultManagerKeep3rSushiSwapMainAsset is VaultManagerKeep3rMainAssetBase {
+contract VaultManagerKeep3rUniswapMainAsset is VaultManagerKeep3rMainAssetBase {
 
     /**
      * @param _vaultManagerParameters The address of the contract with vault manager parameters
@@ -19,6 +19,6 @@ contract VaultManagerKeep3rSushiSwapMainAsset is VaultManagerKeep3rMainAssetBase
      **/
     constructor(address _vaultManagerParameters, address _keep3rOracleMainAsset)
     public
-    VaultManagerKeep3rMainAssetBase(_vaultManagerParameters, _keep3rOracleMainAsset, 7)
+    VaultManagerKeep3rMainAssetBase(_vaultManagerParameters, _keep3rOracleMainAsset, 3)
     {}
 }

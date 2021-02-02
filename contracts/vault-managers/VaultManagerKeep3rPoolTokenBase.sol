@@ -4,25 +4,25 @@
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
 pragma solidity ^0.7.1;
-pragma experimental ABIEncoderV2;
 
 import "../Vault.sol";
-import "../oracles/ChainlinkedKeydonixOraclePoolTokenAbstract.sol";
 import "../helpers/Math.sol";
 import "../helpers/ReentrancyGuard.sol";
 import "./VaultManagerParameters.sol";
+import "../oracles/OracleSimple.sol";
 
 
 /**
- * @title VaultManagerKeydonixPoolToken
+ * @title VaultManagerKeep3rPoolTokenBase
  **/
-contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
+contract VaultManagerKeep3rPoolTokenBase is ReentrancyGuard {
     using SafeMath for uint;
 
     Vault public immutable vault;
     VaultManagerParameters public immutable vaultManagerParameters;
-    ChainlinkedKeydonixOraclePoolTokenAbstract public immutable uniswapOraclePoolToken;
-    uint public constant ORACLE_TYPE = 2;
+    OracleSimplePoolToken public immutable oracle;
+    uint public immutable ORACLE_TYPE;
+    uint public constant Q112 = 2 ** 112;
 
     /**
      * @dev Trigger when joins are happened
@@ -44,12 +44,14 @@ contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
 
     /**
      * @param _vaultManagerParameters The address of the contract with vault manager parameters
-     * @param _uniswapOraclePoolToken The address of Uniswap-based Oracle for LP tokens
+     * @param _keep3rPoolToken The address of Keep3r-based Oracle for pool tokens
+     * @param _oracleType The oracle type ID
      **/
-    constructor(address payable _vaultManagerParameters, address _uniswapOraclePoolToken) public {
+    constructor(address _vaultManagerParameters, address _keep3rPoolToken, uint _oracleType) public {
         vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
         vault = Vault(VaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
-        uniswapOraclePoolToken = ChainlinkedKeydonixOraclePoolTokenAbstract(_uniswapOraclePoolToken);
+        oracle = OracleSimplePoolToken(_keep3rPoolToken);
+        ORACLE_TYPE = _oracleType;
     }
 
     /**
@@ -62,17 +64,8 @@ contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
       * @param asset The address of token using as main collateral
       * @param mainAmount The amount of main collateral to deposit
       * @param usdpAmount The amount of USDP token to borrow
-      * @param underlyingProof The merkle proof data of the underlying collateral token price
       **/
-    function spawn(
-        address asset,
-        uint mainAmount,
-        uint usdpAmount,
-        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof
-    )
-    public
-    nonReentrant
-    {
+    function spawn(address asset, uint mainAmount, uint usdpAmount) public nonReentrant {
         require(usdpAmount != 0, "Unit Protocol: ZERO_BORROWING");
 
         // check whether the position is spawned
@@ -84,7 +77,7 @@ contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
         // USDP minting triggers the spawn of a position
         vault.spawn(asset, msg.sender, ORACLE_TYPE);
 
-        _depositAndBorrow(asset, msg.sender, mainAmount, usdpAmount, underlyingProof);
+        _depositAndBorrow(asset, msg.sender, mainAmount, usdpAmount);
 
         // fire an event
         emit Join(asset, msg.sender, mainAmount, usdpAmount);
@@ -99,13 +92,11 @@ contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
      * @param asset The address of token using as main collateral
      * @param mainAmount The amount of main collateral to deposit
      * @param usdpAmount The amount of USDP token to borrow
-     * @param underlyingProof The merkle proof data of the underlying collateral token price
      **/
     function depositAndBorrow(
         address asset,
         uint mainAmount,
-        uint usdpAmount,
-        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof
+        uint usdpAmount
     )
     public
     spawned(asset, msg.sender)
@@ -113,7 +104,7 @@ contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
     {
         require(usdpAmount != 0, "Unit Protocol: ZERO_BORROWING");
 
-        _depositAndBorrow(asset, msg.sender, mainAmount, usdpAmount, underlyingProof);
+        _depositAndBorrow(asset, msg.sender, mainAmount, usdpAmount);
 
         // fire an event
         emit Join(asset, msg.sender, mainAmount, usdpAmount);
@@ -126,13 +117,11 @@ contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
       * @param asset The address of token using as main collateral
       * @param mainAmount The amount of main collateral token to withdraw
       * @param usdpAmount The amount of USDP token to repay
-      * @param underlyingProof The merkle proof data of the underlying collateral token price
       **/
     function withdrawAndRepay(
         address asset,
         uint mainAmount,
-        uint usdpAmount,
-        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof
+        uint usdpAmount
     )
     public
     spawned(asset, msg.sender)
@@ -144,10 +133,8 @@ contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
         uint debt = vault.debts(asset, msg.sender);
         require(debt != 0 && usdpAmount != debt, "Unit Protocol: USE_REPAY_ALL_INSTEAD");
 
-        if (mainAmount != 0) {
-            // withdraw main collateral to the user address
-            vault.withdrawMain(asset, msg.sender, mainAmount);
-        }
+        // withdraw main collateral to the user address
+        vault.withdrawMain(asset, msg.sender, mainAmount);
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
@@ -157,21 +144,13 @@ contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
 
         vault.update(asset, msg.sender);
 
-        _ensureCollateralizationTroughProofs(asset, msg.sender, underlyingProof);
+        _ensurePositionCollateralization(asset, msg.sender);
 
         // fire an event
         emit Exit(asset, msg.sender, mainAmount, usdpAmount);
     }
 
-    function _depositAndBorrow(
-        address asset,
-        address user,
-        uint mainAmount,
-        uint usdpAmount,
-        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof
-    )
-    internal
-    {
+    function _depositAndBorrow(address asset, address user, uint mainAmount, uint usdpAmount) internal {
         if (mainAmount != 0) {
             vault.depositMain(asset, user, mainAmount);
         }
@@ -180,35 +159,21 @@ contract VaultManagerKeydonixPoolToken is ReentrancyGuard {
         vault.borrow(asset, user, usdpAmount);
 
         // check collateralization
-        _ensureCollateralizationTroughProofs(asset, user, underlyingProof);
+        _ensurePositionCollateralization(asset, user);
     }
 
     // ensures that borrowed value is in desired range
-    function _ensureCollateralizationTroughProofs(
-        address asset,
-        address user,
-        ChainlinkedKeydonixOraclePoolTokenAbstract.ProofDataStruct memory underlyingProof
-    )
-    internal
-    view
-    {
+    function _ensurePositionCollateralization(address asset, address user) internal view {
         // main collateral value of the position in USD
-        uint mainUsdValue_q112 = uniswapOraclePoolToken.assetToUsd(asset, vault.collaterals(asset, user), underlyingProof);
+        uint mainUsdValue_q112 = oracle.assetToUsd(asset, vault.collaterals(asset, user));
 
         _ensureCollateralization(asset, user, mainUsdValue_q112);
     }
 
     // ensures that borrowed value is in desired range
-    function _ensureCollateralization(
-        address asset,
-        address user,
-        uint mainUsdValue_q112
-    )
-    internal
-    view
-    {
+    function _ensureCollateralization(address asset, address user, uint mainUsdValue_q112) internal view {
         // USD limit of the position
-        uint usdLimit = mainUsdValue_q112 * vaultManagerParameters.initialCollateralRatio(asset) / uniswapOraclePoolToken.Q112() / 100;
+        uint usdLimit = mainUsdValue_q112 * vaultManagerParameters.initialCollateralRatio(asset) / Q112 / 100;
 
         // revert if collateralization is not enough
         require(vault.getTotalDebt(asset, user) <= usdLimit, "Unit Protocol: UNDERCOLLATERALIZED");

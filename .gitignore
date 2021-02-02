@@ -5,4 +5,4 @@
 coverage
 coverage.json
 
-contracts/**/artifacts/
+**/artifacts/
