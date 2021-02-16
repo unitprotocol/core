@@ -10,7 +10,6 @@ import "../VaultParameters.sol";
 
 /**
  * @title VaultManagerParameters
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
 contract VaultManagerParameters is Auth {
 
@@ -45,6 +44,7 @@ contract VaultManagerParameters is Auth {
      * @param liquidationDiscountValue The liquidation discount (3 decimals)
      * @param devaluationPeriodValue The devaluation period in blocks
      * @param usdpLimit The USDP token issue limit
+     * @param oracles The enabled oracles type IDs
      * @param minColP The min percentage of COL value in position (0 decimals)
      * @param maxColP The max percentage of COL value in position (0 decimals)
      **/
