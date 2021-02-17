@@ -37,7 +37,7 @@ contract BearingAssetOracleSimple is OracleSimple, Auth {
 
     function bearingToUnderlying(address bearing, uint amount) public view returns (address, uint) {
         address _underlying = underlyings[bearing];
-        require(_underlying != address(0));
+        require(_underlying != address(0), "Unit Protocol: UNDEFINED_UNDERLYING");
         uint _reserve = ERC20Like(_underlying).balanceOf(address(bearing));
         uint _totalSupply = ERC20Like(bearing).totalSupply();
         return (_underlying, amount * _reserve / _totalSupply);

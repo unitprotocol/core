@@ -8,6 +8,8 @@ const KeydonixOracleMainAssetMock = artifacts.require('KeydonixOracleMainAsset_M
 const KeydonixOraclePoolTokenMock = artifacts.require('KeydonixOraclePoolToken_Mock');
 const Keep3rOracleMainAssetMock = artifacts.require('Keep3rOracleMainAsset_Mock');
 const Keep3rOraclePoolTokenMock = artifacts.require('Keep3rOraclePoolToken_Mock');
+const BearingAssetOracleSimple = artifacts.require('BearingAssetOracleSimple');
+const OracleRegistry = artifacts.require('OracleRegistry');
 const ChainlinkOracleMainAssetMock = artifacts.require('ChainlinkOracleMainAsset_Mock');
 const ChainlinkAggregator = artifacts.require('ChainlinkAggregator_Mock');
 const UniswapV2FactoryDeployCode = require('./UniswapV2DeployCode');
@@ -22,6 +24,7 @@ const vaultManagerKeep3rUniswapPoolToken = artifacts.require('VaultManagerKeep3r
 const VaultManagerKeep3rSushiSwapMainAsset = artifacts.require('VaultManagerKeep3rSushiSwapMainAsset');
 const VaultManagerKeep3rSushiSwapPoolToken = artifacts.require('VaultManagerKeep3rSushiSwapPoolToken');
 const VaultManagerChainlinkMainAsset = artifacts.require('VaultManagerChainlinkMainAsset');
+const VaultManagerSimple = artifacts.require('VaultManagerSimple');
 const LiquidatorKeydonixMainAsset = artifacts.require('LiquidationTriggerKeydonixMainAsset');
 const LiquidatorKeydonixPoolToken = artifacts.require('LiquidationTriggerKeydonixPoolToken');
 const LiquidatorKeep3rMainAsset = artifacts.require('LiquidationTriggerKeep3rMainAsset');
@@ -29,6 +32,7 @@ const LiquidatorKeep3rPoolToken = artifacts.require('LiquidationTriggerKeep3rPoo
 const LiquidatorKeep3rSushiSwapMainAsset = artifacts.require('LiquidationTriggerKeep3rSushiSwapMainAsset');
 const LiquidatorKeep3rSushiSwapPoolToken = artifacts.require('LiquidationTriggerKeep3rSushiSwapPoolToken');
 const LiquidatorChainlinkMainAsset = artifacts.require('LiquidationTriggerChainlinkMainAsset');
+const LiquidationTriggerSimple = artifacts.require('LiquidationTriggerSimple');
 const LiquidationAuction02 = artifacts.require('LiquidationAuction02');
 const { ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce, deployContractBytecode } = require('./deployUtils');
@@ -60,6 +64,7 @@ module.exports = (context, mode) => {
 	const uniswapKeep3r = mode.startsWith('uniswapKeep3r');
 	const sushiswapKeep3r = mode.startsWith('sushiswapKeep3r');
 	const chainlink = mode.startsWith('chainlink');
+	const bearingAssetSimple = mode.startsWith('bearingAssetSimple');
 
 	const poolDeposit = async (token, amount, decimals) => {
 		amount = decimals ? String(amount * 10 ** decimals) : ether(amount.toString());
@@ -150,7 +155,7 @@ module.exports = (context, mode) => {
 			maxColPercent = 5
 			context.chainlinkAggregator = await ChainlinkAggregator.new(250e8, 8);
 		} else {
-			if (sushiswapKeep3r) {
+			if (sushiswapKeep3r || bearingAssetSimple) {
 				context.chainlinkAggregator = await ChainlinkAggregator.new(250e8, 8);
 			}
 			minColPercent = 0
@@ -198,10 +203,37 @@ module.exports = (context, mode) => {
 				context.weth.address,
 				context.vaultParameters.address
 			);
+		} else if (bearingAssetSimple) {
+			mainAssetOracleType = 9
+
+			context.bearingAsset = await DummyToken.new("Bearing Asset", "BeA", 18, ether('1000'));
+
+			context.keep3rOracleMainAssetMock = await Keep3rOracleMainAssetMock.new(
+				context.uniswapFactory.address,
+				context.weth.address,
+				context.chainlinkAggregator.address,
+			)
+
+			context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address)
+
+			context.oracleRegistry.setOracle(
+				context.mainCollateral.address,
+				context.keep3rOracleMainAssetMock.address,
+				7
+			)
+
+			context.bearingAssetOracle = await BearingAssetOracleSimple.new(
+				context.vaultParameters.address,
+				context.oracleRegistry.address,
+			)
+
+			await context.bearingAssetOracle.setUnderlying(context.bearingAsset.address, context.mainCollateral.address)
+
 		}
 
 		context.vaultManagerParameters = await VaultManagerParameters.new(context.vaultParameters.address);
 		await context.vaultParameters.setManager(context.vaultManagerParameters.address, true);
+
 		if (keydonix) {
 			context.liquidatorKeydonixMainAsset = await LiquidatorKeydonixMainAsset.new(context.vaultManagerParameters.address, context.keydonixOracleMainAssetMock.address);
 			context.liquidatorKeydonixPoolToken = await LiquidatorKeydonixPoolToken.new(context.vaultManagerParameters.address, context.keydonixOraclePoolTokenMock.address);
@@ -213,6 +245,8 @@ module.exports = (context, mode) => {
 			context.liquidatorKeep3rSushiSwapPoolToken = await LiquidatorKeep3rSushiSwapPoolToken.new(context.vaultManagerParameters.address, context.keep3rOraclePoolTokenMock.address);
 		} else if (chainlink) {
 			context.liquidatorChainlinkMainAsset = await LiquidatorChainlinkMainAsset.new(context.vaultManagerParameters.address, context.chainlinkOracleMainAssetMock.address);
+		} else if (bearingAssetSimple) {
+			context.liquidatorSimple = await LiquidationTriggerSimple.new(context.vaultManagerParameters.address, context.bearingAssetOracle.address, mainAssetOracleType);
 		}
 
 		context.liquidationAuction = await LiquidationAuction02.new(context.vaultManagerParameters.address);
@@ -248,6 +282,12 @@ module.exports = (context, mode) => {
 			context.vaultManagerChainlinkMainAsset = await VaultManagerChainlinkMainAsset.new(
 				context.vaultManagerParameters.address,
 				context.chainlinkOracleMainAssetMock.address,
+			);
+		} else if (bearingAssetSimple) {
+			context.vaultManagerSimple = await VaultManagerSimple.new(
+				context.vaultManagerParameters.address,
+				context.bearingAssetOracle.address,
+				mainAssetOracleType
 			);
 		}
 
@@ -285,13 +325,16 @@ module.exports = (context, mode) => {
 		} else if (chainlink) {
 			await context.vaultParameters.setVaultAccess(context.vaultManagerChainlinkMainAsset.address, true);
 			await context.vaultParameters.setVaultAccess(context.liquidatorChainlinkMainAsset.address, true);
+		} else if (bearingAssetSimple) {
+			await context.vaultParameters.setVaultAccess(context.vaultManagerSimple.address, true);
+			await context.vaultParameters.setVaultAccess(context.liquidatorSimple.address, true);
 		}
 
 		await context.vaultParameters.setVaultAccess(context.vaultManagerStandard.address, true);
 		await context.vaultParameters.setVaultAccess(context.liquidationAuction.address, true);
 
 		await context.vaultManagerParameters.setCollateral(
-			context.mainCollateral.address,
+			bearingAssetSimple ? context.bearingAsset.address : context.mainCollateral.address,
 			'0', // stability fee
 			'13', // liquidation fee
 			'67', // initial collateralization
@@ -318,21 +361,23 @@ module.exports = (context, mode) => {
 			maxColPercent,
 		);
 
-		await context.vaultManagerParameters.setCollateral(
-			await context.uniswapFactory.getPair(context.weth.address, context.mainCollateral.address),
-			'0', // stability fee
-			'13', // liquidation fee
-			'67', // initial collateralization
-			'68', // liquidation ratio
-			'0', // liquidation discount (3 decimals)
-			'1000', // devaluation period in blocks
-			ether('100000'), // debt limit
-			[poolTokenOracleType], // enabled oracles
-			minColPercent,
-			maxColPercent,
-		);
+		if (poolTokenOracleType) {
+			await context.vaultManagerParameters.setCollateral(
+				await context.uniswapFactory.getPair(context.weth.address, context.mainCollateral.address),
+				'0', // stability fee
+				'13', // liquidation fee
+				'67', // initial collateralization
+				'68', // liquidation ratio
+				'0', // liquidation discount (3 decimals)
+				'1000', // devaluation period in blocks
+				ether('100000'), // debt limit
+				[poolTokenOracleType], // enabled oracles
+				minColPercent,
+				maxColPercent,
+			);
+			context.poolToken = await getPoolToken(context.mainCollateral.address);
+		}
 
-		context.poolToken = await getPoolToken(context.mainCollateral.address);
 		await context.vaultManagerParameters.setInitialCollateralRatio(context.col.address, 67);
 		await context.vaultManagerParameters.setLiquidationRatio(context.col.address, 68);
 	};

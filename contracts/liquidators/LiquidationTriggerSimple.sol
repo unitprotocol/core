@@ -4,43 +4,61 @@
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
 pragma solidity ^0.7.1;
+pragma experimental ABIEncoderV2;
 
-import "../Vault.sol";
-import "../vault-managers/VaultManagerParameters.sol";
+import "../helpers/ERC20Like.sol";
 import "../helpers/ReentrancyGuard.sol";
+import "./LiquidationTriggerBase.sol";
+import "../oracles/OracleSimple.sol";
 
 
 /**
  * @title LiquidationTriggerSimple
- * @dev Manages triggering of liquidation process
+ * @dev Manages liquidation triggering
  **/
-abstract contract LiquidationTriggerSimple {
+contract LiquidationTriggerSimple is LiquidationTriggerBase, ReentrancyGuard {
     using SafeMath for uint;
 
-    uint public constant DENOMINATOR_1E5 = 1e5;
-    uint public constant DENOMINATOR_1E2 = 1e2;
+    OracleSimple public immutable oracle;
 
-    // vault manager parameters contract
-    VaultManagerParameters public immutable vaultManagerParameters;
-
-    uint public immutable oracleType;
-
-    // Vault contract
-    Vault public immutable vault;
-
-    /**
-     * @dev Trigger when liquidations are initiated
-    **/
-    event LiquidationTriggered(address indexed token, address indexed user);
+    uint public constant Q112 = 2**112;
 
     /**
      * @param _vaultManagerParameters The address of the contract with vault manager parameters
+     * @param _oracle The address of simple oracle
      * @param _oracleType The id of the oracle type
      **/
-    constructor(address _vaultManagerParameters, uint _oracleType) internal {
-        vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
-        vault = Vault(VaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
-        oracleType = _oracleType;
+    constructor(
+        address _vaultManagerParameters,
+        address _oracle,
+        uint _oracleType
+    )
+    public
+    LiquidationTriggerBase(_vaultManagerParameters, _oracleType)
+    {
+        oracle = OracleSimple(_oracle);
+    }
+
+    /**
+     * @dev Determines whether a position is liquidatable
+     * @param asset The address of the main collateral token of a position
+     * @param user The owner of a position
+     * @param mainUsdValue_q112 Q112-encoded USD value of the main collateral
+     * @return boolean value, whether a position is liquidatable
+     **/
+    function isLiquidatablePosition(
+        address asset,
+        address user,
+        uint mainUsdValue_q112
+    ) public override view returns (bool){
+        uint debt = vault.getTotalDebt(asset, user);
+
+        // position is collateralized if there is no debt
+        if (debt == 0) return false;
+
+        require(vault.oracleType(asset, user) == oracleType, "Unit Protocol: INCORRECT_ORACLE_TYPE");
+
+        return UR(mainUsdValue_q112, debt) >= vaultManagerParameters.liquidationRatio(asset);
     }
 
     /**
@@ -48,26 +66,33 @@ abstract contract LiquidationTriggerSimple {
      * @param asset The address of the main collateral token of a position
      * @param user The owner of a position
      **/
-    function triggerLiquidation(address asset, address user) external virtual {}
+    function triggerLiquidation(address asset, address user) public override nonReentrant {
+        // USD value of the main collateral
+        uint mainUsdValue_q112 = oracle.assetToUsd(asset, vault.collaterals(asset, user));
 
-    /**
-     * @dev Determines whether a position is liquidatable
-     * @param asset The address of the main collateral token of a position
-     * @param user The owner of a position
-     * @param collateralUsdValue USD value of the collateral
-     * @return boolean value, whether a position is liquidatable
-     **/
-    function isLiquidatablePosition(
-        address asset,
-        address user,
-        uint collateralUsdValue
-    ) public virtual view returns (bool);
+        // reverts if a position is not liquidatable
+        require(isLiquidatablePosition(asset, user, mainUsdValue_q112), "Unit Protocol: SAFE_POSITION");
+
+        uint liquidationDiscount_q112 = mainUsdValue_q112.mul(
+            vaultManagerParameters.liquidationDiscount(asset)
+        ).div(DENOMINATOR_1E5);
+
+        uint initialLiquidationPrice = mainUsdValue_q112.sub(liquidationDiscount_q112).div(Q112);
+
+        // sends liquidation command to the Vault
+        vault.triggerLiquidation(asset, user, initialLiquidationPrice);
+
+        // fire an liquidation event
+        emit LiquidationTriggered(asset, user);
+    }
 
     /**
      * @dev Calculates position's utilization ratio
-     * @param collateralUsdValue USD value of collateral
+     * @param mainUsdValue USD value of main collateral, q112 format
      * @param debt USDP borrowed
      * @return utilization ratio of a position
      **/
-    function UR(uint collateralUsdValue, uint debt) public virtual pure returns (uint);
+    function UR(uint mainUsdValue, uint debt) public override pure returns (uint) {
+        return debt.mul(100).mul(Q112).div(mainUsdValue);
+    }
 }

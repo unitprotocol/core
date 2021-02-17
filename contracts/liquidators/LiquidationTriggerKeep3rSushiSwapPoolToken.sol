@@ -6,7 +6,7 @@
 pragma solidity ^0.7.1;
 
 import "../helpers/ERC20Like.sol";
-import "./LiquidationTriggerKeep3rBase.sol";
+import "./LiquidationTriggerSimple.sol";
 import "../oracles/OracleSimple.sol";
 
 
@@ -14,7 +14,7 @@ import "../oracles/OracleSimple.sol";
  * @title LiquidationTriggerKeep3rSushiSwapPoolToken
  * @dev Manages liquidation process triggering of pool tokens based positions
  **/
-contract LiquidationTriggerKeep3rSushiSwapPoolToken is LiquidationTriggerKeep3rBase {
+contract LiquidationTriggerKeep3rSushiSwapPoolToken is LiquidationTriggerSimple {
 
 
     /**
@@ -26,6 +26,6 @@ contract LiquidationTriggerKeep3rSushiSwapPoolToken is LiquidationTriggerKeep3rB
         address _keep3rOraclePoolToken
     )
     public
-    LiquidationTriggerKeep3rBase(_vaultManagerParameters, _keep3rOraclePoolToken, 8)
+    LiquidationTriggerSimple(_vaultManagerParameters, _keep3rOraclePoolToken, 8)
     {}
 }

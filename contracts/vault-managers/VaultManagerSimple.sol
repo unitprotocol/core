@@ -14,6 +14,7 @@ import "../oracles/OracleSimple.sol";
 
 /**
  * @title VaultManagerSimple
+ * @notice Usage: `join` to join, `exit` to exit
  **/
 contract VaultManagerSimple is ReentrancyGuard {
     using SafeMath for uint;
@@ -21,6 +22,7 @@ contract VaultManagerSimple is ReentrancyGuard {
     Vault public immutable vault;
     VaultManagerParameters public immutable vaultManagerParameters;
     OracleSimple public immutable oracle;
+    
     uint public immutable ORACLE_TYPE;
     uint public constant Q112 = 2 ** 112;
 
@@ -34,20 +36,13 @@ contract VaultManagerSimple is ReentrancyGuard {
     **/
     event Exit(address indexed asset, address indexed user, uint main, uint usdp);
 
-    modifier spawned(address asset, address user) {
-
-        // check the existence of a position
-        require(vault.getTotalDebt(asset, user) != 0, "Unit Protocol: NOT_SPAWNED_POSITION");
-        require(vault.oracleType(asset, user) == ORACLE_TYPE, "Unit Protocol: WRONG_ORACLE_TYPE");
-        _;
-    }
-
     /**
-     * @param _vaultManagerParameters The address of the contract with vault manager parameters
-     * @param _oracle The address of oracle
+     * @param _vaultManagerParameters The address of the contract with Vault manager parameters
+     * @param _oracle The address of an oracle
      * @param _oracleType The oracle type ID
      **/
     constructor(address _vaultManagerParameters, address _oracle, uint _oracleType) public {
+        require(_vaultManagerParameters != address(0) && _oracle != address(0) && _oracleType != 0, "Unit Protocol: INVALID_ARGS");
         vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
         vault = Vault(VaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
         oracle = OracleSimple(_oracle);
@@ -56,11 +51,11 @@ contract VaultManagerSimple is ReentrancyGuard {
 
     /**
       * @notice Token using as main collateral must be whitelisted
-      * @notice Depositing tokens must be pre-approved to vault address
-      * @notice position actually considered as spawned only when usdpAmount > 0
-      * @dev Spawns new positions
-      * @param asset The address of token using as main collateral
-      * @param assetAmount The amount of main collateral to deposit
+      * @notice Depositing tokens must be pre-approved to Vault address
+      * @notice position actually considered as spawned only when debt > 0
+      * @dev Deposits collateral and/or borrows USDP
+      * @param asset The address of the collateral
+      * @param assetAmount The amount of the collateral to deposit
       * @param usdpAmount The amount of USDP token to borrow
       **/
     function join(address asset, uint assetAmount, uint usdpAmount) public nonReentrant {
@@ -95,28 +90,27 @@ contract VaultManagerSimple is ReentrancyGuard {
 
     /**
       * @notice Tx sender must have a sufficient USDP balance to pay the debt
-      * @dev Withdraws collateral and repays specified amount of debt simultaneously
-      * @param asset The address of token using as main collateral
-      * @param mainAmount The amount of main collateral token to withdraw
+      * @dev Withdraws collateral and repays specified amount of debt
+      * @param asset The address of the collateral
+      * @param assetAmount The amount of the collateral to withdraw
       * @param usdpAmount The amount of USDP token to repay
       **/
-    function exit(
-        address asset,
-        uint mainAmount,
-        uint usdpAmount
-    )
-    public
-    spawned(asset, msg.sender)
-    nonReentrant
-    {
+    function exit(address asset, uint assetAmount, uint usdpAmount) public nonReentrant {
+        
         // check usefulness of tx
-        require(mainAmount != 0, "Unit Protocol: USELESS_TX");
+        require(assetAmount != 0, "Unit Protocol: USELESS_TX");
+        
+        // check the existence of a position
+        require(vault.getTotalDebt(asset, msg.sender) != 0, "Unit Protocol: NOT_SPAWNED_POSITION");
+        
+        // check oracle type
+        require(vault.oracleType(asset, msg.sender) == ORACLE_TYPE, "Unit Protocol: WRONG_ORACLE_TYPE");
 
         uint debt = vault.debts(asset, msg.sender);
         require(debt != 0 && usdpAmount != debt, "Unit Protocol: USE_REPAY_ALL_INSTEAD");
 
         // withdraw collateral to the user address
-        vault.withdrawMain(asset, msg.sender, mainAmount);
+        vault.withdrawMain(asset, msg.sender, assetAmount);
 
         if (usdpAmount != 0) {
             uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
@@ -129,16 +123,10 @@ contract VaultManagerSimple is ReentrancyGuard {
         _ensurePositionCollateralization(asset, msg.sender);
 
         // fire an event
-        emit Exit(asset, msg.sender, mainAmount, usdpAmount);
+        emit Exit(asset, msg.sender, assetAmount, usdpAmount);
     }
 
-    function _ensurePositionCollateralization(
-        address asset,
-        address user
-    )
-    internal
-    view
-    {
+    function _ensurePositionCollateralization(address asset, address user) internal view {
         // main collateral value of the position in USD
         uint mainUsdValue_q112 = oracle.assetToUsd(asset, vault.collaterals(asset, user));
 

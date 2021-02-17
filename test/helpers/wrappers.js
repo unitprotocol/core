@@ -358,6 +358,31 @@ module.exports = function(context, mode) {
 				);
 			},
 		},
+		bearingAssetSimple: {
+			join: async (main, mainAmount, usdpAmount, { noApprove } = {}) => {
+				if (!noApprove)
+					await main.approve(context.vault.address, mainAmount);
+				return context.vaultManagerSimple.join(
+					main.address,
+					mainAmount, // main
+					usdpAmount,	// USDP
+				);
+			},
+			exit: async (main, mainAmount, usdpAmount) => {
+				return context.vaultManagerSimple.exit(
+					main.address,
+					mainAmount, // main
+					usdpAmount,	// USDP
+				);
+			},
+			triggerLiquidation: (main, user, from = context.deployer) => {
+				return context.liquidatorSimple.triggerLiquidation(
+					main.address,
+					user,
+					{ from }
+				);
+			}
+		},
 	}
 	return wrappers[mode];
 }
