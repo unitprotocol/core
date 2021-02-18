@@ -28,6 +28,7 @@ contract BearingAssetOracleSimple is OracleSimple, Auth {
         underlyings[bearing] = underlying;
     }
 
+    // returns Q112-encoded value
     function assetToUsd(address bearing, uint amount) public override view returns (uint) {
         if (amount == 0) return 0;
         (address underlying, uint underlyingAmount) = bearingToUnderlying(bearing, amount);
@@ -40,6 +41,7 @@ contract BearingAssetOracleSimple is OracleSimple, Auth {
         require(_underlying != address(0), "Unit Protocol: UNDEFINED_UNDERLYING");
         uint _reserve = ERC20Like(_underlying).balanceOf(address(bearing));
         uint _totalSupply = ERC20Like(bearing).totalSupply();
+        require(amount <= _totalSupply, "Unit Protocol: AMOUNT_EXCEEDS_SUPPLY");
         return (_underlying, amount * _reserve / _totalSupply);
     }
 
