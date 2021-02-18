@@ -100,10 +100,9 @@ const utils = require('./helpers/utils');
 					await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
 
 					const mainToWithdraw = ether('50');
-					const colToWithdraw = ether('2.5');
 					const usdpToWithdraw = ether('2.5');
 
-					const { logs } = await this.utils.withdrawAndRepay(this.mainCollateral, mainToWithdraw, colToWithdraw, usdpToWithdraw);
+					const { logs } = await this.utils.withdrawAndRepay(this.mainCollateral, mainToWithdraw, usdpToWithdraw);
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.mainCollateral.address,
@@ -348,6 +347,8 @@ const utils = require('./helpers/utils');
 					await this.utils.expectRevert(tx, "Unit Protocol: UNDERCOLLATERALIZED");
 				})
 			})
+
+
 		})
 	})
 )

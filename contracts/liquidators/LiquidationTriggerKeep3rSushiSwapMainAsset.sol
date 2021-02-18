@@ -6,7 +6,7 @@
 pragma solidity ^0.7.1;
 
 import "../helpers/ERC20Like.sol";
-import "./LiquidationTriggerKeep3rBase.sol";
+import "./LiquidationTriggerSimple.sol";
 import "../oracles/OracleSimple.sol";
 
 
@@ -14,7 +14,7 @@ import "../oracles/OracleSimple.sol";
  * @title LiquidationTriggerKeep3rSushiSwapMainAsset
  * @dev Manages liquidation process triggering of main asset based positions
  **/
-contract LiquidationTriggerKeep3rSushiSwapMainAsset is LiquidationTriggerKeep3rBase {
+contract LiquidationTriggerKeep3rSushiSwapMainAsset is LiquidationTriggerSimple {
 
 
     /**
@@ -26,6 +26,6 @@ contract LiquidationTriggerKeep3rSushiSwapMainAsset is LiquidationTriggerKeep3rB
         address _keep3rOracleMainAsset
     )
     public
-    LiquidationTriggerKeep3rBase(_vaultManagerParameters, _keep3rOracleMainAsset, 7)
+    LiquidationTriggerSimple(_vaultManagerParameters, _keep3rOracleMainAsset, 7)
     {}
 }

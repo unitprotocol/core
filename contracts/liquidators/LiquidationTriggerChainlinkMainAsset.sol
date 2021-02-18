@@ -8,7 +8,7 @@ pragma experimental ABIEncoderV2;
 
 import "../helpers/ERC20Like.sol";
 import "../helpers/ReentrancyGuard.sol";
-import "./LiquidationTriggerSimple.sol";
+import "./LiquidationTriggerBase.sol";
 import "../oracles/OracleSimple.sol";
 
 
@@ -16,7 +16,7 @@ import "../oracles/OracleSimple.sol";
  * @title LiquidationTriggerChainlinkMainAsset
  * @dev Manages liquidation process triggering of main asset-based positions
  **/
-contract LiquidationTriggerChainlinkMainAsset is LiquidationTriggerSimple, ReentrancyGuard {
+contract LiquidationTriggerChainlinkMainAsset is LiquidationTriggerBase, ReentrancyGuard {
     using SafeMath for uint;
 
     // uniswap-based oracle contract
@@ -31,7 +31,7 @@ contract LiquidationTriggerChainlinkMainAsset is LiquidationTriggerSimple, Reent
         address _chainlinkedOracleMainAsset
     )
     public
-    LiquidationTriggerSimple(_vaultManagerParameters, 5)
+    LiquidationTriggerBase(_vaultManagerParameters, 5)
     {
         chainlinkedOracleMainAsset = ChainlinkedOracleSimple(_chainlinkedOracleMainAsset);
     }

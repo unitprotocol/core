@@ -7,6 +7,7 @@ pragma solidity ^0.7.1;
 
 import "./vault-managers/VaultManagerParameters.sol";
 import "./Vault.sol";
+import "./oracles/BearingAssetOracleSimple.sol";
 
 
 /**
@@ -15,11 +16,15 @@ import "./Vault.sol";
  **/
 contract ParametersBatchUpdater is Auth {
 
-    VaultManagerParameters immutable vaultManagerParameters;
+    VaultManagerParameters public immutable vaultManagerParameters;
+    BearingAssetOracleSimple public immutable bearingAssetOracle;
+    OracleRegistry public immutable oracleRegistry;
 
-    constructor(address _vaultManagerParameters) public Auth(address(VaultManagerParameters(_vaultManagerParameters).vaultParameters())) {
-        require(_vaultManagerParameters != address(0), "Unit Protocol: ZERO_ADDRESS");
+    constructor(address _vaultManagerParameters, address _bearingAssetOracle) public Auth(address(VaultManagerParameters(_vaultManagerParameters).vaultParameters())) {
+        require(_vaultManagerParameters != address(0) && _bearingAssetOracle != address(0), "Unit Protocol: ZERO_ADDRESS");
         vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
+        bearingAssetOracle = BearingAssetOracleSimple(_bearingAssetOracle);
+        oracleRegistry = OracleRegistry(BearingAssetOracleSimple(_bearingAssetOracle).oracleRegistry());
     }
 
     /**
@@ -136,10 +141,17 @@ contract ParametersBatchUpdater is Auth {
         }
     }
 
-    function setColPartRange(address[] calldata assets, uint[] calldata minValues, uint[] calldata maxValues) public onlyManager {
-        require(assets.length == minValues.length && assets.length == maxValues.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+    function setOraclesInRegistry(address[] calldata assets, address[] calldata oracles, uint[] calldata oracleTypes) public onlyManager {
+        require(assets.length == oracles.length && assets.length == oracleTypes.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < assets.length; i++) {
-            vaultManagerParameters.setColPartRange(assets[i], minValues[i], maxValues[i]);
+            oracleRegistry.setOracle(assets[i], oracles[i], oracleTypes[i]);
+        }
+    }
+
+    function setUnderlyings(address[] calldata bearings, address[] calldata underlyings) public onlyManager {
+        require(bearings.length == underlyings.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+        for (uint i = 0; i < bearings.length; i++) {
+            bearingAssetOracle.setUnderlying(bearings[i], underlyings[i]);
         }
     }
 }
