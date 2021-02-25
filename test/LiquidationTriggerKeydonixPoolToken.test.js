@@ -20,7 +20,6 @@ contract('LiquidationTriggerKeydonixPoolToken', function([
 	describe('Optimistic cases', function() {
 		it('Should liquidate undercollateralized position', async function () {
 			const mainAmount = new BN('3');
-			const colAmount = new BN('5');
 			const usdpAmount = new BN('78');
 
 			const lpSupply = await this.poolToken.totalSupply();
@@ -30,7 +29,7 @@ contract('LiquidationTriggerKeydonixPoolToken', function([
 			 * collateral value = 44.72 * 2 + 5 = 139.16$
 			 * utilization percent = 78 / 139.16 = ~56%
 			 */
-			await this.utils.spawn(this.poolToken, mainAmount, colAmount, usdpAmount);
+			await this.utils.spawn(this.poolToken, mainAmount, usdpAmount);
 
 			// fill liquidator usdp balance
 			await this.usdp.transfer(liquidator, usdpAmount);
@@ -62,7 +61,7 @@ contract('LiquidationTriggerKeydonixPoolToken', function([
 			 * utilization percent after swap = 78 / 113.128 = ~68.95%
 			 */
 
-			const totalCollateralUsdValue = mainUsdValueAfterSwap.add(colAmount);
+			const totalCollateralUsdValue = mainUsdValueAfterSwap;
 			const initialDiscount = await this.vaultManagerParameters.liquidationDiscount(this.poolToken.address);
 
 			const expectedLiquidationPrice = totalCollateralUsdValue.sub(totalCollateralUsdValue.mul(initialDiscount).div(new BN(1e5)));
