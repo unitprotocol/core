@@ -20,6 +20,8 @@ VaultManagerStandard                                0x56DD677842214CbB97Ad88dBAA
 VaultManagerKeydonixMainAsset                       0x78727A77028d9130D2772713d570780231E64ECf
 VaultManagerKeydonixPoolToken                       0xf1cA03Aae24C4865d09643cb929141D8d3c60A75
 
+VaultManagerSimple                                  0xf1cA03Aae24C4865d09643cb929141D8d3c60A75
+
 Keep3rV1Oracle Uniswap                              0x73353801921417F465377c8d898c6f4C0270282C
 Keep3rV1Oracle SushiSwap                            0xf67Ab1c914deE06Ba0F264031885Ea7B276a7cDa
 
@@ -42,3 +44,10 @@ LiquidationTriggerKeep3rMainAsset for SushiSwap     0x20c854cdd322d3a501da913740
 LiquidationTriggerKeep3rPoolToken for SushiSwap     0x78d09b58402c29016425497289e12fdd12f06027
 
 ParametersBatchUpdater                              0xaD5FD513e62fA67D03e4518f0a6bffdB238263B0
+
+
+// xSUSHI
+OracleRegistry                                      0x10bBe205832edc371781Cc224Ef202CD98e8f38f
+BearingAssetOracleSimple                            0xC31629C9d5BC9a28ceFa34d73d87d86b2A6B4315
+VaultManagerSimple                                  0xB82c6D510B3a0Dc9f198dE0ad2a3839973c6783c
+LiquidationTriggerSimple                            0xb088c78A8e2E454a6145bFBA37CA5de129688ff7
