@@ -83,7 +83,7 @@ abstract contract LiquidationTriggerKeydonixAbstract {
 
         require(vault.oracleType(asset, user) == oracleType, "Unit Protocol: INCORRECT_ORACLE_TYPE");
 
-        return UR(mainUsdValue_q112, debt) >= LR(asset, mainUsdValue_q112);
+        return UR(mainUsdValue_q112, debt) >= vaultManagerParameters.liquidationRatio(asset);
     }
 
     /**
@@ -92,19 +92,7 @@ abstract contract LiquidationTriggerKeydonixAbstract {
      * @param debt USDP borrowed
      * @return utilization ratio of a position
      **/
-    function UR(uint mainUsdValue, uint debt) public view returns (uint) {
+    function UR(uint mainUsdValue, uint debt) public pure returns (uint) {
         return debt.mul(100).mul(Q112).div(mainUsdValue);
-    }
-
-    /**
-     * @dev Calculates position's liquidation ratio based on collateral proportion
-     * @param asset The address of the main collateral token of a position
-     * @param mainUsdValue USD value of main collateral in position
-     * @return liquidation ratio of a position
-     **/
-    function LR(address asset, uint mainUsdValue) public view returns(uint) {
-        uint lrMain = vaultManagerParameters.liquidationRatio(asset);
-
-        return lrMain.mul(mainUsdValue).div(mainUsdValue);
     }
 }
