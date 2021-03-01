@@ -66,22 +66,20 @@ module.exports = (context, mode) => {
 	const chainlink = mode.startsWith('chainlink');
 	const bearingAssetSimple = mode.startsWith('bearingAssetSimple');
 
-	const poolDeposit = async (token, amount, decimals) => {
-		amount = decimals ? String(amount * 10 ** decimals) : ether(amount.toString());
-		amount = new BN(amount).div(new BN((10 ** 6).toString()));
-		const ethUnitsPerDeposit = ether('1').div(new BN((10 ** 6)));
-		const block = await web3.eth.getBlock('latest');
-		const time = new BN(block.timestamp);
-		await token.approve(context.uniswapRouter.address, amount);
+	const poolDeposit = async (token, collateralAmount, decimals) => {
+		collateralAmount = decimals ? String(collateralAmount * 10 ** decimals) : ether(collateralAmount.toString());
+		collateralAmount = new BN(collateralAmount).div(new BN((10 ** 6).toString()));
+		const ethAmount = ether('1').div(new BN((10 ** 6)));
+		await token.approve(context.uniswapRouter.address, collateralAmount);
 		await context.uniswapRouter.addLiquidity(
 			token.address,
 			context.weth.address,
-			amount,
-			ethUnitsPerDeposit,
-			amount,
-			ethUnitsPerDeposit,
+			collateralAmount,
+			ethAmount,
+			collateralAmount,
+			ethAmount,
 			context.deployer,
-			time.add(new BN('100')),
+			1e18.toString(), // deadline
 		);
 	};
 
