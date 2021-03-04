@@ -1,10 +1,9 @@
+** Ethereum **
+
 WETH                                                0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
-COL                                                 0xc76fb75950536d98fa62ea968e1d6b45ffea2a55
 UniswapFactory                                      0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
 SushiSwapFactory                                    0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac
-ChainlinkAggregator                                 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
-
-Main asset mock for COL                             0x6aade8A8A6b85921009D2CaA25Dc69348f4c009e
+ChainlinkAggregator ETH/USD                         0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
 
 ChainLinkedKeydonixOracleMainAsset                  0xA2790A32E611aF1F653F2E2f151244f1DC2086Eb
 ChainLinkedKeydonixOraclePoolToken                  0x11586e3b20239EF471134A0DA4a4239010A1c500
@@ -13,14 +12,13 @@ VaultParameters                                     0xB46F8CF42e504Efe8BEf895f84
 VaultManagerParameters                              0x203153522B9EAef4aE17c6e99851EE7b2F7D312E
 USDP                                                0x1456688345527bE1f37E9e627DA0837D6f08C925
 Vault                                               0xb1cFF81b9305166ff1EFc49A129ad2AfCd7BCf19
+
 LiquidationTriggerKeydonixMainAsset                 0x701A228b0D7A3FC740462E9b2Af13F2A5C16c882
 LiquidationTriggerKeydonixPoolToken                 0xF6F90336666413C73a940E0a53CB2f762326Ab10
 LiquidationAuction01                                0xa41a3625c02c60Ae932515E7F921ada1811aF6a5
 VaultManagerStandard                                0x56DD677842214CbB97Ad88dBAA58DD55e1b179Ea
 VaultManagerKeydonixMainAsset                       0x78727A77028d9130D2772713d570780231E64ECf
 VaultManagerKeydonixPoolToken                       0xf1cA03Aae24C4865d09643cb929141D8d3c60A75
-
-VaultManagerSimple                                  0xf1cA03Aae24C4865d09643cb929141D8d3c60A75
 
 Keep3rV1Oracle Uniswap                              0x73353801921417F465377c8d898c6f4C0270282C
 Keep3rV1Oracle SushiSwap                            0xf67Ab1c914deE06Ba0F264031885Ea7B276a7cDa
@@ -51,3 +49,23 @@ OracleRegistry                                      0x10bBe205832edc371781Cc224E
 BearingAssetOracleSimple                            0xC31629C9d5BC9a28ceFa34d73d87d86b2A6B4315
 VaultManagerSimple                                  0xB82c6D510B3a0Dc9f198dE0ad2a3839973c6783c
 LiquidationTriggerSimple                            0xb088c78A8e2E454a6145bFBA37CA5de129688ff7
+
+
+
+** BSC **
+
+ChainlinkAggregator BNB/USD                         0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE
+ChainlinkAggregator BNB/USD                         0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE
+
+VaultParameters                                     0x56c7CA666d192332F72a5842E72eED5f59F0fb48
+VaultManagerParameters                              0x99f2B13C28A4183a5d5e0fe02B1B5aeEe85FAF5A
+USDP                                                0xdacd011a71f8c9619642bf482f1d4ceb338cffcf
+Vault                                               0xdacfeed000e12c356fb72ab5089e7dd80ff4dd93
+
+VaultManagerStandard                                0x7E920256041F77613885A018Fce194409A734bBe
+LiquidationAuction02                                0x754106b2f312c987Dd34161F8b4735392fa93F06
+
+PancakeTwap                                         0xa707aebfea4ef3d11aefeddedf82397e4567d20a
+
+VaultManagerPancakeSwapMainAsset                    0x7Cdefc60Aa5eF145f905b99C999d3ED2883f6d10
+LiquidationTriggerKeep3rPancakeSwapMainAsset        0xfAa71d14458a197DeC85a767B23dA27E33363b9b
