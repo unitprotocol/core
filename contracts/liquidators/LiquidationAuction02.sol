@@ -11,6 +11,17 @@ import "../oracles/KeydonixOracleAbstract.sol";
 import "../vault-managers/VaultManagerParameters.sol";
 import "../helpers/ReentrancyGuard.sol";
 
+interface ICurveProvider {
+    function get_registry() external view returns (address);
+}
+
+interface ICurveRegistry {
+    function get_pool_from_lp_token(address) external view returns (address);
+}
+
+interface IWrappedToUnderlyingOracle {
+    function assetToUnderlying(address) external view returns (address);
+}
 
 /**
  * @title LiquidationAuction02
@@ -27,17 +38,32 @@ contract LiquidationAuction02 is ReentrancyGuard {
     // Vault contract
     Vault public immutable vault;
 
+    // CurveProvider contract
+    ICurveProvider public immutable curveProvider;
+    IWrappedToUnderlyingOracle public immutable wrappedToUnderlyingOracle;
+
     /**
      * @dev Trigger when buyouts are happened
     **/
-    event Buyout(address indexed token, address indexed owner, address indexed buyer, uint amount, uint price, uint penalty);
+    event Buyout(address indexed asset, address indexed owner, address indexed buyer, uint amount, uint price, uint penalty);
 
     /**
      * @param _vaultManagerParameters The address of the contract with vault manager parameters
+     * @param _curveProvider The address of the Curve Provider. Mainnet: 0x0000000022D53366457F9d5E68Ec105046FC4383
+     * @param _wrappedToUnderlyingOracle The address of the WrappedToUnderlyingOracle contract
      **/
-    constructor(address _vaultManagerParameters) public {
+    constructor(address _vaultManagerParameters, address _curveProvider, address _wrappedToUnderlyingOracle) public {
+        require(
+            _vaultManagerParameters != address(0) &&
+            _curveProvider != address(0) &&
+            _wrappedToUnderlyingOracle != address(0),
+                "Unit Protocol: ZERO_ADDRESS"
+        );
+
         vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
         vault = Vault(VaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
+        curveProvider = ICurveProvider(_curveProvider);
+        wrappedToUnderlyingOracle = IWrappedToUnderlyingOracle(_wrappedToUnderlyingOracle);
     }
 
     /**
@@ -65,6 +91,12 @@ contract LiquidationAuction02 is ReentrancyGuard {
             debt.add(penalty),
             collateralInPosition
         );
+
+        // ensure that at least 1 wei of Curve LP is transferred to cdp owner
+        if (collateralToOwner == 0 && isCurveLP(asset)) {
+            collateralToOwner = 1;
+            collateralToLiquidator = collateralToLiquidator.sub(1);
+        }
 
         _liquidate(
             asset,
@@ -128,5 +160,13 @@ contract LiquidationAuction02 is ReentrancyGuard {
         } else {
             collateralToBuyer = collateralInPosition;
         }
+    }
+
+    function isCurveLP(address asset) public view returns(bool) {
+        address underlying = wrappedToUnderlyingOracle.assetToUnderlying(asset);
+
+        if (underlying == address(0)) { return false; }
+
+        return ICurveRegistry(curveProvider.get_registry()).get_pool_from_lp_token(underlying) != address(0);
     }
 }
