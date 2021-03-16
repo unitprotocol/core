@@ -21,7 +21,7 @@ contract('LiquidationTriggerSimple', function([
 	});
 
 	it('Should trigger liquidation of undercollateralized position', async function () {
-		await this.curveRegistry.setLP(this.mainCollateral.address, this.mainCollateral.address, ether('1.2'))
+		await this.curvePool.setPool(ether('1.2'), [this.curveLockedAsset.address])
 		const mainAmount = ether('1000');
 		const usdpAmount = ether('700');
 
@@ -31,7 +31,7 @@ contract('LiquidationTriggerSimple', function([
 		 */
 		await this.utils.join(this.wrappedAsset, mainAmount, usdpAmount);
 
-		await this.curveRegistry.setLP(this.mainCollateral.address, this.mainCollateral.address, ether('1'))
+		await this.curvePool.setPool(ether('1'), [this.curveLockedAsset.address])
 
 		const mainUsdValueAfterDump = ether('1000')
 

@@ -22,6 +22,8 @@ contract LiquidationTriggerChainlinkMainAsset is LiquidationTriggerBase, Reentra
     // uniswap-based oracle contract
     ChainlinkedOracleSimple public immutable chainlinkedOracleMainAsset;
 
+    uint public constant Q112 = 2**112;
+
     /**
      * @param _vaultManagerParameters The address of the contract with vault manager parameters
      * @param _chainlinkedOracleMainAsset The address of Chainlink-based oracle wrapper for main assets
@@ -43,16 +45,16 @@ contract LiquidationTriggerChainlinkMainAsset is LiquidationTriggerBase, Reentra
      **/
     function triggerLiquidation(address asset, address user) public override nonReentrant {
         // USD value of the main collateral
-        uint mainUsdValue = chainlinkedOracleMainAsset.assetToUsd(asset, vault.collaterals(asset, user));
+        uint mainUsdValue_q112 = chainlinkedOracleMainAsset.assetToUsd(asset, vault.collaterals(asset, user));
 
         // reverts if a position is not liquidatable
-        require(isLiquidatablePosition(asset, user, mainUsdValue), "Unit Protocol: SAFE_POSITION");
+        require(isLiquidatablePosition(asset, user, mainUsdValue_q112), "Unit Protocol: SAFE_POSITION");
 
-        uint liquidationDiscount = mainUsdValue.mul(
+        uint liquidationDiscount_q112 = mainUsdValue_q112.mul(
             vaultManagerParameters.liquidationDiscount(asset)
         ).div(DENOMINATOR_1E5);
 
-        uint initialLiquidationPrice = mainUsdValue.sub(liquidationDiscount);
+        uint initialLiquidationPrice = mainUsdValue_q112.sub(liquidationDiscount_q112).div(Q112);
 
         // sends liquidation command to the Vault
         vault.triggerLiquidation(asset, user, initialLiquidationPrice);
@@ -65,13 +67,13 @@ contract LiquidationTriggerChainlinkMainAsset is LiquidationTriggerBase, Reentra
      * @dev Determines whether a position is liquidatable
      * @param asset The address of the main collateral token of a position
      * @param user The owner of a position
-     * @param mainUsdValue USD value of the main collateral
+     * @param mainUsdValue_q112 Q112-encoded USD value of the collateral
      * @return boolean value, whether a position is liquidatable
      **/
     function isLiquidatablePosition(
         address asset,
         address user,
-        uint mainUsdValue
+        uint mainUsdValue_q112
     ) public override view returns (bool) {
         uint debt = vault.getTotalDebt(asset, user);
 
@@ -80,16 +82,16 @@ contract LiquidationTriggerChainlinkMainAsset is LiquidationTriggerBase, Reentra
 
         require(vault.oracleType(asset, user) == oracleType, "Unit Protocol: INCORRECT_ORACLE_TYPE");
 
-        return UR(mainUsdValue, debt) >= vaultManagerParameters.liquidationRatio(asset);
+        return UR(mainUsdValue_q112, debt) >= vaultManagerParameters.liquidationRatio(asset);
     }
 
     /**
      * @dev Calculates position's utilization ratio
-     * @param mainUsdValue USD value of main collateral
+     * @param mainUsdValue_q112 Q112-encoded USD value of the collateral
      * @param debt USDP borrowed
      * @return utilization ratio of a position
      **/
-    function UR(uint mainUsdValue, uint debt) public override pure returns (uint) {
-        return debt.mul(100).div(mainUsdValue);
+    function UR(uint mainUsdValue_q112, uint debt) public override pure returns (uint) {
+        return debt.mul(100).mul(Q112).div(mainUsdValue_q112);
     }
 }

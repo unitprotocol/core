@@ -5,6 +5,7 @@ const USDP = artifacts.require('USDP');
 const WETH = artifacts.require('WETH');
 const DummyToken = artifacts.require('DummyToken');
 const CurveRegistryMock = artifacts.require('CurveRegistryMock');
+const CurvePool = artifacts.require('CurvePool');
 const CurveProviderMock = artifacts.require('CurveProviderMock');
 const KeydonixOracleMainAssetMock = artifacts.require('KeydonixOracleMainAsset_Mock');
 const KeydonixOraclePoolTokenMock = artifacts.require('KeydonixOraclePoolToken_Mock');
@@ -165,7 +166,10 @@ module.exports = (context, mode) => {
 			maxColPercent = 0
 		}
 
-		context.curveRegistry = await CurveRegistryMock.new(context.mainCollateral.address, context.mainCollateral.address, ether('1'))
+		context.curveLockedAsset = await DummyToken.new("USDC", "USDC", 18, ether('1000000'));
+		context.curvePool = await CurvePool.new()
+		await context.curvePool.setPool(ether('1'), [context.curveLockedAsset.address])
+		context.curveRegistry = await CurveRegistryMock.new(context.mainCollateral.address, context.curvePool.address, 1)
 		context.curveProvider = await CurveProviderMock.new(context.curveRegistry.address)
 		context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address)
 
@@ -242,9 +246,20 @@ module.exports = (context, mode) => {
 			await context.bearingAssetOracle.setUnderlying(context.bearingAsset.address, context.mainCollateral.address)
 
 		} else if (curveLP) {
+			context.ethUsd = await ChainlinkAggregator.new(100e8, 8);
+			context.curveLockedAssetEthPrice = await ChainlinkAggregator.new(0.01e18.toString(), 18); // 1/125 ETH
+			context.chainlinkOracleMainAssetMock = await ChainlinkOracleMainAssetMock.new(
+				[context.weth.address],
+				[context.ethUsd.address],
+				[context.curveLockedAsset.address],
+				[context.curveLockedAssetEthPrice.address],
+				context.weth.address,
+				context.vaultParameters.address
+			);
+
 			mainAssetOracleType = 11
 
-			context.curveLpOracle = await CurveLPOracle.new(context.curveProvider.address)
+			context.curveLpOracle = await CurveLPOracle.new(context.curveProvider.address, context.chainlinkOracleMainAssetMock.address)
 
 			context.oracleRegistry.setOracle(
 				context.mainCollateral.address,
@@ -252,7 +267,7 @@ module.exports = (context, mode) => {
 				10
 			)
 
-			context.wrappedAsset = await DummyToken.new("Wrapper Curve LP", "WCLP", 18, ether('1000000'))
+			context.wrappedAsset = await DummyToken.new("Wrapper Curve LP", "WCLP", 18, ether('100000000000'))
 
 			await context.wrappedToUnderlyingOracle.setUnderlying(context.wrappedAsset.address, context.mainCollateral.address)
 
