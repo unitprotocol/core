@@ -6,6 +6,7 @@
   "license": "Business Source License 1.1",
   "scripts": {
     "test": "truffle test",
+    "test:curve": "truffle test test/VaultManagerSimple_WrappedAssets.test.js test/LiquidationTriggerSimple_WrappedAssets.test.js test/LiquidationAuction.test.js",
     "build": "rm -rf build && truffle compile",
     "coverage": "truffle run coverage"
   },

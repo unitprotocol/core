@@ -15,7 +15,7 @@ interface CurveProvider {
 
 interface CurveRegistry {
     function get_pool_from_lp_token(address) external view returns (address);
-    function get_n_coins(address) external view returns (uint);
+    function get_n_coins(address) external view returns (uint[2] memory);
 }
 
 interface CurvePool {
@@ -53,21 +53,21 @@ contract CurveLPOracle is OracleSimple {
         CurveRegistry cR = CurveRegistry(curveProvider.get_registry());
         CurvePool cP = CurvePool(cR.get_pool_from_lp_token(asset));
         require(address(cP) != address(0), "Unit Protocol: NOT_A_CURVE_LP");
-        require(ERC20Like(asset).decimals() == 18, "Unit Protocol: INCORRECT_DECIMALS");
+        require(ERC20Like(asset).decimals() == uint8(18), "Unit Protocol: INCORRECT_DECIMALS");
 
-        uint coinsCount = cR.get_n_coins(address(cP));
+        uint coinsCount = cR.get_n_coins(address(cP))[0];
         require(coinsCount != 0, "Unit Protocol: CURVE_INCORRECT_COINS_COUNT");
 
         uint minEthCoinPrice_q112;
 
         for (uint i = 0; i < coinsCount; i++) {
-            uint ethCoinPrice_q112 = chainlinkedOracle.assetToEth(cP.coins(i), PRECISION);
-            if (minEthCoinPrice_q112 == 0 || ethCoinPrice_q112 < minEthCoinPrice_q112) {
+            uint ethCoinPrice_q112 = chainlinkedOracle.assetToEth(cP.coins(i), 1 ether);
+            if (i == 0 || ethCoinPrice_q112 < minEthCoinPrice_q112) {
                 minEthCoinPrice_q112 = ethCoinPrice_q112;
             }
         }
 
-        uint minUsdCoinPrice_q112 = chainlinkedOracle.ethToUsd(minEthCoinPrice_q112) / PRECISION;
+        uint minUsdCoinPrice_q112 = chainlinkedOracle.ethToUsd(minEthCoinPrice_q112) / 1 ether;
 
         uint price_q112 = cP.get_virtual_price() * minUsdCoinPrice_q112 / PRECISION;
 

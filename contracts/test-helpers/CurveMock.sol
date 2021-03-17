@@ -19,7 +19,7 @@ contract CurveProviderMock {
 contract CurveRegistryMock {
 
     mapping (address => address) public get_pool_from_lp_token;
-    mapping (address => uint) public get_n_coins;
+    mapping (address => uint[2]) _get_n_coins;
 
     constructor (address lp, address pool, uint nCoins) {
         setLP(lp, pool, nCoins);
@@ -27,7 +27,12 @@ contract CurveRegistryMock {
 
     function setLP(address lp, address pool, uint nCoins) public {
         get_pool_from_lp_token[lp] = pool;
-        get_n_coins[pool] = nCoins;
+        uint[2] memory nCoinsArray = [nCoins, nCoins];
+        _get_n_coins[pool] = nCoinsArray;
+    }
+
+    function get_n_coins(address pool) external view returns (uint[2] memory) {
+        return _get_n_coins[pool];
     }
 }
 

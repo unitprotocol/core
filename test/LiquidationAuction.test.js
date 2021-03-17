@@ -22,7 +22,7 @@ contract('LiquidationAuction', function([
 
 	it('Should liquidate triggered position', async function () {
 
-		await this.curveRegistry.setLP(this.mainCollateral.address, this.mainCollateral.address, ether('1.2'))
+		await this.curvePool.setPool(ether('1.2'), [this.curveLockedAsset.address])
 
 		const collateralAmount = ether('1000');
 		const usdpAmount = ether('700');
@@ -35,7 +35,7 @@ contract('LiquidationAuction', function([
 		const initialLiquidatorUsdpBalance = usdpAmount.mul(new BN('2'));
 		await this.utils.join(this.wrappedAsset, collateralAmount.mul(new BN('2')), initialLiquidatorUsdpBalance, { from: liquidator });
 
-		await this.curveRegistry.setLP(this.mainCollateral.address, this.mainCollateral.address, ether('1'))
+		await this.curvePool.setPool(ether('1'), [this.curveLockedAsset.address])
 
 		const collateralOwnerBalanceBefore = await this.wrappedAsset.balanceOf(positionOwner);
 
@@ -104,7 +104,7 @@ contract('LiquidationAuction', function([
 
 	it('Should send at least 1 wei of 3CRV to CDP owner', async function () {
 
-		await this.curveRegistry.setLP(this.mainCollateral.address, this.mainCollateral.address, ether('1.2'))
+		await this.curvePool.setPool(ether('1.2'), [this.curveLockedAsset.address])
 
 		const collateralAmount = ether('1000');
 		const usdpAmount = ether('700');
@@ -117,7 +117,7 @@ contract('LiquidationAuction', function([
 		const initialLiquidatorUsdpBalance = usdpAmount.mul(new BN('2'));
 		await this.utils.join(this.wrappedAsset, collateralAmount.mul(new BN('2')), initialLiquidatorUsdpBalance, { from: liquidator });
 
-		await this.curveRegistry.setLP(this.mainCollateral.address, this.mainCollateral.address, ether('0.5'))
+		await this.curvePool.setPool(ether('0.5'), [this.curveLockedAsset.address])
 
 		const collateralOwnerBalanceBefore = await this.wrappedAsset.balanceOf(positionOwner);
 
