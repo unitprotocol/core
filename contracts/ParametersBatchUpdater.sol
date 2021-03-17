@@ -7,24 +7,33 @@ pragma solidity ^0.7.1;
 
 import "./vault-managers/VaultManagerParameters.sol";
 import "./Vault.sol";
+import "./CollateralRegistry.sol";
 import "./oracles/BearingAssetOracleSimple.sol";
 
 
 /**
  * @title ParametersBatchUpdater
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Ivan Zakharov (@34x4p08)
  **/
 contract ParametersBatchUpdater is Auth {
 
     VaultManagerParameters public immutable vaultManagerParameters;
     BearingAssetOracleSimple public immutable bearingAssetOracle;
     OracleRegistry public immutable oracleRegistry;
+    CollateralRegistry public immutable collateralRegistry;
 
-    constructor(address _vaultManagerParameters, address _bearingAssetOracle) public Auth(address(VaultManagerParameters(_vaultManagerParameters).vaultParameters())) {
-        require(_vaultManagerParameters != address(0) && _bearingAssetOracle != address(0), "Unit Protocol: ZERO_ADDRESS");
+    constructor(
+        address _vaultManagerParameters,
+        address _bearingAssetOracle,
+        address _collateralRegistry
+    ) Auth(address(VaultManagerParameters(_vaultManagerParameters).vaultParameters())) {
+        require(
+            _vaultManagerParameters != address(0) &&
+            _bearingAssetOracle != address(0) &&
+            _collateralRegistry != address(0), "Unit Protocol: ZERO_ADDRESS");
         vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
         bearingAssetOracle = BearingAssetOracleSimple(_bearingAssetOracle);
         oracleRegistry = OracleRegistry(BearingAssetOracleSimple(_bearingAssetOracle).oracleRegistry());
+        collateralRegistry = CollateralRegistry(_collateralRegistry);
     }
 
     /**
@@ -152,6 +161,42 @@ contract ParametersBatchUpdater is Auth {
         require(bearings.length == underlyings.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < bearings.length; i++) {
             bearingAssetOracle.setUnderlying(bearings[i], underlyings[i]);
+        }
+    }
+
+    function setCollaterals(
+        address[] calldata assets,
+        uint stabilityFeeValue,
+        uint liquidationFeeValue,
+        uint initialCollateralRatioValue,
+        uint liquidationRatioValue,
+        uint liquidationDiscountValue,
+        uint devaluationPeriodValue,
+        uint usdpLimit,
+        uint[] calldata oracles
+    ) external onlyManager {
+        for (uint i = 0; i < assets.length; i++) {
+            vaultManagerParameters.setCollateral(
+                assets[i],
+                stabilityFeeValue,
+                liquidationFeeValue,
+                initialCollateralRatioValue,
+                liquidationRatioValue,
+                liquidationDiscountValue,
+                devaluationPeriodValue,
+                usdpLimit,
+                oracles,
+                0,
+                0
+            );
+
+            collateralRegistry.addCollateral(assets[i]);
+        }
+    }
+
+    function setCollateralAddresses(address[] calldata assets, bool add) external onlyManager {
+        for (uint i = 0; i < assets.length; i++) {
+            add ? collateralRegistry.addCollateral(assets[i]) : collateralRegistry.removeCollateral(assets[i]);
         }
     }
 }

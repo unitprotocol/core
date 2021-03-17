@@ -14,6 +14,7 @@
     "@keydonix/uniswap-oracle-sdk": "^1.0.1",
     "@truffle/hdwallet-provider": "^1.0.38-next.2",
     "chai": "^4.2.0",
+    "chai-arrays": "^2.2.0",
     "dotenv": "^8.2.0",
     "eth-gas-reporter": "^0.2.17",
     "find-config": "^1.0.0",
