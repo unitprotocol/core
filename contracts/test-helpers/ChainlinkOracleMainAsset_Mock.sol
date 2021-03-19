@@ -112,7 +112,7 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
             return 0;
         }
         if (asset == WETH) {
-            return amount;
+            return amount.mul(Q112);
         }
         AggregatorInterface agg = AggregatorInterface(ethAggregators[asset]);
         require(address(agg) != address (0), "Unit Protocol: AGGREGATOR_DOES_NOT_EXIST");
