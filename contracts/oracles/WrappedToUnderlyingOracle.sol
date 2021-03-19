@@ -17,6 +17,8 @@ contract WrappedToUnderlyingOracle is OracleSimple, Auth {
 
     OracleRegistry public immutable oracleRegistry;
 
+    event NewUnderlying(address indexed wrapped, address indexed underlying);
+
     mapping (address => address) public assetToUnderlying;
 
     constructor(address _vaultParameters, address _oracleRegistry) Auth(_vaultParameters) {
@@ -26,6 +28,7 @@ contract WrappedToUnderlyingOracle is OracleSimple, Auth {
 
     function setUnderlying(address wrapped, address underlying) external onlyManager {
         assetToUnderlying[wrapped] = underlying;
+        emit NewUnderlying(wrapped, underlying);
     }
 
     // returns Q112-encoded value
