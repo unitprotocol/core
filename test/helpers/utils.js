@@ -4,11 +4,16 @@ const VaultManagerParameters = artifacts.require('VaultManagerParameters');
 const USDP = artifacts.require('USDP');
 const WETH = artifacts.require('WETH');
 const DummyToken = artifacts.require('DummyToken');
+const CurveRegistryMock = artifacts.require('CurveRegistryMock');
+const CurvePool = artifacts.require('CurvePool');
+const CurveProviderMock = artifacts.require('CurveProviderMock');
 const KeydonixOracleMainAssetMock = artifacts.require('KeydonixOracleMainAsset_Mock');
 const KeydonixOraclePoolTokenMock = artifacts.require('KeydonixOraclePoolToken_Mock');
 const Keep3rOracleMainAssetMock = artifacts.require('Keep3rOracleMainAsset_Mock');
+const CurveLPOracle = artifacts.require('CurveLPOracle');
 const Keep3rOraclePoolTokenMock = artifacts.require('Keep3rOraclePoolToken_Mock');
 const BearingAssetOracleSimple = artifacts.require('BearingAssetOracleSimple');
+const WrappedToUnderlyingOracle = artifacts.require('WrappedToUnderlyingOracle');
 const OracleRegistry = artifacts.require('OracleRegistry');
 const ChainlinkOracleMainAssetMock = artifacts.require('ChainlinkOracleMainAsset_Mock');
 const ChainlinkAggregator = artifacts.require('ChainlinkAggregator_Mock');
@@ -65,6 +70,7 @@ module.exports = (context, mode) => {
 	const sushiswapKeep3r = mode.startsWith('sushiswapKeep3r');
 	const chainlink = mode.startsWith('chainlink');
 	const bearingAssetSimple = mode.startsWith('bearingAssetSimple');
+	const curveLP = mode.startsWith('curveLP');
 
 	const poolDeposit = async (token, collateralAmount, decimals) => {
 		collateralAmount = decimals ? String(collateralAmount * 10 ** decimals) : ether(collateralAmount.toString());
@@ -160,6 +166,18 @@ module.exports = (context, mode) => {
 			maxColPercent = 0
 		}
 
+		context.curveLockedAsset = await DummyToken.new("USDC", "USDC", 18, ether('1000000'));
+		context.curvePool = await CurvePool.new()
+		await context.curvePool.setPool(ether('1'), [context.curveLockedAsset.address])
+		context.curveRegistry = await CurveRegistryMock.new(context.mainCollateral.address, context.curvePool.address, 1)
+		context.curveProvider = await CurveProviderMock.new(context.curveRegistry.address)
+		context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address)
+
+		context.wrappedToUnderlyingOracle = await WrappedToUnderlyingOracle.new(
+			context.vaultParameters.address,
+			context.oracleRegistry.address,
+		)
+
 		if (keydonix) {
 			mainAssetOracleType = 1
 			poolTokenOracleType = 2
@@ -227,6 +245,32 @@ module.exports = (context, mode) => {
 
 			await context.bearingAssetOracle.setUnderlying(context.bearingAsset.address, context.mainCollateral.address)
 
+		} else if (curveLP) {
+			context.ethUsd = await ChainlinkAggregator.new(100e8, 8);
+			context.curveLockedAssetEthPrice = await ChainlinkAggregator.new(0.01e18.toString(), 18); // 1/125 ETH
+			context.chainlinkOracleMainAssetMock = await ChainlinkOracleMainAssetMock.new(
+				[context.weth.address],
+				[context.ethUsd.address],
+				[context.curveLockedAsset.address],
+				[context.curveLockedAssetEthPrice.address],
+				context.weth.address,
+				context.vaultParameters.address
+			);
+
+			mainAssetOracleType = 11
+
+			context.curveLpOracle = await CurveLPOracle.new(context.curveProvider.address, context.chainlinkOracleMainAssetMock.address)
+
+			context.oracleRegistry.setOracle(
+				context.mainCollateral.address,
+				context.curveLpOracle.address,
+				10
+			)
+
+			context.wrappedAsset = await DummyToken.new("Wrapper Curve LP", "WCLP", 18, ether('100000000000'))
+
+			await context.wrappedToUnderlyingOracle.setUnderlying(context.wrappedAsset.address, context.mainCollateral.address)
+
 		}
 
 		context.vaultManagerParameters = await VaultManagerParameters.new(context.vaultParameters.address);
@@ -245,9 +289,15 @@ module.exports = (context, mode) => {
 			context.liquidatorChainlinkMainAsset = await LiquidatorChainlinkMainAsset.new(context.vaultManagerParameters.address, context.chainlinkOracleMainAssetMock.address);
 		} else if (bearingAssetSimple) {
 			context.liquidatorSimple = await LiquidationTriggerSimple.new(context.vaultManagerParameters.address, context.bearingAssetOracle.address, mainAssetOracleType);
+		} else if (curveLP) {
+			context.liquidatorSimple = await LiquidationTriggerSimple.new(context.vaultManagerParameters.address, context.wrappedToUnderlyingOracle.address, mainAssetOracleType);
 		}
 
-		context.liquidationAuction = await LiquidationAuction02.new(context.vaultManagerParameters.address);
+		context.liquidationAuction = await LiquidationAuction02.new(
+			context.vaultManagerParameters.address,
+			context.curveProvider.address,
+			context.wrappedToUnderlyingOracle.address
+		);
 
 		if (keydonix) {
 			context.vaultManagerKeydonixMainAsset = await VaultManagerKeydonixMainAsset.new(
@@ -287,6 +337,12 @@ module.exports = (context, mode) => {
 				context.bearingAssetOracle.address,
 				mainAssetOracleType
 			);
+		} else if (curveLP) {
+			context.vaultManagerSimple = await VaultManagerSimple.new(
+				context.vaultManagerParameters.address,
+				context.wrappedToUnderlyingOracle.address,
+				mainAssetOracleType
+			);
 		}
 
 		context.vaultManagerStandard = await VaultManagerStandard.new(
@@ -323,7 +379,7 @@ module.exports = (context, mode) => {
 		} else if (chainlink) {
 			await context.vaultParameters.setVaultAccess(context.vaultManagerChainlinkMainAsset.address, true);
 			await context.vaultParameters.setVaultAccess(context.liquidatorChainlinkMainAsset.address, true);
-		} else if (bearingAssetSimple) {
+		} else if (bearingAssetSimple || curveLP) {
 			await context.vaultParameters.setVaultAccess(context.vaultManagerSimple.address, true);
 			await context.vaultParameters.setVaultAccess(context.liquidatorSimple.address, true);
 		}
@@ -332,7 +388,7 @@ module.exports = (context, mode) => {
 		await context.vaultParameters.setVaultAccess(context.liquidationAuction.address, true);
 
 		await context.vaultManagerParameters.setCollateral(
-			bearingAssetSimple ? context.bearingAsset.address : context.mainCollateral.address,
+			bearingAssetSimple ? context.bearingAsset.address : curveLP ? context.wrappedAsset.address : context.mainCollateral.address,
 			'0', // stability fee
 			'13', // liquidation fee
 			'67', // initial collateralization
@@ -345,19 +401,21 @@ module.exports = (context, mode) => {
 			maxColPercent,
 		);
 
-		await context.vaultManagerParameters.setCollateral(
-			context.weth.address,
-			'0', // stability fee
-			'13', // liquidation fee
-			'67', // initial collateralization
-			'68', // liquidation ratio
-			'0', // liquidation discount (3 decimals)
-			'1000', // devaluation period in blocks
-			ether('100000'), // debt limit
-			[mainAssetOracleType], // enabled oracles
-			minColPercent,
-			maxColPercent,
-		);
+		if (keydonix || uniswapKeep3r || sushiswapKeep3r || chainlink) {
+			await context.vaultManagerParameters.setCollateral(
+				context.weth.address,
+				'0', // stability fee
+				'13', // liquidation fee
+				'67', // initial collateralization
+				'68', // liquidation ratio
+				'0', // liquidation discount (3 decimals)
+				'1000', // devaluation period in blocks
+				ether('100000'), // debt limit
+				[mainAssetOracleType], // enabled oracles
+				minColPercent,
+				maxColPercent,
+			);
+		}
 
 		if (poolTokenOracleType) {
 			await context.vaultManagerParameters.setCollateral(
@@ -376,8 +434,10 @@ module.exports = (context, mode) => {
 			context.poolToken = await getPoolToken(context.mainCollateral.address);
 		}
 
-		await context.vaultManagerParameters.setInitialCollateralRatio(context.col.address, 67);
-		await context.vaultManagerParameters.setLiquidationRatio(context.col.address, 68);
+		if (keydonix || uniswapKeep3r) {
+			await context.vaultManagerParameters.setInitialCollateralRatio(context.col.address, 67);
+			await context.vaultManagerParameters.setLiquidationRatio(context.col.address, 68);
+		}
 	};
 
 	const w = getWrapper(context, mode);
