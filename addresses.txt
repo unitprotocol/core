@@ -16,7 +16,7 @@ USDP                                                0x1456688345527bE1f37E9e627D
 Vault                                               0xb1cFF81b9305166ff1EFc49A129ad2AfCd7BCf19
 
 LiquidationAuction01                                0xa41a3625c02c60Ae932515E7F921ada1811aF6a5
-VaultManagerStandard                                0x56DD677842214CbB97Ad88dBAA58DD55e1b179Ea
+VaultManagerStandard                                0x3e7f1d12a7893Ba8eb9478b779b648DA2bD38ae6
 
 
 // Keep3r for Uniswap related contracts
@@ -85,7 +85,6 @@ VaultManagerKeydonixPoolToken                       0xf1cA03Aae24C4865d09643cb92
 
 ** BSC **
 
-ChainlinkAggregator BNB/USD                         0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE
 ChainlinkAggregator BNB/USD                         0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE
 
 VaultParameters                                     0x56c7CA666d192332F72a5842E72eED5f59F0fb48
