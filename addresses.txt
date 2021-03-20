@@ -1,60 +1,90 @@
 ** Ethereum **
 
+// ecosystem contracts
+
 WETH                                                0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
 UniswapFactory                                      0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
 SushiSwapFactory                                    0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac
 ChainlinkAggregator ETH/USD                         0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
 
-ChainLinkedKeydonixOracleMainAsset                  0xA2790A32E611aF1F653F2E2f151244f1DC2086Eb
-ChainLinkedKeydonixOraclePoolToken                  0x11586e3b20239EF471134A0DA4a4239010A1c500
+
+// core contracts
 
 VaultParameters                                     0xB46F8CF42e504Efe8BEf895f848741daA55e9f1D
 VaultManagerParameters                              0x203153522B9EAef4aE17c6e99851EE7b2F7D312E
 USDP                                                0x1456688345527bE1f37E9e627DA0837D6f08C925
 Vault                                               0xb1cFF81b9305166ff1EFc49A129ad2AfCd7BCf19
 
-LiquidationTriggerKeydonixMainAsset                 0x701A228b0D7A3FC740462E9b2Af13F2A5C16c882
-LiquidationTriggerKeydonixPoolToken                 0xF6F90336666413C73a940E0a53CB2f762326Ab10
 LiquidationAuction01                                0xa41a3625c02c60Ae932515E7F921ada1811aF6a5
 VaultManagerStandard                                0x3e7f1d12a7893Ba8eb9478b779b648DA2bD38ae6
-VaultManagerKeydonixMainAsset                       0x78727A77028d9130D2772713d570780231E64ECf
-VaultManagerKeydonixPoolToken                       0xf1cA03Aae24C4865d09643cb929141D8d3c60A75
+
+
+// Keep3r for Uniswap related contracts
 
 Keep3rV1Oracle Uniswap                              0x73353801921417F465377c8d898c6f4C0270282C
-Keep3rV1Oracle SushiSwap                            0xf67Ab1c914deE06Ba0F264031885Ea7B276a7cDa
 
 ChainlinkedKeep3rOracleMainAsset for Uniswap        0x90052A5A46137636d6366b4F0CB184C6f411bD53
 ChainlinkedKeep3rOraclePoolToken for Uniswap        0x3b5f4d33845d546c76DFb624ef002cb3a58391e9
 
-ChainlinkedKeep3rOracleMainAsset for SushiSwap      0x0Ca3de93dE71E4A28EB5d04B72970d69458a3D21
-ChainlinkedKeep3rOraclePoolToken for SushiSwap      0xEa2e09CEC87C7cD8f6Ae09d1906a7526f159e538
+LiquidationTriggerKeep3rMainAsset for Uniswap       0x989AC9c8353C3F01412705d7E50B4Ab9E804c227
+LiquidationTriggerKeep3rPoolToken for Uniswap       0x0ca1A59a987922375234df94919A456F61e93E1e
 
 VaultManagerKeep3rMainAsset for Uniswap             0x211A6d4D4F49c0C5814451589d6378FdA614Adb9
 VaultManagerKeep3rPoolToken for Uniswap             0x3052764f1af2f8B7a887dEAfA42153530676079B
 
+
+// Keep3r for SushiSwap related contracts
+
+Keep3rV1Oracle SushiSwap                            0xf67Ab1c914deE06Ba0F264031885Ea7B276a7cDa
+
+ChainlinkedKeep3rOracleMainAsset for SushiSwap      0x0Ca3de93dE71E4A28EB5d04B72970d69458a3D21
+ChainlinkedKeep3rOraclePoolToken for SushiSwap      0xEa2e09CEC87C7cD8f6Ae09d1906a7526f159e538
+
 VaultManagerKeep3rMainAsset for SushiSwap           0x54ba276a62e7e3e76d362f672f00ed31a983067b
 VaultManagerKeep3rPoolToken for SushiSwap           0xD90332DB0FE0e5eA1A195A5Ba6fc8949EaB8AB4E
-
-LiquidationTriggerKeep3rMainAsset for Uniswap       0x989AC9c8353C3F01412705d7E50B4Ab9E804c227
-LiquidationTriggerKeep3rPoolToken for Uniswap       0x0ca1A59a987922375234df94919A456F61e93E1e
 
 LiquidationTriggerKeep3rMainAsset for SushiSwap     0x20c854cdd322d3a501da91374027b4b257de57dd
 LiquidationTriggerKeep3rPoolToken for SushiSwap     0x78d09b58402c29016425497289e12fdd12f06027
 
+
+// misc
 ParametersBatchUpdater                              0xaD5FD513e62fA67D03e4518f0a6bffdB238263B0
 
 
-// xSUSHI
+// xSUSHI related contracts
 OracleRegistry                                      0x10bBe205832edc371781Cc224Ef202CD98e8f38f
 BearingAssetOracleSimple                            0xC31629C9d5BC9a28ceFa34d73d87d86b2A6B4315
 VaultManagerSimple                                  0xB82c6D510B3a0Dc9f198dE0ad2a3839973c6783c
 LiquidationTriggerSimple                            0xb088c78A8e2E454a6145bFBA37CA5de129688ff7
 
 
+// Chainlink-related contracts
+ChainlinkedOracleMainAsset                          0x0B17546514aad0D5453f9E2D0A56a19cB5DAE774
+VaultManagerChainlinkMainAsset                      0x7a646c42b64d21E6b871EfD85f54d707aCe1f9D1
+LiquidationTriggerChainlinkMainAsset                0x97d940AFE6cb90BeA9E7562D8f3FDc1FC3e691f4
+
+
+// Curve related contracts
+WrappedToUnderlyingOracle                           0x1145E9503000c4b2c9022a196717be5b7FebA6a1
+CurveLPOracle                                       0xe684e37037a4bE060FF00a60715621A97029717B
+VaultManagerSimple for wrapped assets               0xb91d1327b12fad162DE808b050A0c6580478aC4c
+LiquidationTriggerSimple  for wrapped assets        0x854bF644e31d6619d3fE246F8D83e87eD85BAA12
+
+
+// Keydonix for Uniswap related contracts (not active)
+
+ChainLinkedKeydonixOracleMainAsset                  0xA2790A32E611aF1F653F2E2f151244f1DC2086Eb
+ChainLinkedKeydonixOraclePoolToken                  0x11586e3b20239EF471134A0DA4a4239010A1c500
+
+LiquidationTriggerKeydonixMainAsset                 0x701A228b0D7A3FC740462E9b2Af13F2A5C16c882
+LiquidationTriggerKeydonixPoolToken                 0xF6F90336666413C73a940E0a53CB2f762326Ab10
+VaultManagerKeydonixMainAsset                       0x78727A77028d9130D2772713d570780231E64ECf
+VaultManagerKeydonixPoolToken                       0xf1cA03Aae24C4865d09643cb929141D8d3c60A75
+
+
 
 ** BSC **
 
-ChainlinkAggregator BNB/USD                         0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE
 ChainlinkAggregator BNB/USD                         0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE
 
 VaultParameters                                     0x56c7CA666d192332F72a5842E72eED5f59F0fb48
