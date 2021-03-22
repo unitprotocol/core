@@ -48,10 +48,12 @@ LiquidationTriggerKeep3rPoolToken for SushiSwap     0x78d09b58402c29016425497289
 
 
 // misc
+
 ParametersBatchUpdater                              0xaD5FD513e62fA67D03e4518f0a6bffdB238263B0
 
 
 // xSUSHI related contracts
+
 OracleRegistry                                      0x10bBe205832edc371781Cc224Ef202CD98e8f38f
 BearingAssetOracleSimple                            0xC31629C9d5BC9a28ceFa34d73d87d86b2A6B4315
 VaultManagerSimple                                  0xB82c6D510B3a0Dc9f198dE0ad2a3839973c6783c
@@ -59,16 +61,18 @@ LiquidationTriggerSimple                            0xb088c78A8e2E454a6145bFBA37
 
 
 // Chainlink-related contracts
+
 ChainlinkedOracleMainAsset                          0x0B17546514aad0D5453f9E2D0A56a19cB5DAE774
 VaultManagerChainlinkMainAsset                      0x7a646c42b64d21E6b871EfD85f54d707aCe1f9D1
 LiquidationTriggerChainlinkMainAsset                0x97d940AFE6cb90BeA9E7562D8f3FDc1FC3e691f4
 
 
 // Curve related contracts
+
 WrappedToUnderlyingOracle                           0x1145E9503000c4b2c9022a196717be5b7FebA6a1
 CurveLPOracle                                       0xe684e37037a4bE060FF00a60715621A97029717B
 VaultManagerSimple for wrapped assets               0xb91d1327b12fad162DE808b050A0c6580478aC4c
-LiquidationTriggerSimple  for wrapped assets        0x854bF644e31d6619d3fE246F8D83e87eD85BAA12
+LiquidationTriggerSimple for wrapped assets         0x18485D35C86adb634C8879A58c25F50C960C5917
 
 
 // Keydonix for Uniswap related contracts (not active)
