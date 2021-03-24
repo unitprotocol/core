@@ -24,13 +24,13 @@ VaultManagerStandard                                0x3e7f1d12a7893Ba8eb9478b779
 Keep3rV1Oracle Uniswap                              0x73353801921417F465377c8d898c6f4C0270282C
 
 ChainlinkedKeep3rOracleMainAsset for Uniswap        0x90052A5A46137636d6366b4F0CB184C6f411bD53
-ChainlinkedKeep3rOraclePoolToken for Uniswap        0x3b5f4d33845d546c76DFb624ef002cb3a58391e9
+ChainlinkedKeep3rOraclePoolToken for Uniswap        0xfb8cd2C428E30B25Acb72d5e0E8E01384942398c
 
 LiquidationTriggerKeep3rMainAsset for Uniswap       0x989AC9c8353C3F01412705d7E50B4Ab9E804c227
-LiquidationTriggerKeep3rPoolToken for Uniswap       0x0ca1A59a987922375234df94919A456F61e93E1e
+LiquidationTriggerKeep3rPoolToken for Uniswap       0xfeaCFc01e122Bb6b17dc4Aef4F0E3be20FCa888D
 
 VaultManagerKeep3rMainAsset for Uniswap             0x211A6d4D4F49c0C5814451589d6378FdA614Adb9
-VaultManagerKeep3rPoolToken for Uniswap             0x3052764f1af2f8B7a887dEAfA42153530676079B
+VaultManagerKeep3rPoolToken for Uniswap             0x2637D65912660e527C998824b8933d1A1bD7daA3
 
 
 // Keep3r for SushiSwap related contracts
@@ -38,13 +38,13 @@ VaultManagerKeep3rPoolToken for Uniswap             0x3052764f1af2f8B7a887dEAfA4
 Keep3rV1Oracle SushiSwap                            0xf67Ab1c914deE06Ba0F264031885Ea7B276a7cDa
 
 ChainlinkedKeep3rOracleMainAsset for SushiSwap      0x0Ca3de93dE71E4A28EB5d04B72970d69458a3D21
-ChainlinkedKeep3rOraclePoolToken for SushiSwap      0xEa2e09CEC87C7cD8f6Ae09d1906a7526f159e538
+ChainlinkedKeep3rOraclePoolToken for SushiSwap      0x5A17246f4717Dff92022498eE5A85F0dE2028354
 
 VaultManagerKeep3rMainAsset for SushiSwap           0x54ba276a62e7e3e76d362f672f00ed31a983067b
-VaultManagerKeep3rPoolToken for SushiSwap           0xD90332DB0FE0e5eA1A195A5Ba6fc8949EaB8AB4E
+VaultManagerKeep3rPoolToken for SushiSwap           0x18A2381d318EE56D19316f4a7D39a2a7996e8390
 
 LiquidationTriggerKeep3rMainAsset for SushiSwap     0x20c854cdd322d3a501da91374027b4b257de57dd
-LiquidationTriggerKeep3rPoolToken for SushiSwap     0x78d09b58402c29016425497289e12fdd12f06027
+LiquidationTriggerKeep3rPoolToken for SushiSwap     0x88F2Ec209b58076db31E4221a737313941be2ef8
 
 
 // misc
