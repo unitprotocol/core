@@ -3,11 +3,10 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.1;
+pragma solidity 0.7.6;
 
 
 /**
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
 **/
 interface AggregatorInterface {
     function latestAnswer() external view returns (int256);

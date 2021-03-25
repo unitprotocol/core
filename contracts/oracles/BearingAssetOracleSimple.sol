@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.1;
+pragma solidity 0.7.6;
 
 import "./OracleSimple.sol";
 import "../helpers/ERC20Like.sol";
@@ -19,6 +19,8 @@ contract BearingAssetOracleSimple is OracleSimple, Auth {
 
     mapping (address => address) underlyings;
 
+    event NewUnderlying(address indexed bearing, address indexed underlying);
+
     constructor(address _vaultParameters, address _oracleRegistry) Auth(_vaultParameters) {
         require(_vaultParameters != address(0) && _oracleRegistry != address(0), "Unit Protocol: ZERO_ADDRESS");
         oracleRegistry = OracleRegistry(_oracleRegistry);
@@ -26,6 +28,7 @@ contract BearingAssetOracleSimple is OracleSimple, Auth {
 
     function setUnderlying(address bearing, address underlying) external onlyManager {
         underlyings[bearing] = underlying;
+        emit NewUnderlying(bearing, underlying);
     }
 
     // returns Q112-encoded value

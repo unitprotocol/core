@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.1;
+pragma solidity 0.7.6;
 
 import "./helpers/SafeMath.sol";
 import "./VaultParameters.sol";
@@ -14,7 +14,6 @@ import "./helpers/IWETH.sol";
 
 /**
  * @title Vault
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @notice Vault is the core of Unit Protocol USDP Stablecoin system
  * @notice Vault stores and manages collateral funds of all positions and counts debts
  * @notice Only Vault can manage supply of USDP token
@@ -76,7 +75,7 @@ contract Vault is Auth {
      * @param _col COL token address
      * @param _usdp USDP token address
      **/
-    constructor(address _parameters, address _col, address _usdp, address payable _weth) public Auth(_parameters) {
+    constructor(address _parameters, address _col, address _usdp, address payable _weth) Auth(_parameters) {
         col = _col;
         usdp = _usdp;
         weth = _weth;
