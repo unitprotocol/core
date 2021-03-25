@@ -5,10 +5,99 @@
 */
 pragma solidity ^0.7.1;
 
-import "./vault-managers/VaultManagerParameters.sol";
-import "./Vault.sol";
-import "./CollateralRegistry.sol";
-import "./oracles/BearingAssetOracleSimple.sol";
+
+interface IVaultManagerParameters {
+    function setInitialCollateralRatio(address, uint) external;
+    function setLiquidationRatio(address, uint) external;
+    function setLiquidationDiscount(address, uint) external;
+    function setDevaluationPeriod(address, uint) external;
+    function setCollateral(
+        address,
+        uint,
+        uint,
+        uint,
+        uint,
+        uint,
+        uint,
+        uint,
+        uint[] calldata,
+        uint,
+        uint
+    ) external;
+
+    function vaultParameters() external view returns (address);
+}
+
+
+interface IBearingAssetOracleSimple {
+    function setUnderlying(address, address) external;
+    function oracleRegistry() external view returns (address);
+}
+
+
+interface IOracleRegistry {
+    function setOracle(address, address, uint) external;
+    function oracleByType(uint) external view returns (address);
+}
+
+
+interface ICollateralRegistry {
+    function addCollateral(address) external;
+    function removeCollateral(address) external;
+}
+
+
+interface IVault {
+    function changeOracleType(address, address, uint) external;
+}
+
+
+interface IVaultParameters {
+    function setManager(address, bool) external;
+    function setVaultAccess(address, bool) external;
+    function setStabilityFee(address, uint) external;
+    function setLiquidationFee(address, uint) external;
+    function setOracleType(uint, address, bool) external;
+    function setTokenDebtLimit(address, uint) external;
+
+    function isManager(address) external view returns (bool);
+    function canModifyVault(address) external view returns (bool);
+    function vault() external view returns (address);
+}
+
+
+/**
+ * @title Auth
+ * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
+ * @dev Manages USDP's system access
+ **/
+contract Auth {
+
+    // address of the the contract with vault parameters
+    IVaultParameters public vaultParameters;
+
+    constructor(address _parameters) {
+        vaultParameters = IVaultParameters(_parameters);
+    }
+
+    // ensures tx's sender is a manager
+    modifier onlyManager() {
+        require(vaultParameters.isManager(msg.sender), "Unit Protocol: AUTH_FAILED");
+        _;
+    }
+
+    // ensures tx's sender is able to modify the Vault
+    modifier hasVaultAccess() {
+        require(vaultParameters.canModifyVault(msg.sender), "Unit Protocol: AUTH_FAILED");
+        _;
+    }
+
+    // ensures tx's sender is the Vault
+    modifier onlyVault() {
+        require(msg.sender == vaultParameters.vault(), "Unit Protocol: AUTH_FAILED");
+        _;
+    }
+}
 
 
 /**
@@ -16,24 +105,24 @@ import "./oracles/BearingAssetOracleSimple.sol";
  **/
 contract ParametersBatchUpdater is Auth {
 
-    VaultManagerParameters public immutable vaultManagerParameters;
-    BearingAssetOracleSimple public immutable bearingAssetOracle;
-    OracleRegistry public immutable oracleRegistry;
-    CollateralRegistry public immutable collateralRegistry;
+    IVaultManagerParameters public immutable vaultManagerParameters;
+    IOracleRegistry public immutable oracleRegistry;
+    ICollateralRegistry public immutable collateralRegistry;
+
+    uint public constant BEARING_ASSET_ORACLE_TYPE = 9;
 
     constructor(
         address _vaultManagerParameters,
-        address _bearingAssetOracle,
+        address _oracleRegistry,
         address _collateralRegistry
-    ) Auth(address(VaultManagerParameters(_vaultManagerParameters).vaultParameters())) {
+    ) Auth(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()) {
         require(
             _vaultManagerParameters != address(0) &&
-            _bearingAssetOracle != address(0) &&
+            _oracleRegistry != address(0) &&
             _collateralRegistry != address(0), "Unit Protocol: ZERO_ADDRESS");
-        vaultManagerParameters = VaultManagerParameters(_vaultManagerParameters);
-        bearingAssetOracle = BearingAssetOracleSimple(_bearingAssetOracle);
-        oracleRegistry = OracleRegistry(BearingAssetOracleSimple(_bearingAssetOracle).oracleRegistry());
-        collateralRegistry = CollateralRegistry(_collateralRegistry);
+        vaultManagerParameters = IVaultManagerParameters(_vaultManagerParameters);
+        oracleRegistry = IOracleRegistry(_oracleRegistry);
+        collateralRegistry = ICollateralRegistry(_collateralRegistry);
     }
 
     /**
@@ -118,7 +207,7 @@ contract ParametersBatchUpdater is Auth {
     function changeOracleTypes(address[] calldata assets, address[] calldata users, uint[] calldata oracleTypes) public onlyManager {
         require(assets.length == users.length && assets.length == oracleTypes.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < assets.length; i++) {
-            Vault(vaultParameters.vault()).changeOracleType(assets[i], users[i], oracleTypes[i]);
+            IVault(vaultParameters.vault()).changeOracleType(assets[i], users[i], oracleTypes[i]);
         }
     }
 
@@ -160,7 +249,7 @@ contract ParametersBatchUpdater is Auth {
     function setUnderlyings(address[] calldata bearings, address[] calldata underlyings) public onlyManager {
         require(bearings.length == underlyings.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < bearings.length; i++) {
-            bearingAssetOracle.setUnderlying(bearings[i], underlyings[i]);
+            IBearingAssetOracleSimple(oracleRegistry.oracleByType(BEARING_ASSET_ORACLE_TYPE)).setUnderlying(bearings[i], underlyings[i]);
         }
     }
 
