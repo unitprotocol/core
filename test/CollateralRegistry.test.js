@@ -40,7 +40,21 @@ contract('CollateralRegistry', function([
 			expect(collaterals).to.be.equalTo([collateralAddress1]);
 		})
 
-		it('Should remove collateral', async function () {
+		it('Should remove the last collateral', async function () {
+			await this.collateralRegistry.addCollateral(collateralAddress1);
+			await this.collateralRegistry.addCollateral(collateralAddress2);
+			await this.collateralRegistry.addCollateral(collateralAddress3);
+			const { logs } = await this.collateralRegistry.removeCollateral(collateralAddress3);
+
+			expectEvent.inLogs(logs, 'CollateralRemoved', { asset: collateralAddress3 });
+
+			const collaterals = await this.collateralRegistry.collaterals();
+
+			expect(collaterals).to.be.ofSize(2);
+			expect(collaterals).to.be.containingAllOf([collateralAddress2, collateralAddress1]);
+		})
+
+		it('Should remove the first collateral', async function () {
 			await this.collateralRegistry.addCollateral(collateralAddress1);
 			await this.collateralRegistry.addCollateral(collateralAddress2);
 			await this.collateralRegistry.addCollateral(collateralAddress3);
