@@ -6,98 +6,12 @@
 pragma solidity ^0.7.1;
 
 
-interface IVaultManagerParameters {
-    function setInitialCollateralRatio(address, uint) external;
-    function setLiquidationRatio(address, uint) external;
-    function setLiquidationDiscount(address, uint) external;
-    function setDevaluationPeriod(address, uint) external;
-    function setCollateral(
-        address,
-        uint,
-        uint,
-        uint,
-        uint,
-        uint,
-        uint,
-        uint,
-        uint[] calldata,
-        uint,
-        uint
-    ) external;
-
-    function vaultParameters() external view returns (address);
-}
-
-
-interface IBearingAssetOracleSimple {
-    function setUnderlying(address, address) external;
-    function oracleRegistry() external view returns (address);
-}
-
-
-interface IOracleRegistry {
-    function setOracle(address, address, uint) external;
-    function oracleByType(uint) external view returns (address);
-}
-
-
-interface ICollateralRegistry {
-    function addCollateral(address) external;
-    function removeCollateral(address) external;
-}
-
-
-interface IVault {
-    function changeOracleType(address, address, uint) external;
-}
-
-
-interface IVaultParameters {
-    function setManager(address, bool) external;
-    function setVaultAccess(address, bool) external;
-    function setStabilityFee(address, uint) external;
-    function setLiquidationFee(address, uint) external;
-    function setOracleType(uint, address, bool) external;
-    function setTokenDebtLimit(address, uint) external;
-
-    function isManager(address) external view returns (bool);
-    function canModifyVault(address) external view returns (bool);
-    function vault() external view returns (address);
-}
-
-
-/**
- * @title Auth
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
- * @dev Manages USDP's system access
- **/
-contract Auth {
-
-    // address of the the contract with vault parameters
-    IVaultParameters public vaultParameters;
-
-    constructor(address _parameters) {
-        vaultParameters = IVaultParameters(_parameters);
-    }
-
-    // ensures tx's sender is a manager
-    modifier onlyManager() {
-        require(vaultParameters.isManager(msg.sender), "Unit Protocol: AUTH_FAILED");
-        _;
-    }
-
-    // ensures tx's sender is able to modify the Vault
-    modifier hasVaultAccess() {
-        require(vaultParameters.canModifyVault(msg.sender), "Unit Protocol: AUTH_FAILED");
-        _;
-    }
-
-    // ensures tx's sender is the Vault
-    modifier onlyVault() {
-        require(msg.sender == vaultParameters.vault(), "Unit Protocol: AUTH_FAILED");
-        _;
-    }
-}
+import "./VaultParameters.sol";
+import "./interfaces/IVaultManagerParameters.sol";
+import "./interfaces/IBearingAssetOracleSimple.sol";
+import "./interfaces/IOracleRegistry.sol";
+import "./interfaces/ICollateralRegistry.sol";
+import "./interfaces/IVault.sol";
 
 
 /**
