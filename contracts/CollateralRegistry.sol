@@ -20,11 +20,11 @@ contract CollateralRegistry is Auth {
 
     mapping(address => uint) public collateralId;
 
-    address[] _collaterals;
+    address[] public collateralList;
     
     constructor(address _vaultParameters, address[] memory assets) Auth(_vaultParameters) {
         for (uint i = 0; i < assets.length; i++) {
-            _collaterals.push(assets[i]);
+            collateralList.push(assets[i]);
             collateralId[assets[i]] = i;
             emit CollateralAdded(assets[i]);
         }
@@ -35,8 +35,8 @@ contract CollateralRegistry is Auth {
 
         require(!isCollateral(asset), "Unit Protocol: ALREADY_EXIST");
 
-        collateralId[asset] = _collaterals.length;
-        _collaterals.push(asset);
+        collateralId[asset] = collateralList.length;
+        collateralList.push(asset);
 
         emit CollateralAdded(asset);
     }
@@ -50,25 +50,25 @@ contract CollateralRegistry is Auth {
 
         delete collateralId[asset];
 
-        uint lastId = _collaterals.length - 1;
+        uint lastId = collateralList.length - 1;
 
         if (id != lastId) {
-            address lastCollateral = _collaterals[lastId];
-            _collaterals[id] = lastCollateral;
+            address lastCollateral = collateralList[lastId];
+            collateralList[id] = lastCollateral;
             collateralId[lastCollateral] = id;
         }
 
-        _collaterals.pop();
+        collateralList.pop();
 
         emit CollateralRemoved(asset);
     }
 
     function isCollateral(address asset) public view returns(bool) {
-        if (_collaterals.length == 0) { return false; }
-        return collateralId[asset] != 0 || _collaterals[0] == asset;
+        if (collateralList.length == 0) { return false; }
+        return collateralId[asset] != 0 || collateralList[0] == asset;
     }
 
     function collaterals() external view returns (address[] memory) {
-        return _collaterals;
+        return collateralList;
     }
 }
