@@ -25,7 +25,7 @@ contract CollateralRegistry is Auth {
     constructor(address _vaultParameters) Auth(_vaultParameters) {}
 
     function addCollateral(address asset) public onlyManager {
-        require(asset != address(0), "Unit Protocol: ZERO_ADDRESS");
+        require(!isCollateral(asset), "Unit Protocol: ALREADY_EXISTS");
 
         if (_collaterals.length != 0) {
             uint id = collateralId[asset];
@@ -39,7 +39,7 @@ contract CollateralRegistry is Auth {
     }
 
     function removeCollateral(address asset) public onlyManager {
-        require(asset != address(0), "Unit Protocol: ZERO_ADDRESS");
+        require(isCollateral(asset), "Unit Protocol: DOES_NOT_EXIST");
 
         uint id = collateralId[asset];
         require(id != 0 || _collaterals[0] == asset, "Unit Protocol: DOES_NOT_EXIST");
@@ -59,7 +59,7 @@ contract CollateralRegistry is Auth {
         emit CollateralRemoved(asset);
     }
 
-    function isCollateral(address asset) external view returns(bool) {
+    function isCollateral(address asset) public view returns(bool) {
         if (_collaterals.length == 0) { return false; }
         return collateralId[asset] != 0 || _collaterals[0] == asset;
     }
