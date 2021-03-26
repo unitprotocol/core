@@ -6,6 +6,7 @@ const assertArrays = require('chai-arrays');
 chai.use(assertArrays);
 const { expect } = chai;
 const { expectRevert } = require('./helpers/utils')(this, 'bearingAssetSimple');
+const BN = web3.utils.BN;
 
 const CollateralRegistry = artifacts.require('CollateralRegistry');
 const VaultParameters = artifacts.require('VaultParameters');
@@ -52,6 +53,7 @@ contract('CollateralRegistry', function([
 
 			expect(collaterals).to.be.ofSize(2);
 			expect(collaterals).to.be.containingAllOf([collateralAddress2, collateralAddress1]);
+			expect(await this.collateralRegistry.collateralId(collateralAddress3)).to.be.bignumber.equal(new BN(0));
 		})
 
 		it('Should remove the first collateral', async function () {
@@ -66,6 +68,7 @@ contract('CollateralRegistry', function([
 
 			expect(collaterals).to.be.ofSize(2);
 			expect(collaterals).to.be.containingAllOf([collateralAddress2, collateralAddress3]);
+			expect(await this.collateralRegistry.collateralId(collateralAddress1)).to.be.bignumber.equal(new BN(0));
 		})
 
 	});

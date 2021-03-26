@@ -48,8 +48,11 @@ contract CollateralRegistry is Auth {
 
         uint lastId = _collaterals.length - 1;
         address lastCollateral = _collaterals[lastId];
-        _collaterals[id] = lastCollateral;
-        collateralId[lastCollateral] = id;
+
+        if (id != lastId) {
+            _collaterals[id] = lastCollateral;
+            collateralId[lastCollateral] = id;
+        }
 
         _collaterals.pop();
 
