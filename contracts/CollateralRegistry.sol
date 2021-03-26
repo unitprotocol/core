@@ -22,7 +22,13 @@ contract CollateralRegistry is Auth {
 
     address[] _collaterals;
     
-    constructor(address _vaultParameters) Auth(_vaultParameters) {}
+    constructor(address _vaultParameters, address[] memory assets) Auth(_vaultParameters) {
+        for (uint i = 0; i < assets.length; i++) {
+            _collaterals.push(assets[i]);
+            collateralId[assets[i]] = i;
+            emit CollateralAdded(assets[i]);
+        }
+    }
 
     function addCollateral(address asset) public onlyManager {
         require(asset != address(0), "Unit Protocol: ZERO_ADDRESS");
@@ -38,15 +44,16 @@ contract CollateralRegistry is Auth {
     function removeCollateral(address asset) public onlyManager {
         require(asset != address(0), "Unit Protocol: ZERO_ADDRESS");
 
-        uint id = collateralId[asset];
         require(isCollateral(asset), "Unit Protocol: DOES_NOT_EXIST");
+
+        uint id = collateralId[asset];
 
         delete collateralId[asset];
 
         uint lastId = _collaterals.length - 1;
-        address lastCollateral = _collaterals[lastId];
 
         if (id != lastId) {
+            address lastCollateral = _collaterals[lastId];
             _collaterals[id] = lastCollateral;
             collateralId[lastCollateral] = id;
         }

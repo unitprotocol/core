@@ -20,7 +20,7 @@ contract('CollateralRegistry', function([
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.vaultParameters = await VaultParameters.new(deployer, deployer);
-		this.collateralRegistry = await CollateralRegistry.new(this.vaultParameters.address)
+		this.collateralRegistry = await CollateralRegistry.new(this.vaultParameters.address, [])
 	});
 
 	describe('Optimistic cases', function() {
