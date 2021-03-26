@@ -5,4 +5,6 @@ interface ICollateralRegistry {
     function removeCollateral ( address asset ) external;
     function vaultParameters (  ) external view returns ( address );
     function isCollateral ( address asset ) external view returns ( bool );
+    function collateralList ( uint id ) external view returns ( address );
+    function collateralsCount (  ) external view returns ( uint );
 }

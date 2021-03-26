@@ -71,4 +71,8 @@ contract CollateralRegistry is Auth {
     function collaterals() external view returns (address[] memory) {
         return collateralList;
     }
+
+    function collateralsCount() external view returns (uint) {
+        return collateralList.length;
+    }
 }
