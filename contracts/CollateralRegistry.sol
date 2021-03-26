@@ -56,7 +56,7 @@ contract CollateralRegistry is Auth {
         emit CollateralRemoved(asset);
     }
 
-    function isCollateral(address asset) external view returns(bool) {
+    function isCollateral(address asset) public view returns(bool) {
         if (_collaterals.length == 0) { return false; }
         return collateralId[asset] != 0 || _collaterals[0] == asset;
     }
