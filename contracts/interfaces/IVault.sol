@@ -10,7 +10,7 @@ interface IVault {
     function collaterals ( address, address ) external view returns ( uint256 );
     function debts ( address, address ) external view returns ( uint256 );
     function depositCol ( address asset, address user, uint256 amount ) external;
-    function depositEth ( address user ) external;
+    function depositEth ( address user ) external payable;
     function depositMain ( address asset, address user, uint256 amount ) external;
     function destroy ( address asset, address user ) external;
     function getTotalDebt ( address asset, address user ) external view returns ( uint256 );
