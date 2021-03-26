@@ -59,6 +59,10 @@ contract CollateralRegistry is Auth {
         emit CollateralRemoved(asset);
     }
 
+    function isCollateral(address asset) external view returns(bool) {
+        return collateralId[asset] != 0 || _collaterals[0] == asset;
+    }
+
     function collaterals() external view returns (address[] memory) {
         return _collaterals;
     }

@@ -39,6 +39,8 @@ contract('CollateralRegistry', function([
 			const collaterals = await this.collateralRegistry.collaterals();
 
 			expect(collaterals).to.be.equalTo([collateralAddress1]);
+			expect(await this.collateralRegistry.isCollateral(collateralAddress1)).to.equal(true);
+			expect(await this.collateralRegistry.isCollateral(collateralAddress2)).to.equal(false);
 		})
 
 		it('Should remove the last collateral', async function () {
@@ -54,6 +56,7 @@ contract('CollateralRegistry', function([
 			expect(collaterals).to.be.ofSize(2);
 			expect(collaterals).to.be.containingAllOf([collateralAddress2, collateralAddress1]);
 			expect(await this.collateralRegistry.collateralId(collateralAddress3)).to.be.bignumber.equal(new BN(0));
+			expect(await this.collateralRegistry.isCollateral(collateralAddress3)).to.equal(false);
 		})
 
 		it('Should remove the first collateral', async function () {
@@ -69,6 +72,7 @@ contract('CollateralRegistry', function([
 			expect(collaterals).to.be.ofSize(2);
 			expect(collaterals).to.be.containingAllOf([collateralAddress2, collateralAddress3]);
 			expect(await this.collateralRegistry.collateralId(collateralAddress1)).to.be.bignumber.equal(new BN(0));
+			expect(await this.collateralRegistry.isCollateral(collateralAddress1)).to.equal(false);
 		})
 
 	});
