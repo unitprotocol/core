@@ -50,6 +50,8 @@ LiquidationTriggerKeep3rPoolToken for SushiSwap     0x88F2Ec209b58076db31E4221a7
 // misc
 
 ParametersBatchUpdater                              0xaD5FD513e62fA67D03e4518f0a6bffdB238263B0
+AssetParametersViewer                               0xd51F509Fb80b4fF4D4Bfb4144eEd877F0F499AF6
+CollateralRegistry                                  0x3DB39B538Db1123389c77F888a213F1A6dd22EF3
 
 
 // xSUSHI related contracts
