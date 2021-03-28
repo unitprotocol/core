@@ -24,6 +24,7 @@ contract CollateralRegistry is Auth {
     
     constructor(address _vaultParameters, address[] memory assets) Auth(_vaultParameters) {
         for (uint i = 0; i < assets.length; i++) {
+            require(!isCollateral(assets[i]), "Unit Protocol: ALREADY_EXIST");
             collateralList.push(assets[i]);
             collateralId[assets[i]] = i;
             emit CollateralAdded(assets[i]);
