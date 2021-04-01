@@ -1,13 +1,16 @@
 const {
 	expectEvent,
-	expectRevert,
 } = require('openzeppelin-test-helpers');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
 const utils = require('./helpers/utils');
 
-['sushiswapKeep3rPoolToken','uniswapKeep3rPoolToken'].forEach(oracleMode =>
-	contract(`VaultManager with ${oracleMode} oracle`, function([
+[
+	'chainlinkPoolToken',
+	// 'sushiswapKeep3rPoolToken',
+	// 'uniswapKeep3rPoolToken'
+].forEach(oracleMode =>
+	contract(`CDPManager with ${oracleMode} oracle`, function([
 		deployer,
 		foundation,
 	]) {
@@ -40,6 +43,7 @@ const utils = require('./helpers/utils');
 
 					expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount);
 					expect(usdpBalance).to.be.bignumber.equal(usdpAmount);
+					expect(await this.cdpRegistry.isListed(this.poolToken.address, deployer)).to.equal(true);
 				})
 			})
 
@@ -63,6 +67,7 @@ const utils = require('./helpers/utils');
 					const mainAmountInPosition = await this.vault.collaterals(this.poolToken.address, deployer);
 
 					expect(mainAmountInPosition).to.be.bignumber.equal(new BN(0));
+					expect(await this.cdpRegistry.isListed(this.poolToken.address, deployer)).to.equal(false);
 				})
 
 				it('Should partially repay the debt of a position and withdraw collaterals partially', async function() {
@@ -91,7 +96,7 @@ const utils = require('./helpers/utils');
 				})
 			})
 
-			it('Should deposit collaterals to position and mint USDP', async function () {
+			it('Should deposit collaterals to position and mint USDP', async function() {
 				let mainAmount = new BN('100');
 				let usdpAmount = new BN('20');
 
@@ -113,7 +118,7 @@ const utils = require('./helpers/utils');
 				expect(usdpBalance).to.be.bignumber.equal(usdpAmount.mul(new BN(2)));
 			})
 
-			it('Should withdraw collaterals from position and repay (burn) USDP', async function () {
+			it('Should withdraw collaterals from position and repay (burn) USDP', async function() {
 				let mainAmount = new BN('100');
 				let usdpAmount = new BN('20');
 
@@ -136,19 +141,6 @@ const utils = require('./helpers/utils');
 
 		describe('Pessimistic cases', function() {
 			describe('Spawn', function() {
-				it('Reverts pre-existent position', async function() {
-					const mainAmount = new BN('100');
-					const usdpAmount = new BN('20');
-
-					await this.utils.spawn(this.poolToken, mainAmount, usdpAmount);
-					const tx = this.utils.spawn(
-						this.poolToken,
-						mainAmount, // main
-						usdpAmount	// USDP
-					);
-					await this.utils.expectRevert(tx, "Unit Protocol: SPAWNED_POSITION");
-				})
-
 				it('Reverts non valuable tx', async function() {
 					const mainAmount = new BN('0');
 					const usdpAmount = new BN('0');
@@ -158,7 +150,7 @@ const utils = require('./helpers/utils');
 						mainAmount, // main
 						usdpAmount,	// USDP
 					);
-					await this.utils.expectRevert(tx, "Unit Protocol: ZERO_BORROWING");
+					await this.utils.expectRevert(tx, "Unit Protocol: USELESS_TX");
 				})
 
 				describe('Reverts when collateralization is incorrect', function() {
@@ -189,39 +181,15 @@ const utils = require('./helpers/utils');
 				})
 			})
 
-			describe('Join', function () {
-				it('Reverts non-spawned position', async function() {
-					const mainAmount = new BN('100');
-					const usdpAmount = new BN('20');
-
-					const tx = this.utils.join(
-						this.poolToken,
-						mainAmount,
-						usdpAmount
-					);
-					await this.utils.expectRevert(tx, "Unit Protocol: NOT_SPAWNED_POSITION");
-				})
-			})
-
-			describe('Exit', function () {
+			describe('Exit', function() {
 				it('Reverts non valuable tx', async function() {
 					const mainAmount = new BN('100');
 					const usdpAmount = new BN('20');
 
 					await this.utils.spawn(this.poolToken, mainAmount, usdpAmount);
 
-					const tx = this.utils.exit(this.poolToken, 0, 0, 0);
+					const tx = this.utils.exit(this.poolToken, 0, 0);
 					await this.utils.expectRevert(tx, "Unit Protocol: USELESS_TX");
-				})
-
-				it('Reverts when specified repayment amount is greater than the accumulated debt', async function() {
-					const mainAmount = new BN('100');
-					const usdpAmount = new BN('20');
-
-					await this.utils.spawn(this.poolToken, mainAmount, usdpAmount);
-
-					const tx = this.utils.exit(this.poolToken, mainAmount, usdpAmount.add(new BN(1)));
-					await expectRevert.unspecified(tx);
 				})
 
 				it('Reverts when position state after exit becomes undercollateralized', async function() {

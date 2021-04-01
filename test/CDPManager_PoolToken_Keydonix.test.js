@@ -11,7 +11,7 @@ const time = require('./helpers/time');
 [
 	'keydonixPoolToken',
 ].forEach(oracleMode =>
-	contract(`VaultManager with ${oracleMode} oracle`, function([
+	contract(`CDPManager with ${oracleMode} oracle`, function([
 		deployer,
 		foundation,
 	]) {
@@ -174,19 +174,6 @@ const time = require('./helpers/time');
 
 		describe('Pessimistic cases', function() {
 			describe('Spawn', function() {
-				it('Reverts pre-existent position', async function() {
-					const mainAmount = new BN('100');
-					const usdpAmount = new BN('20');
-
-					await this.utils.spawn(this.poolToken, mainAmount, usdpAmount);
-					const tx = this.utils.spawn(
-						this.poolToken,
-						mainAmount, // main
-						usdpAmount	// USDP
-					);
-					await this.utils.expectRevert(tx, "Unit Protocol: SPAWNED_POSITION");
-				})
-
 				it('Reverts non valuable tx', async function() {
 					const mainAmount = new BN('0');
 					const usdpAmount = new BN('0');
@@ -196,7 +183,7 @@ const time = require('./helpers/time');
 						mainAmount, // main
 						usdpAmount,	// USDP
 					);
-					await this.utils.expectRevert(tx, "Unit Protocol: ZERO_BORROWING");
+					await this.utils.expectRevert(tx, "Unit Protocol: USELESS_TX");
 				})
 
 				describe('Reverts when collateralization is incorrect', function() {

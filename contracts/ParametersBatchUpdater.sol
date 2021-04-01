@@ -4,6 +4,7 @@
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
 pragma solidity 0.7.6;
+pragma abicoder v2;
 
 
 import "./VaultParameters.sol";
@@ -153,10 +154,24 @@ contract ParametersBatchUpdater is Auth {
         }
     }
 
-    function setOraclesInRegistry(address[] calldata assets, address[] calldata oracles, uint[] calldata oracleTypes) public onlyManager {
-        require(assets.length == oracles.length && assets.length == oracleTypes.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+    function setOracleTypesInRegistry(uint[] calldata oracleTypes, address[] calldata oracles) public onlyManager {
+        require(oracleTypes.length == oracles.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+        for (uint i = 0; i < oracleTypes.length; i++) {
+            oracleRegistry.setOracle(oracleTypes[i], oracles[i]);
+        }
+    }
+
+    function setOracleTypesToAssets(address[] calldata assets, uint[] calldata oracleTypes) public onlyManager {
+        require(oracleTypes.length == assets.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < assets.length; i++) {
-            oracleRegistry.setOracle(assets[i], oracles[i], oracleTypes[i]);
+            oracleRegistry.setOracleTypeToAsset(assets[i], oracleTypes[i]);
+        }
+    }
+
+    function setOracleTypesToAssetsBatch(address[][] calldata assets, uint[] calldata oracleTypes) public onlyManager {
+        require(oracleTypes.length == assets.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+        for (uint i = 0; i < assets.length; i++) {
+            oracleRegistry.setOracleTypeToAssets(assets[i], oracleTypes[i]);
         }
     }
 

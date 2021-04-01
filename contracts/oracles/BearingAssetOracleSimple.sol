@@ -5,17 +5,18 @@
 */
 pragma solidity 0.7.6;
 
-import "./OracleSimple.sol";
+import "../interfaces/IOracleSimple.sol";
 import "../helpers/ERC20Like.sol";
-import "./OracleRegistry.sol";
+import "../VaultParameters.sol";
+import "../interfaces/IOracleRegistry.sol";
 
 /**
  * @title BearingAssetOracleSimple
  * @dev Wrapper to quote bearing assets like xSUSHI
  **/
-contract BearingAssetOracleSimple is OracleSimple, Auth {
+contract BearingAssetOracleSimple is IOracleSimple, Auth {
 
-    OracleRegistry public immutable oracleRegistry;
+    IOracleRegistry public immutable oracleRegistry;
 
     mapping (address => address) underlyings;
 
@@ -23,7 +24,7 @@ contract BearingAssetOracleSimple is OracleSimple, Auth {
 
     constructor(address _vaultParameters, address _oracleRegistry) Auth(_vaultParameters) {
         require(_vaultParameters != address(0) && _oracleRegistry != address(0), "Unit Protocol: ZERO_ADDRESS");
-        oracleRegistry = OracleRegistry(_oracleRegistry);
+        oracleRegistry = IOracleRegistry(_oracleRegistry);
     }
 
     function setUnderlying(address bearing, address underlying) external onlyManager {
@@ -35,7 +36,7 @@ contract BearingAssetOracleSimple is OracleSimple, Auth {
     function assetToUsd(address bearing, uint amount) public override view returns (uint) {
         if (amount == 0) return 0;
         (address underlying, uint underlyingAmount) = bearingToUnderlying(bearing, amount);
-        OracleSimple _oracleForUnderlying = OracleSimple(oracleRegistry.oracleByAsset(underlying));
+        IOracleSimple _oracleForUnderlying = IOracleSimple(oracleRegistry.oracleByAsset(underlying));
         return _oracleForUnderlying.assetToUsd(underlying, underlyingAmount);
     }
 

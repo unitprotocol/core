@@ -4,28 +4,35 @@
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
 pragma solidity 0.7.6;
-pragma experimental ABIEncoderV2;
 
 import "../helpers/SafeMath.sol";
-import "../interfaces/IAggregator.sol";
 import "../VaultParameters.sol";
-import "../oracles/OracleSimple.sol";
+import "../interfaces/IAggregator.sol";
+import "../interfaces/IOracleSimple.sol";
+import "../interfaces/IOracleEth.sol";
 
 interface ERC20 {
     function decimals() external view returns(uint8);
 }
 
 /**
- * @title ChainlinkOracleMainAsset_Mock
+ * @title ChainlinkedOracleMainAsset
  * @dev Calculates the USD price of desired tokens
  **/
-contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
+contract ChainlinkedOracleMainAsset is IOracleSimple, IOracleEth, Auth {
     using SafeMath for uint;
 
     mapping (address => address) public usdAggregators;
     mapping (address => address) public ethAggregators;
 
     uint public constant Q112 = 2 ** 112;
+
+    uint public constant USD_TYPE = 0;
+    uint public constant ETH_TYPE = 1;
+
+    address public immutable WETH;
+
+    event NewAggregator(address indexed asset, address indexed aggregator, uint aggType);
 
     constructor(
         address[] memory tokenAddresses1,
@@ -35,22 +42,23 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
         address weth,
         address vaultParameters
     )
-    public
-    Auth(vaultParameters)
+        public
+        Auth(vaultParameters)
     {
         require(tokenAddresses1.length == _usdAggregators.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         require(tokenAddresses2.length == _ethAggregators.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
-        require(weth != address(0), "Unit Protocol: ZERO_ADDRESS");
-        require(vaultParameters != address(0), "Unit Protocol: ZERO_ADDRESS");
+        require(weth != address(0) && vaultParameters != address(0), "Unit Protocol: ZERO_ADDRESS");
 
         WETH = weth;
 
         for (uint i = 0; i < tokenAddresses1.length; i++) {
             usdAggregators[tokenAddresses1[i]] = _usdAggregators[i];
+            emit NewAggregator(tokenAddresses1[i], _usdAggregators[i], USD_TYPE);
         }
 
         for (uint i = 0; i < tokenAddresses2.length; i++) {
             ethAggregators[tokenAddresses2[i]] = _ethAggregators[i];
+            emit NewAggregator(tokenAddresses2[i], _ethAggregators[i], ETH_TYPE);
         }
     }
 
@@ -65,10 +73,12 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
 
         for (uint i = 0; i < tokenAddresses1.length; i++) {
             usdAggregators[tokenAddresses1[i]] = _usdAggregators[i];
+            emit NewAggregator(tokenAddresses1[i], _usdAggregators[i], USD_TYPE);
         }
 
         for (uint i = 0; i < tokenAddresses2.length; i++) {
             ethAggregators[tokenAddresses2[i]] = _ethAggregators[i];
+            emit NewAggregator(tokenAddresses2[i], _ethAggregators[i], ETH_TYPE);
         }
     }
 
@@ -76,7 +86,7 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
      * @notice {asset}/USD or {asset}/ETH pair must be registered at Chainlink
      * @param asset The token address
      * @param amount Amount of tokens
-     * @return The price of asset amount in USD
+     * @return Q112-encoded price of asset amount in USD
      **/
     function assetToUsd(address asset, uint amount) public override view returns (uint) {
         if (amount == 0) {
@@ -105,7 +115,7 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
      * @notice {asset}/ETH pair must be registered at Chainlink
      * @param asset The token address
      * @param amount Amount of tokens
-     * @return The price of asset amount in ETH
+     * @return Q112-encoded price of asset amount in ETH
      **/
     function assetToEth(address asset, uint amount) public view override returns (uint) {
         if (amount == 0) {
@@ -114,7 +124,6 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
         if (asset == WETH) {
             return amount.mul(Q112);
         }
-
         IAggregator agg = IAggregator(ethAggregators[asset]);
 
         if (address(agg) == address (0)) {
@@ -145,10 +154,10 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
         return ethAmount.mul(uint(answer)).div(10 ** agg.decimals());
     }
 
-    function _usdToEth(uint ethAmount) internal view returns (uint) {
+    function _usdToEth(uint _usdAmount) internal view returns (uint) {
         IAggregator agg = IAggregator(usdAggregators[WETH]);
         (, int256 answer, , uint256 updatedAt, ) = agg.latestRoundData();
         require(updatedAt > block.timestamp - 6 hours, "Unit Protocol: STALE_CHAINLINK_PRICE");
-        return ethAmount.mul(10 ** agg.decimals()).div(uint(answer));
+        return _usdAmount.mul(10 ** agg.decimals()).div(uint(answer));
     }
 }

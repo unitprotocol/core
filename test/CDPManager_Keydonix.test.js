@@ -1,18 +1,18 @@
 const {
 	expectEvent,
 	ether,
-	expectRevert,
 } = require('openzeppelin-test-helpers');
 const balance = require('./helpers/balances');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
 const utils = require('./helpers/utils');
+const increaseTime = require('./helpers/timeTravel');
+const time = require('./helpers/time');
 
 [
-	// 'sushiswapKeep3rMainAsset',
-	'uniswapKeep3rMainAsset'
+	'keydonixMainAsset',
 ].forEach(oracleMode =>
-	contract(`VaultManager with ${oracleMode} oracle wrapper`, function([
+	contract(`CDPManager with ${oracleMode} oracle wrapper`, function([
 		deployer,
 		foundation,
 	]) {
@@ -93,6 +93,40 @@ const utils = require('./helpers/utils');
 					expect(mainAmountInPosition).to.be.bignumber.equal(new BN(0));
 				})
 
+				it('Should accumulate fee when stability fee above zero and make repayment', async function() {
+					await this.vaultParameters.setStabilityFee(this.mainCollateral.address, 3000); // 3% st. fee
+					const mainAmount = ether('100');
+					const usdpAmount = ether('20');
+
+					await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+
+					const timeStart = await time.latest();
+
+					await increaseTime(3600 * 24);
+
+					const accumulatedDebt = await this.vault.getTotalDebt(this.mainCollateral.address, deployer);
+
+					let expectedDebt = usdpAmount.mul(new BN('3000')).mul((await time.latest()).sub(timeStart)).div(new BN(365*24*60*60)).div(new BN('100000')).add(usdpAmount);
+
+					expect(accumulatedDebt.div(new BN(10 ** 12))).to.be.bignumber.equal(
+						expectedDebt.div(new BN(10 ** 12))
+					);
+
+					// get some usdp to cover fee
+					await this.utils.updatePrice();
+					await this.utils.spawnEth(ether('2'), ether('1'), ether('2'));
+
+					// repay debt partially
+					await this.utils.repay(this.mainCollateral, deployer, usdpAmount.div(new BN(2)));
+
+					let accumulatedDebtAfterRepayment = await this.vault.getTotalDebt(this.mainCollateral.address, deployer);
+					expect(accumulatedDebtAfterRepayment.div(new BN(10 ** 12))).to.be.bignumber.equal(
+						expectedDebt.div(new BN(2)).div(new BN(10 ** 12))
+					);
+
+					await this.utils.repayAllAndWithdraw(this.mainCollateral, deployer);
+				})
+
 				it('Should partially repay the debt of a position and withdraw collaterals partially', async function() {
 					const mainAmount = ether('100');
 					const usdpAmount = ether('20');
@@ -125,12 +159,11 @@ const utils = require('./helpers/utils');
 					await this.utils.spawnEth(mainAmount, usdpAmount);
 
 					const mainToWithdraw = ether('1');
-					const colToWithdraw = ether('0.5');
 					const usdpToWithdraw = ether('0.5');
 
 					const wethBalanceBefore = await balance.current(this.weth.address);
 
-					const { logs } = await this.utils.withdrawAndRepayEth(mainToWithdraw, colToWithdraw, usdpToWithdraw);
+					const { logs } = await this.utils.withdrawAndRepayEth(mainToWithdraw, usdpToWithdraw);
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.weth.address,
@@ -172,34 +205,9 @@ const utils = require('./helpers/utils');
 					expect(mainAmountInPosition).to.be.bignumber.equal(new BN(0));
 					expect(wethInVaultBefore.sub(wethInVaultAfter)).to.be.bignumber.equal(mainAmount);
 				})
-
-				it('Should repay the debt of a position and withdraw collaterals using ETH repaying fee in COL', async function() {
-					const mainAmount = ether('2');
-					const usdpAmount = ether('1');
-
-					await this.utils.spawnEth(mainAmount, usdpAmount);
-
-					const wethInVaultBefore = await this.weth.balanceOf(this.vault.address);
-
-					const { logs } = await this.utils.repayAllAndWithdrawEth(deployer);
-
-					expectEvent.inLogs(logs, 'Exit', {
-						asset: this.weth.address,
-						user: deployer,
-						main: mainAmount,
-						usdp: usdpAmount,
-					});
-
-					const wethInVaultAfter = await this.weth.balanceOf(this.vault.address);
-
-					const mainAmountInPosition = await this.vault.collaterals(this.weth.address, deployer);
-
-					expect(mainAmountInPosition).to.be.bignumber.equal(new BN(0));
-					expect(wethInVaultBefore.sub(wethInVaultAfter)).to.be.bignumber.equal(mainAmount);
-				})
 			})
 
-			it('Should deposit collaterals to position and mint USDP', async function() {
+			it('Should deposit collaterals to position and mint USDP', async function () {
 				let mainAmount = ether('100');
 				let usdpAmount = ether('20');
 
@@ -221,7 +229,7 @@ const utils = require('./helpers/utils');
 				expect(usdpBalance).to.be.bignumber.equal(usdpAmount.mul(new BN(2)));
 			})
 
-			it('Should withdraw collaterals from position and repay (burn) USDP', async function() {
+			it('Should withdraw collaterals from position and repay (burn) USDP', async function () {
 				let mainAmount = ether('100');
 				let usdpAmount = ether('20');
 
@@ -244,31 +252,17 @@ const utils = require('./helpers/utils');
 
 		describe('Pessimistic cases', function() {
 			describe('Spawn', function() {
-				it('Reverts pre-existent position', async function() {
-					const mainAmount = ether('100');
-					const usdpAmount = ether('20');
-
-					await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
-					await this.mainCollateral.approve(this.vault.address, mainAmount);
-					const tx = this.utils.spawn(
-						this.mainCollateral,
-						mainAmount, // main
-						usdpAmount// USDP
-					);
-					await this.utils.expectRevert(tx, "Unit Protocol: SPAWNED_POSITION");
-				})
-
 				it('Reverts non valuable tx', async function() {
 					const mainAmount = ether('0');
 					const usdpAmount = ether('0');
 
-					await this.mainCollateral.approve(this.vault.address, mainAmount);
+					await this.utils.approveCollaterals(this.mainCollateral, mainAmount);
 					const tx = this.utils.spawn(
 						this.mainCollateral,
 						mainAmount, // main
 						usdpAmount,	// USDP
 					);
-					await this.utils.expectRevert(tx, "Unit Protocol: ZERO_BORROWING");
+					await this.utils.expectRevert(tx, "Unit Protocol: USELESS_TX");
 				})
 
 				describe('Reverts when collateralization is incorrect', function() {
@@ -276,7 +270,7 @@ const utils = require('./helpers/utils');
 						let mainAmount = ether('0');
 						const usdpAmount = ether('20');
 
-						await this.mainCollateral.approve(this.vault.address, mainAmount);
+						await this.utils.approveCollaterals(this.mainCollateral, mainAmount);
 						const tx = this.utils.spawn(
 							this.mainCollateral,
 							mainAmount, // main
@@ -302,7 +296,7 @@ const utils = require('./helpers/utils');
 				})
 			})
 
-			describe('Join', function() {
+			describe('Join', function () {
 				it('Reverts non-spawned position', async function() {
 					const mainAmount = ether('100');
 					const usdpAmount = ether('20');
@@ -316,7 +310,7 @@ const utils = require('./helpers/utils');
 				})
 			})
 
-			describe('Exit', function() {
+			describe('Exit', function () {
 				it('Reverts non valuable tx', async function() {
 					const mainAmount = ether('100');
 					const usdpAmount = ether('20');
@@ -325,16 +319,6 @@ const utils = require('./helpers/utils');
 
 					const tx = this.utils.exit(this.mainCollateral, 0, 0, 0);
 					await this.utils.expectRevert(tx, "Unit Protocol: USELESS_TX");
-				})
-
-				it('Reverts when specified repayment amount is more than the accumulated debt', async function() {
-					const mainAmount = ether('100');
-					const usdpAmount = ether('20');
-
-					await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
-
-					const tx = this.utils.exit(this.mainCollateral, mainAmount, usdpAmount.add(new BN(1)));
-					await expectRevert.unspecified(tx);
 				})
 
 				it('Reverts when position becomes undercollateralized', async function() {
@@ -347,8 +331,6 @@ const utils = require('./helpers/utils');
 					await this.utils.expectRevert(tx, "Unit Protocol: UNDERCOLLATERALIZED");
 				})
 			})
-
-
 		})
 	})
-)
+);

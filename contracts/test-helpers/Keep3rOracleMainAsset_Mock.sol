@@ -8,7 +8,7 @@ pragma experimental ABIEncoderV2;
 
 import "../helpers/ERC20Like.sol";
 import "../helpers/SafeMath.sol";
-import "../helpers/AggregatorInterface.sol";
+import "../interfaces/IAggregator.sol";
 import "../helpers/IUniswapV2Factory.sol";
 import "../oracles/OracleSimple.sol";
 
@@ -22,14 +22,14 @@ contract Keep3rOracleMainAsset_Mock is ChainlinkedOracleSimple {
     uint public immutable Q112 = 2 ** 112;
     uint public immutable ETH_USD_DENOMINATOR = 100000000;
 
-    AggregatorInterface public immutable ethUsdChainlinkAggregator;
+    IAggregator public immutable ethUsdChainlinkAggregator;
 
     IUniswapV2Factory public immutable uniswapFactory;
 
     constructor(
         IUniswapV2Factory uniFactory,
         address weth,
-        AggregatorInterface chainlinkAggregator
+        IAggregator chainlinkAggregator
     )
         public
     {

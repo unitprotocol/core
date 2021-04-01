@@ -28,7 +28,7 @@ interface IVault {
     function update ( address asset, address user ) external;
     function usdp (  ) external view returns ( address );
     function vaultParameters (  ) external view returns ( address );
-    function weth (  ) external view returns ( address );
+    function weth (  ) external view returns ( address payable );
     function withdrawCol ( address asset, address user, uint256 amount ) external;
     function withdrawEth ( address user, uint256 amount ) external;
     function withdrawMain ( address asset, address user, uint256 amount ) external;

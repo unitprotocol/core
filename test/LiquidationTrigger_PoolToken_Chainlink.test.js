@@ -4,14 +4,14 @@ const { expect } = require('chai');
 const { nextBlockNumber } = require('./helpers/time');
 const utils = require('./helpers/utils');
 
-contract('LiquidationTriggerKeep3rPoolToken', function([
+contract('LiquidationTriggerChainlinkPoolToken', function([
  positionOwner,
  liquidator,
  foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
-		this.utils = utils(this, 'sushiswapKeep3rPoolToken');
+		this.utils = utils(this, 'chainlinkPoolToken');
 		this.deployer = positionOwner;
 		this.foundation = foundation;
 		await this.utils.deploy();
@@ -26,7 +26,7 @@ contract('LiquidationTriggerKeep3rPoolToken', function([
 
 			/*
 			 * Spawned position params:
-			 * collateral value = 44.72 * 2 = 134.16$
+			 * collateral value = 44.72 * 3 = 134.16$
 			 * utilization percent = 78 / 134.16 = ~58%
 			 */
 			await this.utils.spawn(this.poolToken, mainAmount, usdpAmount);

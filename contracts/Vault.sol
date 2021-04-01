@@ -9,7 +9,7 @@ import "./helpers/SafeMath.sol";
 import "./VaultParameters.sol";
 import "./helpers/TransferHelper.sol";
 import "./USDP.sol";
-import "./helpers/IWETH.sol";
+import "./interfaces/IWETH.sol";
 
 
 /**
