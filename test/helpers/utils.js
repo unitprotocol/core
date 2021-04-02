@@ -12,7 +12,7 @@ const KeydonixOraclePoolTokenMock = artifacts.require('KeydonixOraclePoolToken_M
 const Keep3rOracleMainAssetMock = artifacts.require('Keep3rOracleMainAsset_Mock');
 const CurveLPOracle = artifacts.require('CurveLPOracle');
 const OraclePoolTokenMock = artifacts.require('OraclePoolToken_Mock');
-const BearingAssetOracleSimple = artifacts.require('BearingAssetOracleSimple');
+const BearingAssetOracle = artifacts.require('BearingAssetOracle');
 const WrappedToUnderlyingOracle = artifacts.require('WrappedToUnderlyingOracle');
 const OracleRegistry = artifacts.require('OracleRegistry');
 const ChainlinkOracleMainAsset = artifacts.require('ChainlinkedOracleMainAsset');
@@ -181,14 +181,16 @@ module.exports = (context, mode) => {
 			context.vaultParameters.address
 		);
 
+		// curveLockedAsset - is underlying token
+		// mainCollateral is LP is this case
 		context.curveLockedAsset = await DummyToken.new("USDC", "USDC", 18, ether('1000000'));
 		context.curvePool = await CurvePool.new()
 		await context.curvePool.setPool(ether('1'), [context.curveLockedAsset.address])
 		context.curveRegistry = await CurveRegistryMock.new(context.mainCollateral.address, context.curvePool.address, 1)
 		context.curveProvider = await CurveProviderMock.new(context.curveRegistry.address)
-		context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address)
+		context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address, context.weth.address)
 
-		await context.oracleRegistry.setOracle(5, context.chainlinkOracleMainAsset.address);
+		await context.oracleRegistry.setOracle(5, context.chainlinkOracleMainAsset.address, true);
 		await context.oracleRegistry.setOracleTypeToAsset(context.weth.address, 5);
 
 		context.wrappedToUnderlyingOracle = await WrappedToUnderlyingOracle.new(
@@ -222,22 +224,22 @@ module.exports = (context, mode) => {
 			);
 			if (uniswapKeep3r) {
 				mainAssetOracleType = 3
-				context.oracleRegistry.setOracle(mainAssetOracleType, context.keep3rOracleMainAssetMock.address)
+				context.oracleRegistry.setOracle(mainAssetOracleType, context.keep3rOracleMainAssetMock.address, true)
 				context.oracleRegistry.setOracleTypeToAsset(context.mainCollateral.address, mainAssetOracleType)
 
 				if (isLP) {
 					poolTokenOracleType = 4
-					context.oracleRegistry.setOracle(poolTokenOracleType, context.oraclePoolToken.address)
+					context.oracleRegistry.setOracle(poolTokenOracleType, context.oraclePoolToken.address, false)
 					context.oracleRegistry.setOracleTypeToAsset(context.poolToken.address, poolTokenOracleType)
 				}
 			} else if (sushiswapKeep3r) {
 				mainAssetOracleType = 7
-				context.oracleRegistry.setOracle(mainAssetOracleType, context.keep3rOracleMainAssetMock.address)
+				context.oracleRegistry.setOracle(mainAssetOracleType, context.keep3rOracleMainAssetMock.address, true)
 				context.oracleRegistry.setOracleTypeToAsset(context.mainCollateral.address, mainAssetOracleType)
 
 				if (isLP) {
 					poolTokenOracleType = 8
-					context.oracleRegistry.setOracle(poolTokenOracleType, context.oraclePoolToken.address)
+					context.oracleRegistry.setOracle(poolTokenOracleType, context.oraclePoolToken.address, false)
 					context.oracleRegistry.setOracleTypeToAsset(context.poolToken.address, poolTokenOracleType)
 				}
 			}
@@ -249,7 +251,7 @@ module.exports = (context, mode) => {
 
 			if (isLP) {
 				poolTokenOracleType = 6
-				context.oracleRegistry.setOracle(poolTokenOracleType, context.oraclePoolToken.address)
+				context.oracleRegistry.setOracle(poolTokenOracleType, context.oraclePoolToken.address, false)
 				context.oracleRegistry.setOracleTypeToAsset(context.poolToken.address, poolTokenOracleType)
 			}
 
@@ -264,45 +266,44 @@ module.exports = (context, mode) => {
 				context.ethUsd.address,
 			)
 
-			context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address)
-
-			context.oracleRegistry.setOracle(7, context.keep3rOracleMainAssetMock.address)
+			context.oracleRegistry.setOracle(7, context.keep3rOracleMainAssetMock.address, true)
 			context.oracleRegistry.setOracleTypeToAsset(context.mainCollateral.address, 7)
 
-			context.bearingAssetOracle = await BearingAssetOracleSimple.new(
+			context.bearingAssetOracle = await BearingAssetOracle.new(
 				context.vaultParameters.address,
 				context.oracleRegistry.address,
 			)
 
 			await context.bearingAssetOracle.setUnderlying(context.bearingAsset.address, context.mainCollateral.address)
 
-			context.oracleRegistry.setOracle(mainAssetOracleType, context.bearingAssetOracle.address)
+			context.oracleRegistry.setOracle(mainAssetOracleType, context.bearingAssetOracle.address, true)
 			context.oracleRegistry.setOracleTypeToAsset(context.bearingAsset.address, 9)
 
 
 		} else if (curveLP) {
-			context.ethUsd.setPrice(100e8);
-			context.curveLockedAssetEthPrice = await ChainlinkAggregator.new(0.01e18.toString(), 18); // 1/125 ETH
+			context.curveLockedAssetUsdPrice = await ChainlinkAggregator.new(1e8.toString(), 8);
 			await context.chainlinkOracleMainAsset.setAggregators(
-				[],
-				[],
 				[context.curveLockedAsset.address],
-				[context.curveLockedAssetEthPrice.address]
+				[context.curveLockedAssetUsdPrice.address],
+				[],
+				[]
 			);
 
 			mainAssetOracleType = 11
 
-			context.curveLpOracle = await CurveLPOracle.new(context.curveProvider.address, context.chainlinkOracleMainAsset.address)
+			context.curveLpOracle = await CurveLPOracle.new(context.curveProvider.address, context.oracleRegistry.address)
 
-			context.oracleRegistry.setOracle(10, context.curveLpOracle.address)
+			context.oracleRegistry.setOracleTypeToAsset(context.curveLockedAsset.address, 5)
+
+			context.oracleRegistry.setOracle(10, context.curveLpOracle.address, true)
 			context.oracleRegistry.setOracleTypeToAsset(context.mainCollateral.address, 10)
 
 			context.wrappedAsset = await DummyToken.new("Wrapper Curve LP", "WCLP", 18, ether('100000000000'))
 
 			await context.wrappedToUnderlyingOracle.setUnderlying(context.wrappedAsset.address, context.mainCollateral.address)
 
-			context.oracleRegistry.setOracle(11, context.wrappedToUnderlyingOracle.address)
-			context.oracleRegistry.setOracleTypeToAsset(context.wrappedAsset.address, 11)
+			context.oracleRegistry.setOracle(mainAssetOracleType, context.wrappedToUnderlyingOracle.address, true)
+			context.oracleRegistry.setOracleTypeToAsset(context.wrappedAsset.address, mainAssetOracleType)
 
 		}
 

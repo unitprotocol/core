@@ -7,7 +7,7 @@ pragma solidity 0.7.6;
 
 import "../helpers/IUniswapV2PairFull.sol";
 import "../helpers/SafeMath.sol";
-import "../interfaces/IOracleSimple.sol";
+import "../interfaces/IOracleUsd.sol";
 import "../interfaces/IOracleEth.sol";
 import "../interfaces/IOracleRegistry.sol";
 
@@ -15,7 +15,7 @@ import "../interfaces/IOracleRegistry.sol";
  * @title OraclePoolToken_Mock
  * @dev Calculates the USD price of desired tokens
  **/
-contract OraclePoolToken_Mock is IOracleSimple {
+contract OraclePoolToken_Mock is IOracleUsd {
     using SafeMath for uint;
     uint public immutable Q112 = 2 ** 112;
 

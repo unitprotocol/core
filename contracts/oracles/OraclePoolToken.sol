@@ -8,7 +8,7 @@ pragma solidity 0.7.6;
 import "../helpers/SafeMath.sol";
 import "../helpers/IUniswapV2PairFull.sol";
 import "../interfaces/IOracleEth.sol";
-import "../interfaces/IOracleSimple.sol";
+import "../interfaces/IOracleUsd.sol";
 import "../interfaces/IOracleRegistry.sol";
 
 
@@ -16,7 +16,7 @@ import "../interfaces/IOracleRegistry.sol";
  * @title OraclePoolToken
  * @dev Calculates the USD price of Uniswap LP tokens
  **/
-contract OraclePoolToken is IOracleSimple {
+contract OraclePoolToken is IOracleUsd {
     using SafeMath for uint;
 
     IOracleRegistry public immutable oracleRegistry;
@@ -57,7 +57,15 @@ contract OraclePoolToken is IOracleSimple {
         }
 
         // average price of 1 token in ETH
-        uint eAvg = IOracleEth(oracleRegistry.oracleByAsset(underlyingAsset)).assetToEth(underlyingAsset, 1);
+        uint eAvg;
+
+        address oracle = oracleRegistry.oracleByAsset(underlyingAsset);
+
+        if (oracleRegistry.quoteInEthSupportByOracle(oracle)) {
+            eAvg = IOracleEth(oracle).assetToEth(underlyingAsset, 1);
+        } else {
+            IOracleEth(oracleRegistry.oracleByAsset(oracleRegistry.WETH())).usdToEth(IOracleUsd(oracle).assetToUsd(underlyingAsset, 1));
+        }
 
         (uint112 _reserve0, uint112 _reserve1,) = pair.getReserves();
         uint aPool; // current asset pool

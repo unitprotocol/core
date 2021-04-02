@@ -8,7 +8,7 @@ pragma solidity 0.7.6;
 import "../helpers/SafeMath.sol";
 import "../VaultParameters.sol";
 import "../interfaces/IAggregator.sol";
-import "../interfaces/IOracleSimple.sol";
+import "../interfaces/IOracleUsd.sol";
 import "../interfaces/IOracleEth.sol";
 
 interface ERC20 {
@@ -19,7 +19,7 @@ interface ERC20 {
  * @title ChainlinkedOracleMainAsset
  * @dev Calculates the USD price of desired tokens
  **/
-contract ChainlinkedOracleMainAsset is IOracleSimple, IOracleEth, Auth {
+contract ChainlinkedOracleMainAsset is IOracleUsd, IOracleEth, Auth {
     using SafeMath for uint;
 
     mapping (address => address) public usdAggregators;
@@ -129,7 +129,7 @@ contract ChainlinkedOracleMainAsset is IOracleSimple, IOracleEth, Auth {
         if (address(agg) == address (0)) {
             // check for usd aggregator
             require(usdAggregators[asset] != address (0), "Unit Protocol: AGGREGATOR_DOES_NOT_EXIST");
-            return _usdToEth(_assetToUsd(asset, amount));
+            return usdToEth(_assetToUsd(asset, amount));
         }
 
         (, int256 answer, , uint256 updatedAt, ) = agg.latestRoundData();
@@ -154,7 +154,7 @@ contract ChainlinkedOracleMainAsset is IOracleSimple, IOracleEth, Auth {
         return ethAmount.mul(uint(answer)).div(10 ** agg.decimals());
     }
 
-    function _usdToEth(uint _usdAmount) internal view returns (uint) {
+    function usdToEth(uint _usdAmount) public override view returns (uint) {
         IAggregator agg = IAggregator(usdAggregators[WETH]);
         (, int256 answer, , uint256 updatedAt, ) = agg.latestRoundData();
         require(updatedAt > block.timestamp - 6 hours, "Unit Protocol: STALE_CHAINLINK_PRICE");

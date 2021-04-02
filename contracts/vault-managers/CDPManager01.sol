@@ -6,7 +6,7 @@
 pragma solidity 0.7.6;
 
 import '../interfaces/IOracleRegistry.sol';
-import '../interfaces/IOracleSimple.sol';
+import '../interfaces/IOracleUsd.sol';
 import '../interfaces/IWETH.sol';
 import '../interfaces/IVault.sol';
 import '../interfaces/ICDPRegistry.sol';
@@ -129,7 +129,7 @@ contract CDPManager01 is ReentrancyGuard {
 
             if (!spawned) {
                 // spawn a position
-                vault.spawn(asset, msg.sender, oracleRegistry.typeByOracle(oracle));
+                vault.spawn(asset, msg.sender, oracleRegistry.oracleTypeByOracle(oracle));
             }
 
             if (assetAmount != 0) {
@@ -238,7 +238,7 @@ contract CDPManager01 is ReentrancyGuard {
 
     function _ensurePositionCollateralization(address asset, address user) internal view {
         // collateral value of the position in USD
-        uint usdValue_q112 = IOracleSimple(oracleRegistry.oracleByAsset(asset)).assetToUsd(asset, vault.collaterals(asset, user));
+        uint usdValue_q112 = IOracleUsd(oracleRegistry.oracleByAsset(asset)).assetToUsd(asset, vault.collaterals(asset, user));
 
         // USD limit of the position
         uint usdLimit = usdValue_q112 * vaultManagerParameters.initialCollateralRatio(asset) / Q112 / 100;
@@ -260,7 +260,7 @@ contract CDPManager01 is ReentrancyGuard {
         require(oracleRegistry.oracleByAsset(asset) != address(0), "Unit Protocol: DISABLED_ORACLE");
 
         // USD value of the collateral
-        uint usdValue_q112 = IOracleSimple(oracleRegistry.oracleByAsset(asset)).assetToUsd(asset, vault.collaterals(asset, user));
+        uint usdValue_q112 = IOracleUsd(oracleRegistry.oracleByAsset(asset)).assetToUsd(asset, vault.collaterals(asset, user));
         
         // reverts if a position is not liquidatable
         require(_isLiquidatablePosition(asset, user, usdValue_q112), "Unit Protocol: SAFE_POSITION");
@@ -324,7 +324,7 @@ contract CDPManager01 is ReentrancyGuard {
         uint debt = vault.getTotalDebt(asset, user);
         if (debt == 0) return uint(-1);
         
-        uint usdValue_q112 = IOracleSimple(oracleRegistry.oracleByAsset(asset)).assetToUsd(asset, vault.collaterals(asset, user));
+        uint usdValue_q112 = IOracleUsd(oracleRegistry.oracleByAsset(asset)).assetToUsd(asset, vault.collaterals(asset, user));
 
         return debt.mul(100).mul(Q112).div(usdValue_q112);
     }

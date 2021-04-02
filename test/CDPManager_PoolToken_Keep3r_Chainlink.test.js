@@ -7,8 +7,8 @@ const utils = require('./helpers/utils');
 
 [
 	'chainlinkPoolToken',
-	// 'sushiswapKeep3rPoolToken',
-	// 'uniswapKeep3rPoolToken'
+	'sushiswapKeep3rPoolToken',
+	'uniswapKeep3rPoolToken'
 ].forEach(oracleMode =>
 	contract(`CDPManager with ${oracleMode} oracle`, function([
 		deployer,

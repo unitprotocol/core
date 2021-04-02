@@ -9,7 +9,7 @@ pragma abicoder v2;
 
 import "./VaultParameters.sol";
 import "./interfaces/IVaultManagerParameters.sol";
-import "./interfaces/IBearingAssetOracleSimple.sol";
+import "./interfaces/IBearingAssetOracle.sol";
 import "./interfaces/IOracleRegistry.sol";
 import "./interfaces/ICollateralRegistry.sol";
 import "./interfaces/IVault.sol";
@@ -154,10 +154,10 @@ contract ParametersBatchUpdater is Auth {
         }
     }
 
-    function setOracleTypesInRegistry(uint[] calldata oracleTypes, address[] calldata oracles) public onlyManager {
-        require(oracleTypes.length == oracles.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+    function setOracleTypesInRegistry(uint[] calldata oracleTypes, address[] calldata oracles, bool[] calldata quoteInEthSupported) public onlyManager {
+        require(oracleTypes.length == oracles.length && quoteInEthSupported.length == oracles.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < oracleTypes.length; i++) {
-            oracleRegistry.setOracle(oracleTypes[i], oracles[i]);
+            oracleRegistry.setOracle(oracleTypes[i], oracles[i], quoteInEthSupported[i]);
         }
     }
 
@@ -178,7 +178,7 @@ contract ParametersBatchUpdater is Auth {
     function setUnderlyings(address[] calldata bearings, address[] calldata underlyings) public onlyManager {
         require(bearings.length == underlyings.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < bearings.length; i++) {
-            IBearingAssetOracleSimple(oracleRegistry.oracleByType(BEARING_ASSET_ORACLE_TYPE)).setUnderlying(bearings[i], underlyings[i]);
+            IBearingAssetOracle(oracleRegistry.oracleByType(BEARING_ASSET_ORACLE_TYPE)).setUnderlying(bearings[i], underlyings[i]);
         }
     }
 
