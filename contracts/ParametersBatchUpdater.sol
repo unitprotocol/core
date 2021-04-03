@@ -154,10 +154,10 @@ contract ParametersBatchUpdater is Auth {
         }
     }
 
-    function setOracleTypesInRegistry(uint[] calldata oracleTypes, address[] calldata oracles, bool[] calldata quoteInEthSupported) public onlyManager {
-        require(oracleTypes.length == oracles.length && quoteInEthSupported.length == oracles.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+    function setOracleTypesInRegistry(uint[] calldata oracleTypes, address[] calldata oracles) public onlyManager {
+        require(oracleTypes.length == oracles.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < oracleTypes.length; i++) {
-            oracleRegistry.setOracle(oracleTypes[i], oracles[i], quoteInEthSupported[i]);
+            oracleRegistry.setOracle(oracleTypes[i], oracles[i]);
         }
     }
 

@@ -10,13 +10,12 @@ import "../VaultParameters.sol";
 import "../interfaces/IOracleUsd.sol";
 import "../interfaces/IOracleEth.sol";
 import "../interfaces/IOracleRegistry.sol";
-import "../interfaces/IOracleForAsset.sol";
 
 /**
  * @title WrappedToUnderlyingOracle
  * @dev Oracle to quote wrapped tokens to underlying
  **/
-contract WrappedToUnderlyingOracle is IOracleForAsset, Auth {
+contract WrappedToUnderlyingOracle is IOracleUsd, Auth {
 
     IOracleRegistry public immutable oracleRegistry;
 
@@ -40,22 +39,7 @@ contract WrappedToUnderlyingOracle is IOracleForAsset, Auth {
 
         (address oracle, address underlying) = _getOracleAndUnderlying(asset);
 
-        return IOracleForAsset(oracle).assetToUsd(underlying, amount);
-    }
-
-    // returns Q112-encoded value
-    function assetToEth(address asset, uint amount) external override view returns (uint) {
-        if (amount == 0) return 0;
-
-        (address oracle, address underlying) = _getOracleAndUnderlying(asset);
-
-        if (oracleRegistry.quoteInEthSupportByOracle(oracle)) {
-            return IOracleForAsset(oracle).assetToEth(underlying, amount);
-        }
-
-        uint usdValue_q112 = IOracleUsd(oracle).assetToUsd(underlying, amount);
-
-        return IOracleEth(oracleRegistry.oracleByAsset(oracleRegistry.WETH())).usdToEth(usdValue_q112);
+        return IOracleUsd(oracle).assetToUsd(underlying, amount);
     }
 
     function _getOracleAndUnderlying(address asset) internal view returns (address oracle, address underlying) {

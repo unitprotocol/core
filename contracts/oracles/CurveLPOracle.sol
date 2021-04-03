@@ -9,7 +9,6 @@ import "../interfaces/IOracleUsd.sol";
 import "../interfaces/IOracleEth.sol";
 import "../helpers/ERC20Like.sol";
 import "./OracleRegistry.sol";
-import "../interfaces/IOracleForAsset.sol";
 import "../interfaces/IOracleRegistry.sol";
 
 interface CurveProvider {
@@ -30,7 +29,7 @@ interface CurvePool {
  * @title CurveLPOracle
  * @dev Oracle to quote curve LP tokens
  **/
-contract CurveLPOracle is IOracleForAsset {
+contract CurveLPOracle is IOracleUsd {
 
     uint public constant Q112 = 2 ** 112;
     uint public constant PRECISION = 1e18;
@@ -74,13 +73,6 @@ contract CurveLPOracle is IOracleForAsset {
         uint price_q112 = cP.get_virtual_price() * minCoinPrice_q112 / PRECISION;
 
         return amount * price_q112;
-    }
-
-    // returns Q112-encoded value
-    function assetToEth(address asset, uint amount) public override view returns (uint) {
-        if (amount == 0) return 0;
-        uint usdValue_q112 = assetToUsd(asset, amount);
-        return IOracleEth(oracleRegistry.oracleByAsset(oracleRegistry.WETH())).usdToEth(usdValue_q112);
     }
 
 }

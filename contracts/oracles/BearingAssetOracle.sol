@@ -9,14 +9,13 @@ import "../interfaces/IOracleUsd.sol";
 import "../helpers/ERC20Like.sol";
 import "../VaultParameters.sol";
 import "../interfaces/IOracleRegistry.sol";
-import "../interfaces/IOracleForAsset.sol";
 import "../interfaces/IOracleEth.sol";
 
 /**
- * @title BearingAssetOracleSimple
+ * @title BearingAssetOracle
  * @dev Wrapper to quote bearing assets like xSUSHI
  **/
-contract BearingAssetOracle is IOracleForAsset, Auth {
+contract BearingAssetOracle is IOracleUsd, Auth {
 
     IOracleRegistry public immutable oracleRegistry;
 
@@ -40,18 +39,6 @@ contract BearingAssetOracle is IOracleForAsset, Auth {
         (address underlying, uint underlyingAmount) = bearingToUnderlying(bearing, amount);
         IOracleUsd _oracleForUnderlying = IOracleUsd(oracleRegistry.oracleByAsset(underlying));
         return _oracleForUnderlying.assetToUsd(underlying, underlyingAmount);
-    }
-
-    // returns Q112-encoded value
-    function assetToEth(address bearing, uint amount) public override view returns (uint) {
-        if (amount == 0) return 0;
-        (address underlying, uint underlyingAmount) = bearingToUnderlying(bearing, amount);
-        IOracleForAsset _oracleForUnderlying = IOracleForAsset(oracleRegistry.oracleByAsset(underlying));
-        if (oracleRegistry.quoteInEthSupportByOracle(address(_oracleForUnderlying))) {
-            return _oracleForUnderlying.assetToEth(underlying, underlyingAmount);
-        }
-        uint usdValue_q112 = _oracleForUnderlying.assetToUsd(underlying, underlyingAmount);
-        return IOracleEth(oracleRegistry.oracleByAsset(oracleRegistry.WETH())).usdToEth(usdValue_q112);
     }
 
     function bearingToUnderlying(address bearing, uint amount) public view returns (address, uint) {

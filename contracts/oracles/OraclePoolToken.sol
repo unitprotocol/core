@@ -61,11 +61,7 @@ contract OraclePoolToken is IOracleUsd {
 
         address oracle = oracleRegistry.oracleByAsset(underlyingAsset);
 
-        if (oracleRegistry.quoteInEthSupportByOracle(oracle)) {
-            eAvg = IOracleEth(oracle).assetToEth(underlyingAsset, 1);
-        } else {
-            IOracleEth(oracleRegistry.oracleByAsset(oracleRegistry.WETH())).usdToEth(IOracleUsd(oracle).assetToUsd(underlyingAsset, 1));
-        }
+        IOracleEth(oracleRegistry.oracleByAsset(oracleRegistry.WETH())).usdToEth(IOracleUsd(oracle).assetToUsd(underlyingAsset, 1));
 
         (uint112 _reserve0, uint112 _reserve1,) = pair.getReserves();
         uint aPool; // current asset pool

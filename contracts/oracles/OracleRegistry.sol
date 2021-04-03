@@ -13,7 +13,6 @@ contract OracleRegistry is Auth {
     struct Oracle {
         uint oracleType;
         address oracleAddress;
-        bool quoteInEth;
     }
 
     uint public maxOracleType;
@@ -26,14 +25,11 @@ contract OracleRegistry is Auth {
     // map oracle type ID to oracle address
     mapping(uint => address) public oracleByType;
 
-    // whether quote in ETH supported for an oracle type ID
-    mapping(uint => bool) public quoteInEthSupported;
-
     // map oracle address to oracle type ID
     mapping(address => uint) public oracleTypeByOracle;
 
     event AssetOracle(address indexed asset, uint indexed oracleType);
-    event OracleType(uint indexed oracleType, address indexed oracle, bool quoteInEthSupported);
+    event OracleType(uint indexed oracleType, address indexed oracle);
 
     constructor(address vaultParameters, address _weth) Auth(vaultParameters) {
         require(vaultParameters != address(0) && _weth != address(0), "Unit Protocol: ZERO_ADDRESS");
@@ -46,7 +42,7 @@ contract OracleRegistry is Auth {
         emit AssetOracle(asset, oracleType);
     }
 
-    function setOracle(uint oracleType, address oracle, bool _quoteInEthSupported) public onlyManager {
+    function setOracle(uint oracleType, address oracle) public onlyManager {
         require(oracleType != 0, "Unit Protocol: INVALID_ARGS");
 
         if (oracleType > maxOracleType) {
@@ -55,9 +51,8 @@ contract OracleRegistry is Auth {
 
         oracleByType[oracleType] = oracle;
         oracleTypeByOracle[oracle] = oracleType;
-        quoteInEthSupported[oracleType] = _quoteInEthSupported;
 
-        emit OracleType(oracleType, oracle, _quoteInEthSupported);
+        emit OracleType(oracleType, oracle);
     }
 
     function setOracleTypeToAssets(address[] calldata assets, uint oracleType) public onlyManager {
@@ -75,16 +70,12 @@ contract OracleRegistry is Auth {
         foundOracles = new Oracle[](maxOracleType);
 
         for (uint _type = 0; _type < maxOracleType; ++_type) {
-            foundOracles[_type] = Oracle(_type, oracleByType[_type], quoteInEthSupported[_type]);
+            foundOracles[_type] = Oracle(_type, oracleByType[_type]);
         }
     }
 
     function oracleByAsset(address asset) external view returns (address) {
         return oracleByType[oracleTypeByAsset[asset]];
-    }
-
-    function quoteInEthSupportByOracle(address oracle) external view returns (bool) {
-        return quoteInEthSupported[oracleTypeByOracle[oracle]];
     }
 
 }
