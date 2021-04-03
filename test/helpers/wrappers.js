@@ -23,13 +23,22 @@ module.exports = function(context, mode) {
 		},
 		exit: async (asset, mainAmount, usdpAmount) => {
 			if (+usdpAmount > 0) {
-				const debt = await context.vault.debts(asset.address, context.deployer)
-				await context.usdp.approve(context.vault.address, debt)
+				await context.usdp.approve(context.vault.address, usdpAmount)
 			}
 			return context.vaultManager.exit(
 				asset.address,
 				mainAmount, // main
 				usdpAmount,	// USDP
+			);
+		},
+		exitTarget: async (asset, mainAmount, repayment) => {
+			if (+repayment > 0) {
+				await context.usdp.approve(context.vault.address, repayment)
+			}
+			return context.vaultManager.exit_targetRepayment(
+				asset.address,
+				mainAmount, // main
+				repayment,	// USDP
 			);
 		},
 		exitEth: async (mainAmount, usdpAmount) => {

@@ -211,16 +211,42 @@ contract CDPManager01 is ReentrancyGuard {
     }
 
     /**
-      * @notice Exists with ETH
+      * @notice Repayment is the sum of the principal and interest
+      * @dev Withdraws collateral and repays specified amount of debt
+      * @param asset The address of the collateral
+      * @param assetAmount The amount of the collateral to withdraw
+      * @param repayment The target repayment amount
+      **/
+    function exit_targetRepayment(address asset, uint assetAmount, uint repayment) external returns (uint) {
+
+        uint usdpAmount = _calcPrincipal(asset, msg.sender, repayment);
+
+        return exit(asset, assetAmount, usdpAmount);
+    }
+
+    /**
+      * @notice Withdraws WETH and converts to ETH
       * @param ethAmount ETH amount to withdraw
       * @param usdpAmount The amount of USDP token to repay
       **/
-    function exit_Eth(uint ethAmount, uint usdpAmount) external {
-        exit(WETH, ethAmount, usdpAmount);
+    function exit_Eth(uint ethAmount, uint usdpAmount) external returns (uint) {
+        usdpAmount = exit(WETH, ethAmount, usdpAmount);
         IWETH(WETH).transferFrom(msg.sender, address(this), ethAmount);
         IWETH(WETH).withdraw(ethAmount);
         (bool success, ) = msg.sender.call{value:ethAmount}("");
         require(success, "Unit Protocol: ETH_TRANSFER_FAILED");
+        return usdpAmount;
+    }
+
+    /**
+      * @notice Repayment is the sum of the principal and interest
+      * @notice Withdraws WETH and converts to ETH
+      * @param ethAmount ETH amount to withdraw
+      * @param repayment The target repayment amount
+      **/
+    function exit_Eth_targetRepayment(uint ethAmount, uint repayment) external returns (uint) {
+        uint usdpAmount = _calcPrincipal(WETH, msg.sender, repayment);
+        return exit_Eth(ethAmount, usdpAmount);
     }
 
     // decreases debt
@@ -447,11 +473,16 @@ contract CDPManager01 is ReentrancyGuard {
         }
     }
 
-    function isCurveLP(address asset) public view returns(bool) {
+    function isCurveLP(address asset) public view returns (bool) {
         address underlying = IWrappedToUnderlyingOracle(oracleRegistry.oracleByType(WRAPPED_TO_UNDERLYING_ORACLE_TYPE)).assetToUnderlying(asset);
 
         if (underlying == address(0)) { return false; }
 
         return ICurveRegistry(curveProvider.get_registry()).get_pool_from_lp_token(underlying) != address(0);
+    }
+
+    function _calcPrincipal(address asset, address owner, uint repayment) public view returns (uint) {
+        uint fee = vault.stabilityFee(asset, owner) * (block.timestamp - vault.lastUpdate(asset, owner)) / 365 days;
+        return repayment * DENOMINATOR_1E5 / (DENOMINATOR_1E5 + fee);
     }
 }

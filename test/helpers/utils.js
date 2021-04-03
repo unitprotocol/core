@@ -411,6 +411,7 @@ module.exports = (context, mode) => {
 		buyout,
 		triggerLiquidation: w.triggerLiquidation,
 		exit: w.exit,
+		exitTarget: w.exitTarget,
 		exitEth: w.exitEth,
 		repayAllAndWithdraw,
 		repayAllAndWithdrawEth,
