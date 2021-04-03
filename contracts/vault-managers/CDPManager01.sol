@@ -229,7 +229,7 @@ contract CDPManager01 is ReentrancyGuard {
       * @param ethAmount ETH amount to withdraw
       * @param usdpAmount The amount of USDP token to repay
       **/
-    function exit_Eth(uint ethAmount, uint usdpAmount) external returns (uint) {
+    function exit_Eth(uint ethAmount, uint usdpAmount) public returns (uint) {
         usdpAmount = exit(WETH, ethAmount, usdpAmount);
         IWETH(WETH).transferFrom(msg.sender, address(this), ethAmount);
         IWETH(WETH).withdraw(ethAmount);
@@ -481,7 +481,7 @@ contract CDPManager01 is ReentrancyGuard {
         return ICurveRegistry(curveProvider.get_registry()).get_pool_from_lp_token(underlying) != address(0);
     }
 
-    function _calcPrincipal(address asset, address owner, uint repayment) public view returns (uint) {
+    function _calcPrincipal(address asset, address owner, uint repayment) internal view returns (uint) {
         uint fee = vault.stabilityFee(asset, owner) * (block.timestamp - vault.lastUpdate(asset, owner)) / 365 days;
         return repayment * DENOMINATOR_1E5 / (DENOMINATOR_1E5 + fee);
     }
