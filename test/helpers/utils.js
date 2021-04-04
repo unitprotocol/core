@@ -22,6 +22,7 @@ const IUniswapV2Factory = artifacts.require('IUniswapV2Factory');
 const IUniswapV2Pair = artifacts.require('IUniswapV2PairFull');
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const CDPManager = artifacts.require('CDPManager01');
+const LiquidationAuction = artifacts.require('LiquidationAuction02');
 const CDPRegistry = artifacts.require('CDPRegistry');
 const CollateralRegistry = artifacts.require('CollateralRegistry');
 
@@ -119,14 +120,8 @@ module.exports = (context, mode) => {
 			}
 	}
 
-	const buyout = keydonix ? (main, user, from = context.deployer) => {
+	const buyout = (main, user, from = context.deployer) => {
 		return context.liquidationAuction.buyout(
-			main.address,
-			user,
-			{ from }
-		);
-	} : (main, user, from = context.deployer) => {
-		return context.vaultManager.buyout(
 			main.address,
 			user,
 			{ from }
@@ -315,15 +310,17 @@ module.exports = (context, mode) => {
 		if (keydonix) {
 			context.liquidatorKeydonixMainAsset = await LiquidatorKeydonixMainAsset.new(context.vaultManagerParameters.address, context.keydonixOracleMainAssetMock.address);
 			context.liquidatorKeydonixPoolToken = await LiquidatorKeydonixPoolToken.new(context.vaultManagerParameters.address, context.keydonixOraclePoolTokenMock.address);
-
-			context.liquidationAuction = await LiquidationAuction02.new(
-				context.vaultManagerParameters.address,
-				context.curveProvider.address,
-				context.wrappedToUnderlyingOracle.address
-			);
 		} else {
-			context.vaultManager = await CDPManager.new(context.vaultManagerParameters.address, context.oracleRegistry.address, context.curveProvider.address, context.cdpRegistry.address);
+			context.vaultManager = await CDPManager.new(context.vaultManagerParameters.address, context.oracleRegistry.address, context.cdpRegistry.address);
 		}
+
+
+		context.liquidationAuction = await LiquidationAuction.new(
+			context.vaultManagerParameters.address,
+			context.oracleRegistry.address,
+			context.curveProvider.address,
+			context.cdpRegistry.address
+		);
 
 		if (keydonix) {
 			context.vaultManagerKeydonixMainAsset = await VaultManagerKeydonixMainAsset.new(
@@ -346,11 +343,12 @@ module.exports = (context, mode) => {
 			await context.vaultParameters.setVaultAccess(context.vaultManagerKeydonixPoolToken.address, true);
 			await context.vaultParameters.setVaultAccess(context.liquidatorKeydonixMainAsset.address, true);
 			await context.vaultParameters.setVaultAccess(context.liquidatorKeydonixPoolToken.address, true);
-			await context.vaultParameters.setVaultAccess(context.liquidationAuction.address, true);
 			await context.vaultParameters.setVaultAccess(context.vaultManagerStandard.address, true);
 		} else {
 			await context.vaultParameters.setVaultAccess(context.vaultManager.address, true);
 		}
+
+		await context.vaultParameters.setVaultAccess(context.liquidationAuction.address, true);
 
 		await context.vaultManagerParameters.setCollateral(
 			bearingAssetSimple ? context.bearingAsset.address : curveLP ? context.wrappedAsset.address : context.mainCollateral.address,
