@@ -176,12 +176,14 @@ module.exports = (context, mode) => {
 			context.vaultParameters.address
 		);
 
-		// curveLockedAsset - is underlying token
+		// curveLockedAssets is underlying tokens
 		// mainCollateral is LP is this case
-		context.curveLockedAsset = await DummyToken.new("USDC", "USDC", 18, ether('1000000'));
+		context.curveLockedAsset1 = await DummyToken.new("USDC", "USDC", 6, 1000000e6);
+		context.curveLockedAsset2 = await DummyToken.new("USDT", "USDT", 6, 1000000e6);
+		context.curveLockedAsset3 = await DummyToken.new("DAI", "DAI", 18, ether('1000000'));
 		context.curvePool = await CurvePool.new()
-		await context.curvePool.setPool(ether('1'), [context.curveLockedAsset.address])
-		context.curveRegistry = await CurveRegistryMock.new(context.mainCollateral.address, context.curvePool.address, 1)
+		await context.curvePool.setPool(ether('1'), [context.curveLockedAsset1.address, context.curveLockedAsset2.address, context.curveLockedAsset3.address])
+		context.curveRegistry = await CurveRegistryMock.new(context.mainCollateral.address, context.curvePool.address, 3)
 		context.curveProvider = await CurveProviderMock.new(context.curveRegistry.address)
 		context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address, context.weth.address)
 
@@ -278,8 +280,8 @@ module.exports = (context, mode) => {
 		} else if (curveLP) {
 			context.curveLockedAssetUsdPrice = await ChainlinkAggregator.new(1e8.toString(), 8);
 			await context.chainlinkOracleMainAsset.setAggregators(
-				[context.curveLockedAsset.address],
-				[context.curveLockedAssetUsdPrice.address],
+				[context.curveLockedAsset1.address, context.curveLockedAsset2.address, context.curveLockedAsset3.address],
+				[context.curveLockedAssetUsdPrice.address, context.curveLockedAssetUsdPrice.address, context.curveLockedAssetUsdPrice.address],
 				[],
 				[]
 			);
@@ -288,7 +290,9 @@ module.exports = (context, mode) => {
 
 			context.curveLpOracle = await CurveLPOracle.new(context.curveProvider.address, context.oracleRegistry.address)
 
-			context.oracleRegistry.setOracleTypeToAsset(context.curveLockedAsset.address, 5)
+			context.oracleRegistry.setOracleTypeToAsset(context.curveLockedAsset1.address, 5)
+			context.oracleRegistry.setOracleTypeToAsset(context.curveLockedAsset2.address, 5)
+			context.oracleRegistry.setOracleTypeToAsset(context.curveLockedAsset3.address, 5)
 
 			context.oracleRegistry.setOracle(10, context.curveLpOracle.address)
 			context.oracleRegistry.setOracleTypeToAsset(context.mainCollateral.address, 10)

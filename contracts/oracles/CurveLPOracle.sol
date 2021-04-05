@@ -8,22 +8,10 @@ pragma solidity 0.7.6;
 import "../interfaces/IOracleUsd.sol";
 import "../interfaces/IOracleEth.sol";
 import "../helpers/ERC20Like.sol";
-import "./OracleRegistry.sol";
 import "../interfaces/IOracleRegistry.sol";
-
-interface CurveProvider {
-    function get_registry() external view returns (address);
-}
-
-interface CurveRegistry {
-    function get_pool_from_lp_token(address) external view returns (address);
-    function get_n_coins(address) external view returns (uint[2] memory);
-}
-
-interface CurvePool {
-    function get_virtual_price() external view returns (uint);
-    function coins(uint) external view returns (address);
-}
+import "../interfaces/ICurveProvider.sol";
+import "../interfaces/ICurveRegistry.sol";
+import "../interfaces/ICurvePool.sol";
 
 /**
  * @title CurveLPOracle
@@ -35,7 +23,7 @@ contract CurveLPOracle is IOracleUsd {
     uint public constant PRECISION = 1e18;
 
     // CurveProvider contract
-    CurveProvider public immutable curveProvider;
+    ICurveProvider public immutable curveProvider;
     // ChainlinkedOracle contract
     IOracleRegistry public immutable oracleRegistry;
 
@@ -45,15 +33,15 @@ contract CurveLPOracle is IOracleUsd {
      **/
     constructor(address _curveProvider, address _oracleRegistry) {
         require(_curveProvider != address(0) && _oracleRegistry != address(0), "Unit Protocol: ZERO_ADDRESS");
-        curveProvider = CurveProvider(_curveProvider);
+        curveProvider = ICurveProvider(_curveProvider);
         oracleRegistry = IOracleRegistry(_oracleRegistry);
     }
 
     // returns Q112-encoded value
     function assetToUsd(address asset, uint amount) public override view returns (uint) {
         if (amount == 0) return 0;
-        CurveRegistry cR = CurveRegistry(curveProvider.get_registry());
-        CurvePool cP = CurvePool(cR.get_pool_from_lp_token(asset));
+        ICurveRegistry cR = ICurveRegistry(curveProvider.get_registry());
+        ICurvePool cP = ICurvePool(cR.get_pool_from_lp_token(asset));
         require(address(cP) != address(0), "Unit Protocol: NOT_A_CURVE_LP");
         require(ERC20Like(asset).decimals() == uint8(18), "Unit Protocol: INCORRECT_DECIMALS");
 
@@ -64,7 +52,7 @@ contract CurveLPOracle is IOracleUsd {
 
         for (uint i = 0; i < coinsCount; i++) {
             address _coin = cP.coins(i);
-            uint _coinPrice_q112 = IOracleUsd(oracleRegistry.oracleByAsset(_coin)).assetToUsd(_coin, 1);
+            uint _coinPrice_q112 = IOracleUsd(oracleRegistry.oracleByAsset(_coin)).assetToUsd(_coin, 10 ** ERC20Like(_coin).decimals()) / 1 ether;
             if (i == 0 || _coinPrice_q112 < minCoinPrice_q112) {
                 minCoinPrice_q112 = _coinPrice_q112;
             }
