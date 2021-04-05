@@ -11,7 +11,7 @@ const KeydonixOracleMainAssetMock = artifacts.require('KeydonixOracleMainAsset_M
 const KeydonixOraclePoolTokenMock = artifacts.require('KeydonixOraclePoolToken_Mock');
 const Keep3rOracleMainAssetMock = artifacts.require('Keep3rOracleMainAsset_Mock');
 const CurveLPOracle = artifacts.require('CurveLPOracle');
-const OraclePoolTokenMock = artifacts.require('OraclePoolToken_Mock');
+const OraclePoolToken = artifacts.require('OraclePoolToken');
 const BearingAssetOracle = artifacts.require('BearingAssetOracle');
 const WrappedToUnderlyingOracle = artifacts.require('WrappedToUnderlyingOracle');
 const OracleRegistry = artifacts.require('OracleRegistry');
@@ -196,10 +196,7 @@ module.exports = (context, mode) => {
 		)
 
 		if (isLP) {
-			context.oraclePoolToken = await OraclePoolTokenMock.new(
-				context.oracleRegistry.address,
-				context.weth.address,
-			);
+			context.oraclePoolToken = await OraclePoolToken.new(context.oracleRegistry.address);
 		}
 
 		if (keydonix) {

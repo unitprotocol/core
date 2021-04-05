@@ -16,6 +16,7 @@ contract('LiquidationTriggerChainlinkPoolToken', function([
 		this.foundation = foundation;
 		await this.utils.deploy();
 	});
+
 	it('Should liquidate undercollateralized position', async function() {
 		const mainAmount = new BN('3');
 		const usdpAmount = new BN('78');
@@ -44,19 +45,16 @@ contract('LiquidationTriggerChainlinkPoolToken', function([
 		const wethReserve = new BN(1e12).sub(wethReceive);
 		const mainUsdValueAfterSwap = wethReserve.mul(new BN(250)).mul(new BN(2)).mul(mainAmount).div(lpSupply);
 
-		/*
-		 * collateral value after dump = ~112.29$
-		 */
-		await this.uniswapRouter.swapExactTokensForTokens(
-			mainSwapAmount,
-			'1',
-			[this.mainCollateral.address, this.weth.address],
-			positionOwner,
-			'9999999999999999',
-		);
+		const newPriceOfMainInUsd = 1.301e8
+		await this.mainUsd.setPrice(newPriceOfMainInUsd);
 
 		/*
-		 * utilization percent after swap = 78 / 112.29 = ~69.46%
+		 * collateral value after dump = ~108$
+		 */
+
+
+		/*
+		 * utilization percent after swap = 78 / 108 = ~72%
 		 */
 
 		const totalCollateralUsdValue = mainUsdValueAfterSwap;

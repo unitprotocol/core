@@ -25,9 +25,9 @@ contract OraclePoolToken is IOracleUsd {
 
     uint public immutable Q112 = 2 ** 112;
 
-    constructor(address _oracleRegistry, address _weth) public {
+    constructor(address _oracleRegistry) public {
         oracleRegistry = IOracleRegistry(_oracleRegistry);
-        WETH = _weth;
+        WETH = IOracleRegistry(_oracleRegistry).WETH();
     }
 
     /**
@@ -56,12 +56,12 @@ contract OraclePoolToken is IOracleUsd {
             revert("Unit Protocol: NOT_REGISTERED_PAIR");
         }
 
-        // average price of 1 token in ETH
-        uint eAvg;
-
         address oracle = oracleRegistry.oracleByAsset(underlyingAsset);
 
-        IOracleEth(oracleRegistry.oracleByAsset(oracleRegistry.WETH())).usdToEth(IOracleUsd(oracle).assetToUsd(underlyingAsset, 1));
+        uint usdValue_q112 = IOracleUsd(oracle).assetToUsd(underlyingAsset, 1);
+        // average price of 1 token unit in ETH
+        uint eAvg = IOracleEth(oracleRegistry.oracleByAsset(WETH)).usdToEth(usdValue_q112);
+
 
         (uint112 _reserve0, uint112 _reserve1,) = pair.getReserves();
         uint aPool; // current asset pool
