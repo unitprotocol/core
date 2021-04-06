@@ -28,8 +28,12 @@ contract OracleRegistry is Auth {
     // map oracle address to oracle type ID
     mapping(address => uint) public oracleTypeByOracle;
 
+    // list of keydonix oracleType IDs
+    uint[] public keydonixOracleTypes;
+
     event AssetOracle(address indexed asset, uint indexed oracleType);
     event OracleType(uint indexed oracleType, address indexed oracle);
+    event KeydonixOracleTypes();
 
     constructor(address vaultParameters, address _weth) Auth(vaultParameters) {
         require(vaultParameters != address(0) && _weth != address(0), "Unit Protocol: ZERO_ADDRESS");
@@ -40,6 +44,18 @@ contract OracleRegistry is Auth {
         require(asset != address(0) && oracleType != 0, "Unit Protocol: INVALID_ARGS");
         oracleTypeByAsset[asset] = oracleType;
         emit AssetOracle(asset, oracleType);
+    }
+
+    function setKeydonixOracleTypes(uint[] calldata _keydonixOracleTypes) public onlyManager {
+        while (keydonixOracleTypes.length != 0) {
+            keydonixOracleTypes.pop();
+        }
+
+        for (uint i = 0; i < _keydonixOracleTypes.length; i++) {
+            keydonixOracleTypes.push(_keydonixOracleTypes[i]);
+        }
+
+        emit KeydonixOracleTypes();
     }
 
     function setOracle(uint oracleType, address oracle) public onlyManager {
@@ -72,6 +88,10 @@ contract OracleRegistry is Auth {
         for (uint _type = 0; _type < maxOracleType; ++_type) {
             foundOracles[_type] = Oracle(_type, oracleByType[_type]);
         }
+    }
+
+    function getKeydonixOracleTypes() external view returns (uint[] memory) {
+        return keydonixOracleTypes;
     }
 
     function oracleByAsset(address asset) external view returns (address) {
