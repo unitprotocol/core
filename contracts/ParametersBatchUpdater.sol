@@ -164,14 +164,14 @@ contract ParametersBatchUpdater is Auth {
     function setOracleTypesToAssets(address[] calldata assets, uint[] calldata oracleTypes) public onlyManager {
         require(oracleTypes.length == assets.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < assets.length; i++) {
-            oracleRegistry.setOracleTypeToAsset(assets[i], oracleTypes[i]);
+            oracleRegistry.setOracleTypeForAsset(assets[i], oracleTypes[i]);
         }
     }
 
     function setOracleTypesToAssetsBatch(address[][] calldata assets, uint[] calldata oracleTypes) public onlyManager {
         require(oracleTypes.length == assets.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < assets.length; i++) {
-            oracleRegistry.setOracleTypeToAssets(assets[i], oracleTypes[i]);
+            oracleRegistry.setOracleTypeForAssets(assets[i], oracleTypes[i]);
         }
     }
 
