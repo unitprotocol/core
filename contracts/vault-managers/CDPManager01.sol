@@ -130,7 +130,7 @@ contract CDPManager01 is ReentrancyGuard {
 
         if (msg.value != 0) {
             IWETH(WETH).deposit{value: msg.value}();
-            IWETH(WETH).transfer(msg.sender, msg.value);
+            require(IWETH(WETH).transfer(msg.sender, msg.value), "Unit Protocol: WETH_TRANSFER_FAILED");
         }
 
         join(WETH, msg.value, usdpAmount);
@@ -205,7 +205,7 @@ contract CDPManager01 is ReentrancyGuard {
       **/
     function exit_Eth(uint ethAmount, uint usdpAmount) public returns (uint) {
         usdpAmount = exit(WETH, ethAmount, usdpAmount);
-        IWETH(WETH).transferFrom(msg.sender, address(this), ethAmount);
+        require(IWETH(WETH).transferFrom(msg.sender, address(this), ethAmount), "Unit Protocol: WETH_TRANSFER_FROM_FAILED");
         IWETH(WETH).withdraw(ethAmount);
         (bool success, ) = msg.sender.call{value:ethAmount}("");
         require(success, "Unit Protocol: ETH_TRANSFER_FAILED");
