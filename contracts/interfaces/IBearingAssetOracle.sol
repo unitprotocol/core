@@ -1,5 +1,4 @@
 interface IBearingAssetOracle {
-    function assetToEth ( address bearing, uint256 amount ) external view returns ( uint256 );
     function assetToUsd ( address bearing, uint256 amount ) external view returns ( uint256 );
     function bearingToUnderlying ( address bearing, uint256 amount ) external view returns ( address, uint256 );
     function oracleRegistry (  ) external view returns ( address );
