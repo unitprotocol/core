@@ -158,7 +158,9 @@ contract CDPManager01 is ReentrancyGuard {
         } else {
             if (debt == usdpAmount) {
                 vault.withdrawMain(asset, msg.sender, assetAmount);
-                _repay(asset, msg.sender, usdpAmount);
+                if (usdpAmount != 0) {
+                    _repay(asset, msg.sender, usdpAmount);
+                }
             } else {
                 // check oracle
                 require(oracleRegistry.oracleByAsset(asset) != address(0), "Unit Protocol: DISABLED_ORACLE");
