@@ -35,15 +35,22 @@ contract OracleRegistry is Auth {
     event OracleType(uint indexed oracleType, address indexed oracle);
     event KeydonixOracleTypes();
 
-    constructor(address vaultParameters, address _weth) Auth(vaultParameters) {
-        require(vaultParameters != address(0) && _weth != address(0), "Unit Protocol: ZERO_ADDRESS");
-        WETH = _weth;
+    modifier validAddress(address asset) {
+        require(asset != address(0), "Unit Protocol: ZERO_ADDRESS");
+        _;
     }
 
-    function setOracleTypeToAsset(address asset, uint oracleType) public onlyManager {
-        require(asset != address(0) && oracleType != 0, "Unit Protocol: INVALID_ARGS");
-        oracleTypeByAsset[asset] = oracleType;
-        emit AssetOracle(asset, oracleType);
+    modifier validType(uint _type) {
+        require(_type != 0, "Unit Protocol: INVALID_TYPE");
+        _;
+    }
+
+    constructor(address vaultParameters, address _weth)
+        Auth(vaultParameters)
+        validAddress(vaultParameters)
+        validAddress(_weth)
+    {
+        WETH = _weth;
     }
 
     function setKeydonixOracleTypes(uint[] calldata _keydonixOracleTypes) public onlyManager {
@@ -52,15 +59,19 @@ contract OracleRegistry is Auth {
         }
 
         for (uint i = 0; i < _keydonixOracleTypes.length; i++) {
+            require(_keydonixOracleTypes[i] != 0, "Unit Protocol: INVALID_TYPE");
+            require(oracleByType[_keydonixOracleTypes[i]] != address(0), "Unit Protocol: INVALID_ORACLE");
             keydonixOracleTypes.push(_keydonixOracleTypes[i]);
         }
 
         emit KeydonixOracleTypes();
     }
 
-    function setOracle(uint oracleType, address oracle) public onlyManager {
-        require(oracleType != 0, "Unit Protocol: INVALID_ARGS");
-
+    function setOracle(uint oracleType, address oracle) public
+        onlyManager
+        validType(oracleType)
+        validAddress(oracle)
+    {
         if (oracleType > maxOracleType) {
             maxOracleType = oracleType;
         }
@@ -71,22 +82,61 @@ contract OracleRegistry is Auth {
         emit OracleType(oracleType, oracle);
     }
 
-    function setOracleTypeToAssets(address[] calldata assets, uint oracleType) public onlyManager {
-        require(oracleType != 0, "Unit Protocol: INVALID_ARGS");
+    function unsetOracle(uint oracleType) public onlyManager validType(oracleType) validAddress(oracleByType[oracleType]) {
+        address oracle = oracleByType[oracleType];
+        delete oracleByType[oracleType];
+        delete oracleTypeByOracle[oracle];
 
+        emit OracleType(oracleType, address(0));
+    }
+
+    function setOracleTypeForAsset(address asset, uint oracleType) public
+        onlyManager
+        validAddress(asset)
+        validType(oracleType)
+        validAddress(oracleByType[oracleType])
+    {
+        oracleTypeByAsset[asset] = oracleType;
+        emit AssetOracle(asset, oracleType);
+    }
+
+    function setOracleTypeForAssets(address[] calldata assets, uint oracleType) public {
         for (uint i = 0; i < assets.length; i++) {
-            require(assets[i] != address(0), "Unit Protocol: ZERO_ADDRESS");
-            oracleTypeByAsset[assets[i]] = oracleType;
-            emit AssetOracle(assets[i], oracleType);
+            setOracleTypeForAsset(assets[i], oracleType);
+        }
+    }
+
+    function unsetOracleForAsset(address asset) public
+        onlyManager
+        validAddress(asset)
+        validType(oracleTypeByAsset[asset])
+    {
+        delete oracleTypeByAsset[asset];
+        emit AssetOracle(asset, 0);
+    }
+
+    function unsetOracleForAssets(address[] calldata assets) public {
+        for (uint i = 0; i < assets.length; i++) {
+            unsetOracleForAsset(assets[i]);
         }
     }
 
     function getOracles() external view returns (Oracle[] memory foundOracles) {
 
-        foundOracles = new Oracle[](maxOracleType);
+        Oracle[] memory allOracles = new Oracle[](maxOracleType);
 
-        for (uint _type = 0; _type < maxOracleType; ++_type) {
-            foundOracles[_type] = Oracle(_type, oracleByType[_type]);
+        uint actualOraclesCount;
+
+        for (uint _type = 1; _type <= maxOracleType; ++_type) {
+            if (oracleByType[_type] != address(0)) {
+                allOracles[actualOraclesCount++] = Oracle(_type, oracleByType[_type]);
+            }
+        }
+
+        foundOracles = new Oracle[](actualOraclesCount);
+
+        for (uint i = 0; i < actualOraclesCount; ++i) {
+            foundOracles[i] = allOracles[i];
         }
     }
 
@@ -95,7 +145,11 @@ contract OracleRegistry is Auth {
     }
 
     function oracleByAsset(address asset) external view returns (address) {
-        return oracleByType[oracleTypeByAsset[asset]];
+        uint oracleType = oracleTypeByAsset[asset];
+        if (oracleType == 0) {
+            return address(0);
+        }
+        return oracleByType[oracleType];
     }
 
 }
