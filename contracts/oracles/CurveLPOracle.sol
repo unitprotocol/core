@@ -52,7 +52,9 @@ contract CurveLPOracle is IOracleUsd {
 
         for (uint i = 0; i < coinsCount; i++) {
             address _coin = cP.coins(i);
-            uint _coinPrice_q112 = IOracleUsd(oracleRegistry.oracleByAsset(_coin)).assetToUsd(_coin, 10 ** ERC20Like(_coin).decimals()) / 1 ether;
+            address oracle = oracleRegistry.oracleByAsset(_coin);
+            require(oracle != address(0), "Unit Protocol: ORACLE_NOT_FOUND");
+            uint _coinPrice_q112 = IOracleUsd(oracle).assetToUsd(_coin, 10 ** ERC20Like(_coin).decimals()) / 1 ether;
             if (i == 0 || _coinPrice_q112 < minCoinPrice_q112) {
                 minCoinPrice_q112 = _coinPrice_q112;
             }

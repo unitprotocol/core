@@ -15,7 +15,7 @@ import "../interfaces/IOracleEth.sol";
  * @title BearingAssetOracle
  * @dev Wrapper to quote bearing assets like xSUSHI
  **/
-contract BearingAssetOracle is IOracleUsd, Auth {
+contract BearingAssetOracle is IOracleUsd, Auth  {
 
     IOracleRegistry public immutable oracleRegistry;
 
@@ -38,6 +38,7 @@ contract BearingAssetOracle is IOracleUsd, Auth {
         if (amount == 0) return 0;
         (address underlying, uint underlyingAmount) = bearingToUnderlying(bearing, amount);
         IOracleUsd _oracleForUnderlying = IOracleUsd(oracleRegistry.oracleByAsset(underlying));
+        require(address(_oracleForUnderlying) != address(0), "Unit Protocol: ORACLE_NOT_FOUND");
         return _oracleForUnderlying.assetToUsd(underlying, underlyingAmount);
     }
 

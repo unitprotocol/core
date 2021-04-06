@@ -57,6 +57,7 @@ contract OraclePoolToken is IOracleUsd {
         }
 
         address oracle = oracleRegistry.oracleByAsset(underlyingAsset);
+        require(oracle != address(0), "Unit Protocol: ORACLE_NOT_FOUND");
 
         uint usdValue_q112 = IOracleUsd(oracle).assetToUsd(underlyingAsset, 1);
         // average price of 1 token unit in ETH
