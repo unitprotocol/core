@@ -20,8 +20,8 @@ contract CDPRegistry {
     mapping (address => address[]) cdpList;
     mapping (address => mapping (address => uint)) cdpIndex;
 
-    IVault public vault;
-    ICollateralRegistry public cr;
+    IVault public immutable vault;
+    ICollateralRegistry public immutable cr;
 
     event Added(address indexed asset, address indexed owner);
     event Removed(address indexed asset, address indexed owner);
