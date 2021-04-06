@@ -48,8 +48,8 @@ contract('LiquidationTriggerSimple', function([
 
 		const { logs } = await this.utils.triggerLiquidation(this.wrappedAsset, positionOwner, liquidator);
 		expectEvent.inLogs(logs, 'LiquidationTriggered', {
-			token: this.wrappedAsset.address,
-			user: positionOwner,
+			asset: this.wrappedAsset.address,
+			owner: positionOwner,
 		});
 
 		const liquidationBlock = await this.vault.liquidationBlock(this.wrappedAsset.address, positionOwner);

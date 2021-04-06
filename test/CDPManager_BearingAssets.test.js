@@ -28,7 +28,7 @@ contract('CDPManager with bearing assets', function([deployer, foundation]) {
 
 			expectEvent.inLogs(logs, 'Join', {
 				asset: this.bearingAsset.address,
-				user: deployer,
+				owner: deployer,
 				main: mainAmount,
 				usdp: usdpAmount,
 			});
@@ -51,7 +51,7 @@ contract('CDPManager with bearing assets', function([deployer, foundation]) {
 
 				expectEvent.inLogs(logs, 'Exit', {
 					asset: this.bearingAsset.address,
-					user: deployer,
+					owner: deployer,
 					main: mainAmount,
 					usdp: usdpAmount,
 				});
@@ -74,7 +74,7 @@ contract('CDPManager with bearing assets', function([deployer, foundation]) {
 
 				expectEvent.inLogs(logs, 'Exit', {
 					asset: this.bearingAsset.address,
-					user: deployer,
+					owner: deployer,
 					main: mainToWithdraw,
 					usdp: usdpToWithdraw,
 				});
@@ -98,7 +98,7 @@ contract('CDPManager with bearing assets', function([deployer, foundation]) {
 
 			expectEvent.inLogs(logs, 'Join', {
 				asset: this.bearingAsset.address,
-				user: deployer,
+				owner: deployer,
 				main: mainAmount,
 				usdp: usdpAmount,
 			});

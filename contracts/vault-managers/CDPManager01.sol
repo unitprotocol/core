@@ -35,17 +35,17 @@ contract CDPManager01 is ReentrancyGuard {
     /**
      * @dev Trigger when joins are happened
     **/
-    event Join(address indexed asset, address indexed user, uint main, uint usdp);
+    event Join(address indexed asset, address indexed owner, uint main, uint usdp);
 
     /**
      * @dev Trigger when exits are happened
     **/
-    event Exit(address indexed asset, address indexed user, uint main, uint usdp);
+    event Exit(address indexed asset, address indexed owner, uint main, uint usdp);
 
     /**
      * @dev Trigger when liquidations are initiated
     **/
-    event LiquidationTriggered(address indexed token, address indexed user);
+    event LiquidationTriggered(address indexed asset, address indexed owner);
 
     modifier checkpoint(address asset, address owner) {
         _;
@@ -87,6 +87,8 @@ contract CDPManager01 is ReentrancyGuard {
     function join(address asset, uint assetAmount, uint usdpAmount) public nonReentrant checkpoint(asset, msg.sender) {
         require(usdpAmount != 0 || assetAmount != 0, "Unit Protocol: USELESS_TX");
 
+        require(IToken(asset).decimals() <= 18, "Unit Protocol: NOT_SUPPORTED_DECIMALS");
+
         if (usdpAmount == 0) {
 
             vault.depositMain(asset, msg.sender, assetAmount);
@@ -97,7 +99,7 @@ contract CDPManager01 is ReentrancyGuard {
             address oracle = oracleRegistry.oracleByAsset(asset);
             require(oracle != address(0), "Unit Protocol: DISABLED_ORACLE");
 
-            bool spawned = vault.getTotalDebt(asset, msg.sender) != 0;
+            bool spawned = vault.debts(asset, msg.sender) != 0;
 
             if (!spawned) {
                 // spawn a position
@@ -108,7 +110,7 @@ contract CDPManager01 is ReentrancyGuard {
                 vault.depositMain(asset, msg.sender, assetAmount);
             }
 
-            // mint USDP to user
+            // mint USDP to owner
             vault.borrow(asset, msg.sender, usdpAmount);
 
             // check collateralization
@@ -161,13 +163,11 @@ contract CDPManager01 is ReentrancyGuard {
                 // check oracle
                 require(oracleRegistry.oracleByAsset(asset) != address(0), "Unit Protocol: DISABLED_ORACLE");
 
-                // withdraw collateral to the user address
+                // withdraw collateral to the owner address
                 vault.withdrawMain(asset, msg.sender, assetAmount);
 
                 if (usdpAmount != 0) {
-                    uint fee = vault.calculateFee(asset, msg.sender, usdpAmount);
-                    vault.chargeFee(vault.usdp(), msg.sender, fee);
-                    vault.repay(asset, msg.sender, usdpAmount);
+                    _repay(asset, msg.sender, usdpAmount);
                 }
 
                 vault.update(asset, msg.sender);
@@ -222,27 +222,27 @@ contract CDPManager01 is ReentrancyGuard {
     }
 
     // decreases debt
-    function _repay(address asset, address user, uint usdpAmount) internal {
-        uint fee = vault.calculateFee(asset, user, usdpAmount);
-        vault.chargeFee(vault.usdp(), user, fee);
+    function _repay(address asset, address owner, uint usdpAmount) internal {
+        uint fee = vault.calculateFee(asset, owner, usdpAmount);
+        vault.chargeFee(vault.usdp(), owner, fee);
 
-        // burn USDP from the user's balance
-        uint debtAfter = vault.repay(asset, user, usdpAmount);
+        // burn USDP from the owner's balance
+        uint debtAfter = vault.repay(asset, owner, usdpAmount);
         if (debtAfter == 0) {
             // clear unused storage
-            vault.destroy(asset, user);
+            vault.destroy(asset, owner);
         }
     }
 
-    function _ensurePositionCollateralization(address asset, address user) internal view {
+    function _ensurePositionCollateralization(address asset, address owner) internal view {
         // collateral value of the position in USD
-        uint usdValue_q112 = IOracleUsd(oracleRegistry.oracleByAsset(asset)).assetToUsd(asset, vault.collaterals(asset, user));
+        uint usdValue_q112 = getCollateralUsdValue_q112(asset, owner);
 
         // USD limit of the position
         uint usdLimit = usdValue_q112 * vaultManagerParameters.initialCollateralRatio(asset) / Q112 / 100;
 
         // revert if collateralization is not enough
-        require(vault.getTotalDebt(asset, user) <= usdLimit, "Unit Protocol: UNDERCOLLATERALIZED");
+        require(vault.getTotalDebt(asset, owner) <= usdLimit, "Unit Protocol: UNDERCOLLATERALIZED");
     }
     
     // Liquidation Trigger
@@ -250,18 +250,18 @@ contract CDPManager01 is ReentrancyGuard {
     /**
      * @dev Triggers liquidation of a position
      * @param asset The address of the collateral token of a position
-     * @param user The owner of the position
+     * @param owner The owner of the position
      **/
-    function triggerLiquidation(address asset, address user) external nonReentrant {
+    function triggerLiquidation(address asset, address owner) external nonReentrant {
 
         // check oracle
         require(oracleRegistry.oracleByAsset(asset) != address(0), "Unit Protocol: DISABLED_ORACLE");
 
         // USD value of the collateral
-        uint usdValue_q112 = IOracleUsd(oracleRegistry.oracleByAsset(asset)).assetToUsd(asset, vault.collaterals(asset, user));
+        uint usdValue_q112 = getCollateralUsdValue_q112(asset, owner);
         
         // reverts if a position is not liquidatable
-        require(_isLiquidatablePosition(asset, user, usdValue_q112), "Unit Protocol: SAFE_POSITION");
+        require(_isLiquidatablePosition(asset, owner, usdValue_q112), "Unit Protocol: SAFE_POSITION");
 
         uint liquidationDiscount_q112 = usdValue_q112.mul(
             vaultManagerParameters.liquidationDiscount(asset)
@@ -270,25 +270,29 @@ contract CDPManager01 is ReentrancyGuard {
         uint initialLiquidationPrice = usdValue_q112.sub(liquidationDiscount_q112).div(Q112);
 
         // sends liquidation command to the Vault
-        vault.triggerLiquidation(asset, user, initialLiquidationPrice);
+        vault.triggerLiquidation(asset, owner, initialLiquidationPrice);
 
         // fire an liquidation event
-        emit LiquidationTriggered(asset, user);
+        emit LiquidationTriggered(asset, owner);
+    }
+
+    function getCollateralUsdValue_q112(address asset, address owner) public view returns (uint) {
+        return IOracleUsd(oracleRegistry.oracleByAsset(asset)).assetToUsd(asset, vault.collaterals(asset, owner));
     }
 
     /**
      * @dev Determines whether a position is liquidatable
      * @param asset The address of the collateral
-     * @param user The owner of the position
+     * @param owner The owner of the position
      * @param usdValue_q112 Q112-encoded USD value of the collateral
      * @return boolean value, whether a position is liquidatable
      **/
     function _isLiquidatablePosition(
         address asset,
-        address user,
+        address owner,
         uint usdValue_q112
     ) internal view returns (bool) {
-        uint debt = vault.getTotalDebt(asset, user);
+        uint debt = vault.getTotalDebt(asset, owner);
 
         // position is collateralized if there is no debt
         if (debt == 0) return false;
@@ -299,30 +303,32 @@ contract CDPManager01 is ReentrancyGuard {
     /**
      * @dev Determines whether a position is liquidatable
      * @param asset The address of the collateral
-     * @param user The owner of the position
+     * @param owner The owner of the position
      * @return boolean value, whether a position is liquidatable
      **/
     function isLiquidatablePosition(
         address asset,
-        address user
-    ) external view returns (bool) {
-        return utilizationRatio(asset, user) >= vaultManagerParameters.liquidationRatio(asset);
+        address owner
+    ) public view returns (bool) {
+        uint usdValue_q112 = getCollateralUsdValue_q112(asset, owner);
+
+        return _isLiquidatablePosition(asset, owner, usdValue_q112);
     }
 
     /**
      * @dev Calculates current utilization ratio
      * @param asset The address of the collateral
-     * @param user The owner of the position
+     * @param owner The owner of the position
      * @return utilization ratio
      **/
     function utilizationRatio(
         address asset,
-        address user
+        address owner
     ) public view returns (uint) {
-        uint debt = vault.getTotalDebt(asset, user);
-        if (debt == 0) return uint(-1);
+        uint debt = vault.getTotalDebt(asset, owner);
+        if (debt == 0) return 0;
         
-        uint usdValue_q112 = IOracleUsd(oracleRegistry.oracleByAsset(asset)).assetToUsd(asset, vault.collaterals(asset, user));
+        uint usdValue_q112 = getCollateralUsdValue_q112(asset, owner);
 
         return debt.mul(100).mul(Q112).div(usdValue_q112);
     }
@@ -331,21 +337,22 @@ contract CDPManager01 is ReentrancyGuard {
     /**
      * @dev Calculates liquidation price
      * @param asset The address of the collateral
-     * @param user The owner of the position
+     * @param owner The owner of the position
      * @return Q112-encoded liquidation price
      **/
     function liquidationPrice_q112(
         address asset,
-        address user
+        address owner
     ) external view returns (uint) {
-        uint debt = vault.getTotalDebt(asset, user);
+
+        uint debt = vault.getTotalDebt(asset, owner);
         if (debt == 0) return uint(-1);
         
         uint collateralLiqPrice = debt.mul(100).mul(Q112).div(vaultManagerParameters.liquidationRatio(asset));
-        
+
         require(IToken(asset).decimals() <= 18, "Unit Protocol: NOT_SUPPORTED_DECIMALS");
-        
-        return collateralLiqPrice / vault.collaterals(asset, user) / 10 ** (18 - IToken(asset).decimals());
+
+        return collateralLiqPrice / vault.collaterals(asset, owner) / 10 ** (18 - IToken(asset).decimals());
     }
 
     function _calcPrincipal(address asset, address owner, uint repayment) internal view returns (uint) {

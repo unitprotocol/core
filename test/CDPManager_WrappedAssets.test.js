@@ -24,7 +24,7 @@ contract('CDPManager with wrapped assets', function([deployer, foundation]) {
 
 			expectEvent.inLogs(logs, 'Join', {
 				asset: this.wrappedAsset.address,
-				user: deployer,
+				owner: deployer,
 				main: mainAmount,
 				usdp: usdpAmount,
 			});
@@ -47,7 +47,7 @@ contract('CDPManager with wrapped assets', function([deployer, foundation]) {
 
 				expectEvent.inLogs(logs, 'Exit', {
 					asset: this.wrappedAsset.address,
-					user: deployer,
+					owner: deployer,
 					main: mainAmount,
 					usdp: usdpAmount,
 				});
@@ -70,7 +70,7 @@ contract('CDPManager with wrapped assets', function([deployer, foundation]) {
 
 				expectEvent.inLogs(logs, 'Exit', {
 					asset: this.wrappedAsset.address,
-					user: deployer,
+					owner: deployer,
 					main: mainToWithdraw,
 					usdp: usdpToWithdraw,
 				});
@@ -94,7 +94,7 @@ contract('CDPManager with wrapped assets', function([deployer, foundation]) {
 
 			expectEvent.inLogs(logs, 'Join', {
 				asset: this.wrappedAsset.address,
-				user: deployer,
+				owner: deployer,
 				main: mainAmount,
 				usdp: usdpAmount,
 			});

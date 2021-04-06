@@ -36,7 +36,7 @@ const increaseTime = require('./helpers/timeTravel');
 
 					expectEvent.inLogs(logs, 'Join', {
 						asset: this.mainCollateral.address,
-						user: deployer,
+						owner: deployer,
 						main: mainAmount,
 						usdp: usdpAmount,
 					});
@@ -58,7 +58,7 @@ const increaseTime = require('./helpers/timeTravel');
 
 					expectEvent.inLogs(logs, 'Join', {
 						asset: this.weth.address,
-						user: deployer,
+						owner: deployer,
 						main: mainAmount,
 						usdp: usdpAmount,
 					});
@@ -85,7 +85,7 @@ const increaseTime = require('./helpers/timeTravel');
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.mainCollateral.address,
-						user: deployer,
+						owner: deployer,
 						main: mainAmount,
 						usdp: usdpAmount,
 					});
@@ -108,7 +108,7 @@ const increaseTime = require('./helpers/timeTravel');
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.mainCollateral.address,
-						user: deployer,
+						owner: deployer,
 						main: mainToWithdraw,
 						usdp: usdpToRepay,
 					});
@@ -138,7 +138,7 @@ const increaseTime = require('./helpers/timeTravel');
 
 					expectEvent(receipt, 'Exit', {
 						asset: this.mainCollateral.address,
-						user: deployer,
+						owner: deployer,
 						main: mainToWithdraw,
 					});
 
@@ -166,7 +166,7 @@ const increaseTime = require('./helpers/timeTravel');
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.weth.address,
-						user: deployer,
+						owner: deployer,
 						main: mainToWithdraw,
 						usdp: usdpToRepay,
 					});
@@ -192,7 +192,7 @@ const increaseTime = require('./helpers/timeTravel');
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.weth.address,
-						user: deployer,
+						owner: deployer,
 						main: mainAmount,
 						usdp: usdpAmount,
 					});
@@ -216,7 +216,7 @@ const increaseTime = require('./helpers/timeTravel');
 
 				expectEvent.inLogs(logs, 'Join', {
 					asset: this.mainCollateral.address,
-					user: deployer,
+					owner: deployer,
 					main: mainAmount,
 					usdp: usdpAmount,
 				});

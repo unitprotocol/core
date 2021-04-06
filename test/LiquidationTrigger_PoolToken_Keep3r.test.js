@@ -68,8 +68,8 @@ contract('LiquidationTriggerKeep3rPoolToken', function([
 
 		const { logs } = await this.utils.triggerLiquidation(this.poolToken, positionOwner, liquidator);
 		expectEvent.inLogs(logs, 'LiquidationTriggered', {
-			token: this.poolToken.address,
-			user: positionOwner,
+			asset: this.poolToken.address,
+			owner: positionOwner,
 		});
 
 		const liquidationBlock = await this.vault.liquidationBlock(this.poolToken.address, positionOwner);

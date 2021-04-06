@@ -48,8 +48,8 @@ contract('LiquidationTriggerChainlinkMainAsset', function([
 
 		const { logs } = await this.utils.triggerLiquidation(this.mainCollateral, positionOwner, liquidator);
 		expectEvent.inLogs(logs, 'LiquidationTriggered', {
-			token: this.mainCollateral.address,
-			user: positionOwner,
+			asset: this.mainCollateral.address,
+			owner: positionOwner,
 		});
 
 		const liquidationBlock = await this.vault.liquidationBlock(this.mainCollateral.address, positionOwner);
