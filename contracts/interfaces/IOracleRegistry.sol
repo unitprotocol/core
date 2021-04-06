@@ -17,9 +17,12 @@ interface IOracleRegistry {
     function oracleByType ( uint256 ) external view returns ( address );
     function oracleTypeByAsset ( address ) external view returns ( uint256 );
     function oracleTypeByOracle ( address ) external view returns ( uint256 );
-    function setKeydonixOracleTypes ( uint256[] calldata _keydonixOracleTypes ) external;
+    function setKeydonixOracleTypes ( uint256[] memory _keydonixOracleTypes ) external;
     function setOracle ( uint256 oracleType, address oracle ) external;
-    function setOracleTypeToAsset ( address asset, uint256 oracleType ) external;
-    function setOracleTypeToAssets ( address[] calldata assets, uint256 oracleType ) external;
+    function setOracleTypeForAsset ( address asset, uint256 oracleType ) external;
+    function setOracleTypeForAssets ( address[] memory assets, uint256 oracleType ) external;
+    function unsetOracle ( uint256 oracleType ) external;
+    function unsetOracleForAsset ( address asset ) external;
+    function unsetOracleForAssets ( address[] memory assets ) external;
     function vaultParameters (  ) external view returns ( address );
 }
