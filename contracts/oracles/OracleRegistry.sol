@@ -54,15 +54,12 @@ contract OracleRegistry is Auth {
     }
 
     function setKeydonixOracleTypes(uint[] calldata _keydonixOracleTypes) public onlyManager {
-        while (keydonixOracleTypes.length != 0) {
-            keydonixOracleTypes.pop();
-        }
-
         for (uint i = 0; i < _keydonixOracleTypes.length; i++) {
             require(_keydonixOracleTypes[i] != 0, "Unit Protocol: INVALID_TYPE");
             require(oracleByType[_keydonixOracleTypes[i]] != address(0), "Unit Protocol: INVALID_ORACLE");
-            keydonixOracleTypes.push(_keydonixOracleTypes[i]);
         }
+
+        keydonixOracleTypes = _keydonixOracleTypes;
 
         emit KeydonixOracleTypes();
     }
