@@ -73,6 +73,16 @@ contract OracleRegistry is Auth {
             maxOracleType = oracleType;
         }
 
+        address oldOracle = oracleByType[oracleType];
+        if (oldOracle != address(0)) {
+            delete oracleTypeByOracle[oldOracle];
+        }
+
+        uint oldOracleType = oracleTypeByOracle[oracle];
+        if (oldOracleType != 0) {
+            delete oracleByType[oldOracleType];
+        }
+
         oracleByType[oracleType] = oracle;
         oracleTypeByOracle[oracle] = oracleType;
 
