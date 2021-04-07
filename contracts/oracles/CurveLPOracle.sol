@@ -8,6 +8,7 @@ pragma solidity 0.7.6;
 import "../interfaces/IOracleUsd.sol";
 import "../interfaces/IOracleEth.sol";
 import "../helpers/ERC20Like.sol";
+import "../helpers/SafeMath.sol";
 import "../interfaces/IOracleRegistry.sol";
 import "../interfaces/ICurveProvider.sol";
 import "../interfaces/ICurveRegistry.sol";
@@ -18,6 +19,7 @@ import "../interfaces/ICurvePool.sol";
  * @dev Oracle to quote curve LP tokens
  **/
 contract CurveLPOracle is IOracleUsd {
+    using SafeMath for uint;
 
     uint public constant Q112 = 2 ** 112;
     uint public constant PRECISION = 1e18;
@@ -60,9 +62,9 @@ contract CurveLPOracle is IOracleUsd {
             }
         }
 
-        uint price_q112 = cP.get_virtual_price() * minCoinPrice_q112 / PRECISION;
+        uint price_q112 = cP.get_virtual_price().mul(minCoinPrice_q112).div(PRECISION);
 
-        return amount * price_q112;
+        return amount.mul(price_q112);
     }
 
 }
