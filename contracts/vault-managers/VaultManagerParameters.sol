@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.1;
+pragma solidity 0.7.6;
 
 import "../VaultParameters.sol";
 
@@ -31,7 +31,7 @@ contract VaultManagerParameters is Auth {
     // map token to devaluation period in blocks
     mapping(address => uint) public devaluationPeriod;
 
-    constructor(address _vaultParameters) public Auth(_vaultParameters) {}
+    constructor(address _vaultParameters) Auth(_vaultParameters) {}
 
     /**
      * @notice Only manager is able to call this function

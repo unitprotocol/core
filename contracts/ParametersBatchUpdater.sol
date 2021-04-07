@@ -3,12 +3,13 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.1;
+pragma solidity 0.7.6;
+pragma abicoder v2;
 
 
 import "./VaultParameters.sol";
 import "./interfaces/IVaultManagerParameters.sol";
-import "./interfaces/IBearingAssetOracleSimple.sol";
+import "./interfaces/IBearingAssetOracle.sol";
 import "./interfaces/IOracleRegistry.sol";
 import "./interfaces/ICollateralRegistry.sol";
 import "./interfaces/IVault.sol";
@@ -153,17 +154,31 @@ contract ParametersBatchUpdater is Auth {
         }
     }
 
-    function setOraclesInRegistry(address[] calldata assets, address[] calldata oracles, uint[] calldata oracleTypes) public onlyManager {
-        require(assets.length == oracles.length && assets.length == oracleTypes.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+    function setOracleTypesInRegistry(uint[] calldata oracleTypes, address[] calldata oracles) public onlyManager {
+        require(oracleTypes.length == oracles.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+        for (uint i = 0; i < oracleTypes.length; i++) {
+            oracleRegistry.setOracle(oracleTypes[i], oracles[i]);
+        }
+    }
+
+    function setOracleTypesToAssets(address[] calldata assets, uint[] calldata oracleTypes) public onlyManager {
+        require(oracleTypes.length == assets.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < assets.length; i++) {
-            oracleRegistry.setOracle(assets[i], oracles[i], oracleTypes[i]);
+            oracleRegistry.setOracleTypeForAsset(assets[i], oracleTypes[i]);
+        }
+    }
+
+    function setOracleTypesToAssetsBatch(address[][] calldata assets, uint[] calldata oracleTypes) public onlyManager {
+        require(oracleTypes.length == assets.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
+        for (uint i = 0; i < assets.length; i++) {
+            oracleRegistry.setOracleTypeForAssets(assets[i], oracleTypes[i]);
         }
     }
 
     function setUnderlyings(address[] calldata bearings, address[] calldata underlyings) public onlyManager {
         require(bearings.length == underlyings.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < bearings.length; i++) {
-            IBearingAssetOracleSimple(oracleRegistry.oracleByType(BEARING_ASSET_ORACLE_TYPE)).setUnderlying(bearings[i], underlyings[i]);
+            IBearingAssetOracle(oracleRegistry.oracleByType(BEARING_ASSET_ORACLE_TYPE)).setUnderlying(bearings[i], underlyings[i]);
         }
     }
 

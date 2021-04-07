@@ -3,12 +3,12 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.1;
+pragma solidity 0.7.6;
+
 
 
 /**
  * @title Auth
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Manages USDP's system access
  **/
 contract Auth {
@@ -16,7 +16,7 @@ contract Auth {
     // address of the the contract with vault parameters
     VaultParameters public vaultParameters;
 
-    constructor(address _parameters) public {
+    constructor(address _parameters) {
         vaultParameters = VaultParameters(_parameters);
     }
 
@@ -40,9 +40,9 @@ contract Auth {
 }
 
 
+
 /**
  * @title VaultParameters
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
 contract VaultParameters is Auth {
 
@@ -76,7 +76,7 @@ contract VaultParameters is Auth {
      * hashed with Keccak-256.
      * Therefore, the Vault address can be pre-computed and passed as an argument before deployment.
     **/
-    constructor(address payable _vault, address _foundation) public Auth(address(this)) {
+    constructor(address payable _vault, address _foundation) Auth(address(this)) {
         require(_vault != address(0), "Unit Protocol: ZERO_ADDRESS");
         require(_foundation != address(0), "Unit Protocol: ZERO_ADDRESS");
 

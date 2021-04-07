@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.1;
+pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "../oracles/ChainlinkedKeydonixOracleMainAssetAbstract.sol";
@@ -13,7 +13,6 @@ import "../helpers/SafeMath.sol";
 
 /**
  * @title KeydonixOraclePoolToken_Mock
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Calculates the USD price of desired tokens
  **/
 contract KeydonixOraclePoolToken_Mock is ChainlinkedKeydonixOraclePoolTokenAbstract {

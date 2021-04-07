@@ -3,18 +3,17 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.1;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.7.6;
+pragma abicoder v2;
 
 import "../oracles/ChainlinkedKeydonixOracleMainAssetAbstract.sol";
 import "../helpers/ERC20Like.sol";
 import "../helpers/SafeMath.sol";
-import "../helpers/AggregatorInterface.sol";
+import "../interfaces/IAggregator.sol";
 import "../helpers/IUniswapV2Factory.sol";
 
 /**
  * @title KeydonixOracleMainAsset_Mock
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev Calculates the USD price of desired tokens
  **/
 contract KeydonixOracleMainAsset_Mock is ChainlinkedKeydonixOracleMainAssetAbstract {
@@ -22,14 +21,14 @@ contract KeydonixOracleMainAsset_Mock is ChainlinkedKeydonixOracleMainAssetAbstr
 
     uint public constant ETH_USD_DENOMINATOR = 100000000;
 
-    AggregatorInterface public immutable ethUsdChainlinkAggregator;
+    IAggregator public immutable ethUsdChainlinkAggregator;
 
     IUniswapV2Factory public immutable uniswapFactory;
 
     constructor(
         IUniswapV2Factory uniFactory,
         address weth,
-        AggregatorInterface chainlinkAggregator
+        IAggregator chainlinkAggregator
     )
         public
     {

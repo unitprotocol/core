@@ -3,7 +3,7 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.1;
+pragma solidity 0.7.6;
 
 import "./VaultParameters.sol";
 import "./helpers/SafeMath.sol";
@@ -11,7 +11,6 @@ import "./helpers/SafeMath.sol";
 
 /**
  * @title USDP token implementation
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  * @dev ERC20 token
  **/
 contract USDP is Auth {
@@ -51,7 +50,7 @@ contract USDP is Auth {
     /**
       * @param _parameters The address of system parameters contract
      **/
-    constructor(address _parameters) public Auth(_parameters) {}
+    constructor(address _parameters) Auth(_parameters) {}
 
     /**
       * @notice Only Vault can mint USDP
