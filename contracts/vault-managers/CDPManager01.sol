@@ -95,15 +95,13 @@ contract CDPManager01 is ReentrancyGuard {
 
         } else {
 
-            // check oracle
-            address oracle = oracleRegistry.oracleByAsset(asset);
-            require(oracle != address(0), "Unit Protocol: DISABLED_ORACLE");
+            _ensureOracle(asset);
 
             bool spawned = vault.debts(asset, msg.sender) != 0;
 
             if (!spawned) {
                 // spawn a position
-                vault.spawn(asset, msg.sender, oracleRegistry.oracleTypeByOracle(oracle));
+                vault.spawn(asset, msg.sender, oracleRegistry.oracleTypeByAsset(asset));
             }
 
             if (assetAmount != 0) {
@@ -162,8 +160,7 @@ contract CDPManager01 is ReentrancyGuard {
                     _repay(asset, msg.sender, usdpAmount);
                 }
             } else {
-                // check oracle
-                require(oracleRegistry.oracleByAsset(asset) != address(0), "Unit Protocol: DISABLED_ORACLE");
+                _ensureOracle(asset);
 
                 // withdraw collateral to the owner address
                 vault.withdrawMain(asset, msg.sender, assetAmount);
@@ -256,8 +253,7 @@ contract CDPManager01 is ReentrancyGuard {
      **/
     function triggerLiquidation(address asset, address owner) external nonReentrant {
 
-        // check oracle
-        require(oracleRegistry.oracleByAsset(asset) != address(0), "Unit Protocol: DISABLED_ORACLE");
+        _ensureOracle(asset);
 
         // USD value of the collateral
         uint usdValue_q112 = getCollateralUsdValue_q112(asset, owner);
@@ -300,6 +296,13 @@ contract CDPManager01 is ReentrancyGuard {
         if (debt == 0) return false;
 
         return debt.mul(100).mul(Q112).div(usdValue_q112) >= vaultManagerParameters.liquidationRatio(asset);
+    }
+
+    function _ensureOracle(address asset) internal view {
+        uint oracleType = oracleRegistry.oracleTypeByAsset(asset);
+        require(oracleType != 0, "Unit Protocol: INVALID_ORACLE_TYPE");
+        address oracle = oracleRegistry.oracleByType(oracleType);
+        require(oracle != address(0), "Unit Protocol: DISABLED_ORACLE");
     }
 
     /**
