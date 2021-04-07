@@ -34,7 +34,7 @@ const time = require('./helpers/time');
 
 					expectEvent.inLogs(logs, 'Join', {
 						asset: this.mainCollateral.address,
-						user: deployer,
+						owner: deployer,
 						main: mainAmount,
 						usdp: usdpAmount,
 					});
@@ -56,7 +56,7 @@ const time = require('./helpers/time');
 
 					expectEvent.inLogs(logs, 'Join', {
 						asset: this.weth.address,
-						user: deployer,
+						owner: deployer,
 						main: mainAmount,
 						usdp: usdpAmount,
 					});
@@ -83,7 +83,7 @@ const time = require('./helpers/time');
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.mainCollateral.address,
-						user: deployer,
+						owner: deployer,
 						main: mainAmount,
 						usdp: usdpAmount,
 					});
@@ -140,7 +140,7 @@ const time = require('./helpers/time');
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.mainCollateral.address,
-						user: deployer,
+						owner: deployer,
 						main: mainToWithdraw,
 						usdp: usdpToWithdraw,
 					});
@@ -167,7 +167,7 @@ const time = require('./helpers/time');
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.weth.address,
-						user: deployer,
+						owner: deployer,
 						main: mainToWithdraw,
 						usdp: usdpToWithdraw,
 					});
@@ -193,7 +193,7 @@ const time = require('./helpers/time');
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.weth.address,
-						user: deployer,
+						owner: deployer,
 						main: mainAmount,
 						usdp: usdpAmount,
 					});
@@ -217,7 +217,7 @@ const time = require('./helpers/time');
 
 				expectEvent.inLogs(logs, 'Join', {
 					asset: this.mainCollateral.address,
-					user: deployer,
+					owner: deployer,
 					main: mainAmount,
 					usdp: usdpAmount,
 				});

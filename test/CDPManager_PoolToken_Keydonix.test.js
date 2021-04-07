@@ -34,7 +34,7 @@ const time = require('./helpers/time');
 
 					expectEvent.inLogs(logs, 'Join', {
 						asset: this.poolToken.address,
-						user: deployer,
+						owner: deployer,
 						main: mainAmount,
 						usdp: usdpAmount,
 					});
@@ -59,7 +59,7 @@ const time = require('./helpers/time');
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.poolToken.address,
-						user: deployer,
+						owner: deployer,
 						main: mainAmount,
 						usdp: usdpAmount,
 					});
@@ -116,7 +116,7 @@ const time = require('./helpers/time');
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.poolToken.address,
-						user: deployer,
+						owner: deployer,
 						main: mainToWithdraw,
 						usdp: usdpToRepay,
 					});
@@ -139,7 +139,7 @@ const time = require('./helpers/time');
 
 				expectEvent.inLogs(logs, 'Join', {
 					asset: this.poolToken.address,
-					user: deployer,
+					owner: deployer,
 					main: mainAmount,
 					usdp: usdpAmount,
 				});

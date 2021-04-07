@@ -6,20 +6,19 @@
 pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
-import "../oracles/ChainlinkedKeydonixOracleMainAssetAbstract.sol";
-import "../oracles/ChainlinkedKeydonixOraclePoolTokenAbstract.sol";
 import "../helpers/IUniswapV2PairFull.sol";
 import "../helpers/SafeMath.sol";
+import "../interfaces/IKeydonixOracleUsd.sol";
 
 /**
  * @title KeydonixOraclePoolToken_Mock
  * @dev Calculates the USD price of desired tokens
  **/
-contract KeydonixOraclePoolToken_Mock is ChainlinkedKeydonixOraclePoolTokenAbstract {
+contract KeydonixOraclePoolToken_Mock is IKeydonixOracleUsd {
     using SafeMath for uint;
 
     constructor(address _keydonixOracleMainAsset_Mock) public {
-        uniswapOracleMainAsset = ChainlinkedKeydonixOracleMainAssetAbstract(_keydonixOracleMainAsset_Mock);
+        uniswapOracleMainAsset = IKeydonixOracleUsd(_keydonixOracleMainAsset_Mock);
     }
 
     // override with mock; only for tests

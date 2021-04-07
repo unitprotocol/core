@@ -6,17 +6,17 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import "../oracles/ChainlinkedKeydonixOracleMainAssetAbstract.sol";
 import "../helpers/ERC20Like.sol";
 import "../helpers/SafeMath.sol";
 import "../interfaces/IAggregator.sol";
 import "../helpers/IUniswapV2Factory.sol";
+import "../interfaces/IKeydonixOracleUsd.sol";
 
 /**
  * @title KeydonixOracleMainAsset_Mock
  * @dev Calculates the USD price of desired tokens
  **/
-contract KeydonixOracleMainAsset_Mock is ChainlinkedKeydonixOracleMainAssetAbstract {
+contract KeydonixOracleMainAsset_Mock is IKeydonixOracleUsd {
     using SafeMath for uint;
 
     uint public constant ETH_USD_DENOMINATOR = 100000000;
@@ -24,6 +24,8 @@ contract KeydonixOracleMainAsset_Mock is ChainlinkedKeydonixOracleMainAssetAbstr
     IAggregator public immutable ethUsdChainlinkAggregator;
 
     IUniswapV2Factory public immutable uniswapFactory;
+
+    address public immutable WETH;
 
     constructor(
         IUniswapV2Factory uniFactory,
