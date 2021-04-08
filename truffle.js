@@ -67,7 +67,6 @@ module.exports = {
 		reporter: 'eth-gas-reporter',
 		reporterOptions: {
 			currency: 'USD',
-			currency: 'eth-gas-reporter',
 			gasPrice: 90
 		}
 	},
@@ -80,7 +79,7 @@ module.exports = {
 	plugins: ["solidity-coverage"],
 	compilers: {
 		solc: {
-			version: '0.7.1'
+			version: '0.7.6'
 		}
 	}
 };

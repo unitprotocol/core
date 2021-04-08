@@ -3,14 +3,13 @@
 /*
   Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
-pragma solidity ^0.7.1;
+pragma solidity 0.7.6;
 
 import "../VaultParameters.sol";
 
 
 /**
  * @title VaultManagerParameters
- * @author Unit Protocol: Artem Zakharov (az@unit.xyz), Alexander Ponomorev (@bcngod)
  **/
 contract VaultManagerParameters is Auth {
 
@@ -32,7 +31,7 @@ contract VaultManagerParameters is Auth {
     // map token to devaluation period in blocks
     mapping(address => uint) public devaluationPeriod;
 
-    constructor(address _vaultParameters) public Auth(_vaultParameters) {}
+    constructor(address _vaultParameters) Auth(_vaultParameters) {}
 
     /**
      * @notice Only manager is able to call this function
@@ -45,6 +44,7 @@ contract VaultManagerParameters is Auth {
      * @param liquidationDiscountValue The liquidation discount (3 decimals)
      * @param devaluationPeriodValue The devaluation period in blocks
      * @param usdpLimit The USDP token issue limit
+     * @param oracles The enabled oracles type IDs
      * @param minColP The min percentage of COL value in position (0 decimals)
      * @param maxColP The max percentage of COL value in position (0 decimals)
      **/
