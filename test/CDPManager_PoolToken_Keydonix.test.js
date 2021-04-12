@@ -1,6 +1,5 @@
 const {
 	expectEvent,
-	expectRevert,
 } = require('openzeppelin-test-helpers');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
@@ -90,7 +89,6 @@ const time = require('./helpers/time');
 
 					// get some usdp to cover fee
 					await this.utils.updatePrice();
-					await this.utils.spawnEth(new BN('2'), new BN('1'), new BN('2'));
 
 					// repay debt partially
 					await this.utils.repay(this.poolToken, deployer, usdpAmount.div(new BN(2)));
@@ -99,8 +97,6 @@ const time = require('./helpers/time');
 					expect(accumulatedDebtAfterRepayment.div(new BN(10 ** 12))).to.be.bignumber.equal(
 						expectedDebt.div(new BN(2)).div(new BN(10 ** 12))
 					);
-
-					await this.utils.repayAllAndWithdraw(this.poolToken, deployer);
 				})
 
 				it('Should partially repay the debt of a position and withdraw collaterals partially', async function() {
@@ -214,20 +210,6 @@ const time = require('./helpers/time');
 				})
 			})
 
-			describe('Join', function () {
-				it('Reverts non-spawned position', async function() {
-					const mainAmount = new BN('100');
-					const usdpAmount = new BN('20');
-
-					const tx = this.utils.join(
-						this.poolToken,
-						mainAmount,
-						usdpAmount
-					);
-					await this.utils.expectRevert(tx, "Unit Protocol: NOT_SPAWNED_POSITION");
-				})
-			})
-
 			describe('Exit', function () {
 				it('Reverts non valuable tx', async function() {
 					const mainAmount = new BN('100');
@@ -237,16 +219,6 @@ const time = require('./helpers/time');
 
 					const tx = this.utils.exit(this.poolToken, 0, 0, 0);
 					await this.utils.expectRevert(tx, "Unit Protocol: USELESS_TX");
-				})
-
-				it('Reverts when specified repayment amount is greater than the accumulated debt', async function() {
-					const mainAmount = new BN('100');
-					const usdpAmount = new BN('20');
-
-					await this.utils.spawn(this.poolToken, mainAmount, usdpAmount);
-
-					const tx = this.utils.exit(this.poolToken, mainAmount, usdpAmount.add(new BN(1)));
-					await expectRevert.unspecified(tx);
 				})
 
 				it('Reverts when position state after exit becomes undercollateralized', async function() {

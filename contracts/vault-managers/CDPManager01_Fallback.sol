@@ -89,7 +89,6 @@ contract CDPManager01_Fallback is ReentrancyGuard {
 
         } else {
 
-            // check oracle
             uint oracleType = _selectOracleType(asset);
 
             bool spawned = vault.debts(asset, msg.sender) != 0;
@@ -187,7 +186,7 @@ contract CDPManager01_Fallback is ReentrancyGuard {
         }
     }
 
-    function _ensurePositionCollateralization(address asset, address owner, IKeydonixOracleUsd.ProofDataStruct memory proofData) internal view {
+    function _ensurePositionCollateralization(address asset, address owner, IKeydonixOracleUsd.ProofDataStruct calldata proofData) internal view {
         // collateral value of the position in USD
         uint usdValue_q112 = getCollateralUsdValue_q112(asset, owner, proofData);
 
@@ -206,8 +205,6 @@ contract CDPManager01_Fallback is ReentrancyGuard {
      * @param owner The owner of the position
      **/
     function triggerLiquidation(address asset, address owner, IKeydonixOracleUsd.ProofDataStruct calldata proofData) external nonReentrant {
-
-        uint oracleType = _selectOracleType(asset);
 
         // USD value of the collateral
         uint usdValue_q112 = getCollateralUsdValue_q112(asset, owner, proofData);
@@ -289,9 +286,7 @@ contract CDPManager01_Fallback is ReentrancyGuard {
         IKeydonixOracleUsd.ProofDataStruct calldata proofData
     ) public view returns (uint) {
         uint debt = vault.getTotalDebt(asset, owner);
-        if (debt == 0) return uint(-1);
-
-        uint oracleType = _getOracleType(asset);
+        if (debt == 0) return uint(0);
         
         uint usdValue_q112 = getCollateralUsdValue_q112(asset, owner, proofData);
 
