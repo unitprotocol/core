@@ -79,5 +79,15 @@ contract('LiquidationTriggerKeydonixPoolToken', function([
 			expect(liquidationBlock).to.be.bignumber.equal(expectedLiquidationBlock);
 			expect(liquidationPrice).to.be.bignumber.equal(expectedLiquidationPrice);
 		})
+
+		it('Should fail to trigger liquidation of collateralized position', async function () {
+			const mainAmount = new BN('3');
+			const usdpAmount = new BN('78');
+
+			await this.utils.spawn(this.poolToken, mainAmount, usdpAmount);
+
+			const tx = this.utils.triggerLiquidation(this.poolToken, positionOwner, liquidator);
+			await this.utils.expectRevert(tx, "Unit Protocol: SAFE_POSITION");
+		})
 	});
 });
