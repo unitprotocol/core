@@ -27,6 +27,11 @@
 | ChainlinkedOracleMainAsset | 0x54b21C140F5463e1fDa69B934da619eAaa61f1CA      |
 | OraclePoolToken      | 0x5968Bc303930155d36fA9AeE2B5b0F6D39598434 |
 | BearingAssetOracle      | 0x190DB945Ae572Ae72E367b549b78C41E211864AB      |
+| ChainlinkedKeydonixOracleMainAsset (Uniswap)      | 0xBFE2e6eCEdFB9CDf0e9dA98AB116D57DdC82D078      |
+| ChainlinkedKeydonixOracleMainAsset (Sushiswap)      | 0x769E35030f5cE160b287Bce0462d46Decf29b6DD      |
+| ChainlinkedKeydonixOraclePoolToken      | 0x72A2e0D0A201B54DcFB668a46BE99494eFF6D2A8      |
+| WrappedToUnderlyingOracle      | 0x220Ea780a484c18fd0Ab252014c58299759a1Fbd      |
+| CurveLPOracle      | 0x0E08d9e1DC22a400EbcA25E9a8f292910fa8fe08      |
 
 ### Helpers & Registries
 
@@ -45,7 +50,8 @@
 | Name          | Address       |
 | ------------- |:-------------:|
 | WBNB      | 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c |
-| PancakeFactory      | 0xBCfCcbde45cE874adCB698cC183deBcF17952812      |
+| PancakeV2Factory      | 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73      |
+| BNB/USD Chainlink Aggregator Proxy     | 0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE      |
 
 ### Core
 
@@ -56,12 +62,19 @@
 | VaultParameters      | 0x56c7CA666d192332F72a5842E72eED5f59F0fb48 |
 | VaultManagerParameters      | 0x99f2B13C28A4183a5d5e0fe02B1B5aeEe85FAF5A      |
 | LiquidationAuction02      | 0x754106b2f312c987Dd34161F8b4735392fa93F06      |
-| VaultManagerStandard      | 0x7E920256041F77613885A018Fce194409A734bBe      |
-| VaultManagerPancakeSwapMainAsset      | 0x7Cdefc60Aa5eF145f905b99C999d3ED2883f6d10      |
-| LiquidationTriggerKeep3rPancakeSwapMainAsset      | 0xfAa71d14458a197DeC85a767B23dA27E33363b9b      |
+| CDPManager01      | 0x1337daC01Fc21Fa21D17914f96725f7a7b73868f      |
 
 ### Oracles
 
 | Name          | Address       |
 | ------------- |:-------------:|
-| PancakeTwap | 0xa707aebfea4ef3d11aefeddedf82397e4567d20a      |
+| PancakeV2Twap | 0x11b1bd923f4D0669958e16A511567f540Bc21d2e      |
+| ChainlinkedKeep3rV1OracleMainAsset | 0x7562FB711173095Bc2d8100C107e6Da639E0F4B0      |
+
+### Helpers & Registries
+
+| Name          | Address       |
+| ------------- |:-------------:|
+| OracleRegistry | 0xbea721ACe12e881cb44Dbe9361ffEd9141CE547F      |
+| CollateralRegistry | 0xA1ad3602697c15113E089C2723c15eBF3038465C      |
+| CDPRegistry | 0xE8372dcef80189c0F88631507f6466b3f60E24A4      |
