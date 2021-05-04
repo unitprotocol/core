@@ -18,6 +18,7 @@
 | VaultManagerParameters      | 0x203153522B9EAef4aE17c6e99851EE7b2F7D312E      |
 | LiquidationAuction01      | 0xa41a3625c02c60Ae932515E7F921ada1811aF6a5      |
 | CDPManager01      | 0x0e13ab042eC5AB9Fc6F43979406088B9028F66fA      |
+| CDPManager01_Fallback      | 0xaD3617D11f4c1d30603551eA75e9Ace9CB386e15      |
 
 ### Oracles
 
