@@ -28,6 +28,7 @@ const CDPRegistry = artifacts.require('CDPRegistry');
 const CollateralRegistry = artifacts.require('CollateralRegistry');
 const CyTokenOracle = artifacts.require('CyTokenOracle');
 
+
 const { ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce, deployContractBytecode } = require('./deployUtils');
 const BN = web3.utils.BN;
@@ -63,7 +64,6 @@ module.exports = (context, mode) => {
 	const bearingAssetSimple = mode.startsWith('bearingAssetSimple');
 	const curveLP = mode.startsWith('curveLP');
 	const cyWETHsample = mode.startsWith('cyWETHsample');
-
 
 	const isLP = mode.includes('PoolToken');
 
