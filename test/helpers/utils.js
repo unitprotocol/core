@@ -4,6 +4,7 @@ const VaultManagerParameters = artifacts.require('VaultManagerParameters');
 const USDP = artifacts.require('USDP');
 const WETH = artifacts.require('WETH');
 const DummyToken = artifacts.require('DummyToken');
+const CyWETH = artifacts.require('CyWETH');
 const CurveRegistryMock = artifacts.require('CurveRegistryMock');
 const CurvePool = artifacts.require('CurvePool');
 const CurveProviderMock = artifacts.require('CurveProviderMock');
@@ -22,10 +23,10 @@ const IUniswapV2Factory = artifacts.require('IUniswapV2Factory');
 const IUniswapV2Pair = artifacts.require('IUniswapV2PairFull');
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const CDPManager = artifacts.require('CDPManager01');
-const CDPManagerFallback = artifacts.require('CDPManager01_Fallback');
 const LiquidationAuction = artifacts.require('LiquidationAuction02');
 const CDPRegistry = artifacts.require('CDPRegistry');
 const CollateralRegistry = artifacts.require('CollateralRegistry');
+const CyTokenOracle = artifacts.require('CyTokenOracle');
 
 const { ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce, deployContractBytecode } = require('./deployUtils');
@@ -61,6 +62,8 @@ module.exports = (context, mode) => {
 	const chainlink = mode.startsWith('chainlink');
 	const bearingAssetSimple = mode.startsWith('bearingAssetSimple');
 	const curveLP = mode.startsWith('curveLP');
+	const cyWETHsample = mode.startsWith('cyWETHsample');
+
 
 	const isLP = mode.includes('PoolToken');
 
@@ -90,6 +93,13 @@ module.exports = (context, mode) => {
 		return IUniswapV2Pair.at(poolAddress);
 	};
 
+	const repayAllAndWithdraw = async (main, user) => {
+		const totalDebt = await context.vault.getTotalDebt(main.address, user);
+		await context.usdp.approve(context.vault.address, totalDebt);
+		const mainAmount = await context.vault.collaterals(main.address, user);
+		return context.vaultManager.exit(main.address, mainAmount, MAX_UINT);
+	};
+
 	const repayAllAndWithdrawEth = async (user) => {
 		const totalDebt = await context.vault.getTotalDebt(context.weth.address, user);
 		await context.usdp.approve(context.vault.address, totalDebt);
@@ -97,6 +107,15 @@ module.exports = (context, mode) => {
 		await context.weth.approve(context.vaultManager.address, mainAmount);
 		return context.vaultManager.exit_Eth(mainAmount, MAX_UINT);
 	};
+
+	const repay = async (main, user, usdpAmount) => {
+		const totalDebt = await context.vault.getTotalDebt(main.address, user);
+		await context.usdp.approve(context.vault.address, totalDebt);
+		return context.vaultManagerStandard.repay(
+			main.address,
+			usdpAmount,
+		);
+	}
 
 	const updatePrice = async () => {
 			await context.ethUsd.setPrice(await context.ethUsd.latestAnswer());
@@ -189,19 +208,12 @@ module.exports = (context, mode) => {
 			poolTokenOracleType = 2
 			context.keydonixOracleMainAssetMock = await KeydonixOracleMainAssetMock.new(
 				context.uniswapFactory.address,
-				context.oracleRegistry.address,
+				context.weth.address,
+				context.ethUsd.address,
 			)
-
-			await context.oracleRegistry.setOracle(mainAssetOracleType, context.keydonixOracleMainAssetMock.address);
-
 			context.keydonixOraclePoolTokenMock = await KeydonixOraclePoolTokenMock.new(
-				context.oracleRegistry.address,
-				context.vaultParameters.address,
+				context.keydonixOracleMainAssetMock.address
 			)
-
-			await context.oracleRegistry.setOracle(poolTokenOracleType, context.keydonixOraclePoolTokenMock.address);
-
-			await context.oracleRegistry.setKeydonixOracleTypes([mainAssetOracleType, poolTokenOracleType]);
 		} else if (uniswapKeep3r || sushiswapKeep3r) {
 			context.keep3rOracleMainAssetMock = await Keep3rOracleMainAssetMock.new(
 				context.uniswapFactory.address,
@@ -293,6 +305,31 @@ module.exports = (context, mode) => {
 			context.oracleRegistry.setOracle(mainAssetOracleType, context.wrappedToUnderlyingOracle.address)
 			context.oracleRegistry.setOracleTypeForAsset(context.wrappedAsset.address, mainAssetOracleType)
 
+		} else if (cyWETHsample) {
+			mainAssetOracleType = 14
+      let totalSupply = new BN('1000000000000000000000000');
+      let cyTokenImplementation = '0x1A9e503562CE800Ea8e68E2cf0cfA0AEC2eDb509';
+			let sampleRate = new BN('100000000000000000000000000');
+			context.cyWETH = await CyWETH.new(totalSupply,context.weth.address,cyTokenImplementation,sampleRate);
+
+			context.keep3rOracleMainAssetMock = await Keep3rOracleMainAssetMock.new(
+				context.uniswapFactory.address,
+				context.weth.address,
+				context.ethUsd.address,
+			)
+
+			context.oracleRegistry.setOracle(7, context.keep3rOracleMainAssetMock.address)
+			context.oracleRegistry.setOracleTypeForAsset(context.mainCollateral.address, 7)
+
+			context.CyTokenOracle = await CyTokenOracle.new(
+				context.vaultParameters.address,
+				context.oracleRegistry.address,
+				cyTokenImplementation,
+			)
+
+			context.oracleRegistry.setOracle(mainAssetOracleType, context.CyTokenOracle.address)
+			context.oracleRegistry.setOracleTypeForAsset(context.CyTokenOracle.address, 14)
+
 		}
 
 		context.collateralRegistry = await CollateralRegistry.new(context.vaultParameters.address, [context.mainCollateral.address]);
@@ -301,7 +338,8 @@ module.exports = (context, mode) => {
 		await context.vaultParameters.setManager(context.vaultManagerParameters.address, true);
 
 		if (keydonix) {
-			context.vaultManager = await CDPManagerFallback.new(context.vaultManagerParameters.address, context.oracleRegistry.address, context.cdpRegistry.address);
+			context.liquidatorKeydonixMainAsset = await LiquidatorKeydonixMainAsset.new(context.vaultManagerParameters.address, context.keydonixOracleMainAssetMock.address);
+			context.liquidatorKeydonixPoolToken = await LiquidatorKeydonixPoolToken.new(context.vaultManagerParameters.address, context.keydonixOraclePoolTokenMock.address);
 		} else {
 			context.vaultManager = await CDPManager.new(context.vaultManagerParameters.address, context.oracleRegistry.address, context.cdpRegistry.address);
 		}
@@ -314,13 +352,36 @@ module.exports = (context, mode) => {
 			context.cdpRegistry.address
 		);
 
+		if (keydonix) {
+			context.vaultManagerKeydonixMainAsset = await VaultManagerKeydonixMainAsset.new(
+				context.vaultManagerParameters.address,
+				context.keydonixOracleMainAssetMock.address,
+			);
+			context.vaultManagerKeydonixPoolToken = await VaultManagerKeydonixPoolToken.new(
+				context.vaultManagerParameters.address,
+				context.keydonixOraclePoolTokenMock.address,
+			);
+			context.vaultManagerStandard = await VaultManagerStandard.new(
+				context.vault.address,
+			);
+		}
 
-		await context.vaultParameters.setVaultAccess(context.vaultManager.address, true);
+
+		// set access of position manipulation contracts to the Vault
+		if (keydonix) {
+			await context.vaultParameters.setVaultAccess(context.vaultManagerKeydonixMainAsset.address, true);
+			await context.vaultParameters.setVaultAccess(context.vaultManagerKeydonixPoolToken.address, true);
+			await context.vaultParameters.setVaultAccess(context.liquidatorKeydonixMainAsset.address, true);
+			await context.vaultParameters.setVaultAccess(context.liquidatorKeydonixPoolToken.address, true);
+			await context.vaultParameters.setVaultAccess(context.vaultManagerStandard.address, true);
+		} else {
+			await context.vaultParameters.setVaultAccess(context.vaultManager.address, true);
+		}
 
 		await context.vaultParameters.setVaultAccess(context.liquidationAuction.address, true);
 
 		await context.vaultManagerParameters.setCollateral(
-			bearingAssetSimple ? context.bearingAsset.address : curveLP ? context.wrappedAsset.address : context.mainCollateral.address,
+			cyWETHsample ? context.cyWETH.address : bearingAssetSimple ? context.bearingAsset.address : curveLP ? context.wrappedAsset.address : context.mainCollateral.address,
 			'0', // stability fee
 			'13', // liquidation fee
 			'67', // initial collateralization
@@ -380,13 +441,13 @@ module.exports = (context, mode) => {
 		exit: w.exit,
 		exitTarget: w.exitTarget,
 		exitEth: w.exitEth,
-		repayAllAndWithdraw: w.repayAllAndWithdraw,
+		repayAllAndWithdraw,
 		repayAllAndWithdrawEth,
 		withdrawAndRepay: w.exit,
 		withdrawAndRepayEth: w.exitEth,
 		deploy,
 		updatePrice,
-		repay: w.repay,
+		repay,
 		expectRevert,
 	}
 }
