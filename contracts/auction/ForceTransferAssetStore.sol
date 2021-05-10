@@ -12,13 +12,13 @@ import "../interfaces/IForceTransferAssetStore.sol";
 /**
  * @title ForceTransferAssetStore
  **/
-contract ForceTransferAssetStore is Auth {
+contract ForceTransferAssetStore is Auth, IForceTransferAssetStore {
 
     /*
         Mapping of assets that require a transfer of at least 1 unit of token
         to update internal logic related to staking rewards in case of full liquidation
      */
-    mapping(address => bool) public shouldForceTransfer;
+    mapping(address => bool) public override shouldForceTransfer;
 
     event ForceTransferAssetAdded(address indexed asset);
 
@@ -35,7 +35,7 @@ contract ForceTransferAssetStore is Auth {
      * @dev Mark asset as `shouldForceTransfer`
      * @param asset The address of the asset
      **/
-    function add(address asset) external onlyManager {
+    function add(address asset) external override onlyManager {
         require(!shouldForceTransfer[asset], "Unit Protocol: Already exists");
         require(asset != address(0), "Unit Protocol: ZERO_ADDRESS");
         shouldForceTransfer[asset] = true;
