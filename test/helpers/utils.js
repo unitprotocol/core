@@ -25,6 +25,7 @@ const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const CDPManager = artifacts.require('CDPManager01');
 const LiquidationAuction = artifacts.require('LiquidationAuction02');
 const CDPRegistry = artifacts.require('CDPRegistry');
+const ForceTransferAssetStore = artifacts.require('ForceTransferAssetStore');
 const CollateralRegistry = artifacts.require('CollateralRegistry');
 const CyTokenOracle = artifacts.require('CyTokenOracle');
 
@@ -179,16 +180,6 @@ module.exports = (context, mode) => {
 			context.weth.address,
 			context.vaultParameters.address
 		);
-
-		// curveLockedAssets is underlying tokens
-		// mainCollateral is LP is this case
-		context.curveLockedAsset1 = await DummyToken.new("USDC", "USDC", 6, 1000000e6);
-		context.curveLockedAsset2 = await DummyToken.new("USDT", "USDT", 6, 1000000e6);
-		context.curveLockedAsset3 = await DummyToken.new("DAI", "DAI", 18, ether('1000000'));
-		context.curvePool = await CurvePool.new()
-		await context.curvePool.setPool(ether('1'), [context.curveLockedAsset1.address, context.curveLockedAsset2.address, context.curveLockedAsset3.address])
-		context.curveRegistry = await CurveRegistryMock.new(context.mainCollateral.address, context.curvePool.address, 3)
-		context.curveProvider = await CurveProviderMock.new(context.curveRegistry.address)
 		context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address, context.weth.address)
 
 		await context.oracleRegistry.setOracle(5, context.chainlinkOracleMainAsset.address);
@@ -198,6 +189,8 @@ module.exports = (context, mode) => {
 			context.vaultParameters.address,
 			context.oracleRegistry.address,
 		)
+
+		context.forceTransferAssetStore = await ForceTransferAssetStore.new(context.vaultParameters.address, []);
 
 		if (isLP) {
 			context.oraclePoolToken = await OraclePoolToken.new(context.oracleRegistry.address);
@@ -279,6 +272,18 @@ module.exports = (context, mode) => {
 
 
 		} else if (curveLP) {
+
+			// curveLockedAssets is underlying tokens
+			// `mainCollateral` is LP is this case
+			// `wrappedAsset` is the collateral
+			context.curveLockedAsset1 = await DummyToken.new("USDC", "USDC", 6, 1000000e6);
+			context.curveLockedAsset2 = await DummyToken.new("USDT", "USDT", 6, 1000000e6);
+			context.curveLockedAsset3 = await DummyToken.new("DAI", "DAI", 18, ether('1000000'));
+			context.curvePool = await CurvePool.new()
+			await context.curvePool.setPool(ether('1'), [context.curveLockedAsset1.address, context.curveLockedAsset2.address, context.curveLockedAsset3.address])
+			context.curveRegistry = await CurveRegistryMock.new(context.mainCollateral.address, context.curvePool.address, 3)
+			context.curveProvider = await CurveProviderMock.new(context.curveRegistry.address)
+
 			context.curveLockedAssetUsdPrice = await ChainlinkAggregator.new(1e8.toString(), 8);
 			await context.chainlinkOracleMainAsset.setAggregators(
 				[context.curveLockedAsset1.address, context.curveLockedAsset2.address, context.curveLockedAsset3.address],
@@ -299,6 +304,8 @@ module.exports = (context, mode) => {
 			context.oracleRegistry.setOracleTypeForAsset(context.mainCollateral.address, 10)
 
 			context.wrappedAsset = await DummyToken.new("Wrapper Curve LP", "WCLP", 18, ether('100000000000'))
+
+			await context.forceTransferAssetStore.add(context.wrappedAsset.address);
 
 			await context.wrappedToUnderlyingOracle.setUnderlying(context.wrappedAsset.address, context.mainCollateral.address)
 
@@ -347,9 +354,8 @@ module.exports = (context, mode) => {
 
 		context.liquidationAuction = await LiquidationAuction.new(
 			context.vaultManagerParameters.address,
-			context.oracleRegistry.address,
-			context.curveProvider.address,
-			context.cdpRegistry.address
+			context.cdpRegistry.address,
+			context.forceTransferAssetStore.address
 		);
 
 		if (keydonix) {
