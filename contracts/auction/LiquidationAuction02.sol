@@ -5,17 +5,16 @@
 */
 pragma solidity 0.7.6;
 
-import './interfaces/IOracleRegistry.sol';
-import './interfaces/IVault.sol';
-import './interfaces/ICDPRegistry.sol';
-import './interfaces/IVaultManagerParameters.sol';
-import './interfaces/IVaultParameters.sol';
-import './interfaces/ICurveProvider.sol';
-import './interfaces/ICurveRegistry.sol';
-import './interfaces/IWrappedToUnderlyingOracle.sol';
+import '../interfaces/IOracleRegistry.sol';
+import '../interfaces/IVault.sol';
+import '../interfaces/ICDPRegistry.sol';
+import '../interfaces/IVaultManagerParameters.sol';
+import '../interfaces/IVaultParameters.sol';
+import '../interfaces/IWrappedToUnderlyingOracle.sol';
+import '../interfaces/IForceTransferAssetStore.sol';
 
-import './helpers/ReentrancyGuard.sol';
-import './helpers/SafeMath.sol';
+import '../helpers/ReentrancyGuard.sol';
+import '../helpers/SafeMath.sol';
 
 /**
  * @title LiquidationAuction02
@@ -25,11 +24,8 @@ contract LiquidationAuction02 is ReentrancyGuard {
 
     IVault public immutable vault;
     IVaultManagerParameters public immutable vaultManagerParameters;
-    IOracleRegistry public immutable oracleRegistry;
     ICDPRegistry public immutable cdpRegistry;
-
-    // CurveProvider contract
-    ICurveProvider public immutable curveProvider;
+    IForceTransferAssetStore public immutable forceTransferAssetStore;
 
     uint public constant DENOMINATOR_1E2 = 1e2;
     uint public constant WRAPPED_TO_UNDERLYING_ORACLE_TYPE = 11;
@@ -46,23 +42,19 @@ contract LiquidationAuction02 is ReentrancyGuard {
 
     /**
      * @param _vaultManagerParameters The address of the contract with Vault manager parameters
-     * @param _oracleRegistry The address of the oracle registry
-     * @param _curveProvider The address of the Curve Provider. Mainnet: 0x0000000022D53366457F9d5E68Ec105046FC4383
      * @param _cdpRegistry The address of the CDP registry
+     * @param _forceTransferAssetStore The address of the ForceTransferAssetStore
      **/
-    constructor(address _vaultManagerParameters, address _oracleRegistry, address _curveProvider, address _cdpRegistry) {
+    constructor(address _vaultManagerParameters, address _cdpRegistry, address _forceTransferAssetStore) {
         require(
-            _vaultManagerParameters != address(0) && 
-            _oracleRegistry != address(0) && 
-            _cdpRegistry != address(0) &&
-            _curveProvider != address(0), 
+            _vaultManagerParameters != address(0) &&
+            _forceTransferAssetStore != (address(0)),
                 "Unit Protocol: INVALID_ARGS"
         );
         vaultManagerParameters = IVaultManagerParameters(_vaultManagerParameters);
         vault = IVault(IVaultParameters(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()).vault());
-        oracleRegistry = IOracleRegistry(_oracleRegistry);
-        curveProvider = ICurveProvider(_curveProvider);
         cdpRegistry = ICDPRegistry(_cdpRegistry);
+        forceTransferAssetStore = IForceTransferAssetStore(_forceTransferAssetStore);
     }
 
     /**
@@ -91,8 +83,8 @@ contract LiquidationAuction02 is ReentrancyGuard {
             collateralInPosition
         );
 
-        // ensure that at least 1 wei of Curve LP is transferred to cdp owner
-        if (collateralToOwner == 0 && isCurveLP(asset)) {
+        // ensure that at least 1 unit of token is transferred to cdp owner
+        if (collateralToOwner == 0 && forceTransferAssetStore.shouldForceTransfer(asset)) {
             collateralToOwner = 1;
             collateralToLiquidator = collateralToLiquidator.sub(1);
         }
@@ -159,13 +151,5 @@ contract LiquidationAuction02 is ReentrancyGuard {
         } else {
             collateralToBuyer = collateralInPosition;
         }
-    }
-
-    function isCurveLP(address asset) public view returns (bool) {
-        address underlying = IWrappedToUnderlyingOracle(oracleRegistry.oracleByType(WRAPPED_TO_UNDERLYING_ORACLE_TYPE)).assetToUnderlying(asset);
-
-        if (underlying == address(0)) { return false; }
-
-        return ICurveRegistry(curveProvider.get_registry()).get_pool_from_lp_token(underlying) != address(0);
     }
 }

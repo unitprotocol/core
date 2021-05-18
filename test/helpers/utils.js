@@ -4,6 +4,7 @@ const VaultManagerParameters = artifacts.require('VaultManagerParameters');
 const USDP = artifacts.require('USDP');
 const WETH = artifacts.require('WETH');
 const DummyToken = artifacts.require('DummyToken');
+const CyWETH = artifacts.require('CyWETH');
 const CurveRegistryMock = artifacts.require('CurveRegistryMock');
 const CurvePool = artifacts.require('CurvePool');
 const CurveProviderMock = artifacts.require('CurveProviderMock');
@@ -24,7 +25,10 @@ const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const CDPManager = artifacts.require('CDPManager01');
 const LiquidationAuction = artifacts.require('LiquidationAuction02');
 const CDPRegistry = artifacts.require('CDPRegistry');
+const ForceTransferAssetStore = artifacts.require('ForceTransferAssetStore');
 const CollateralRegistry = artifacts.require('CollateralRegistry');
+const CyTokenOracle = artifacts.require('CyTokenOracle');
+
 
 const { ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce, deployContractBytecode } = require('./deployUtils');
@@ -60,6 +64,7 @@ module.exports = (context, mode) => {
 	const chainlink = mode.startsWith('chainlink');
 	const bearingAssetSimple = mode.startsWith('bearingAssetSimple');
 	const curveLP = mode.startsWith('curveLP');
+	const cyWETHsample = mode.startsWith('cyWETHsample');
 
 	const isLP = mode.includes('PoolToken');
 
@@ -175,16 +180,6 @@ module.exports = (context, mode) => {
 			context.weth.address,
 			context.vaultParameters.address
 		);
-
-		// curveLockedAssets is underlying tokens
-		// mainCollateral is LP is this case
-		context.curveLockedAsset1 = await DummyToken.new("USDC", "USDC", 6, 1000000e6);
-		context.curveLockedAsset2 = await DummyToken.new("USDT", "USDT", 6, 1000000e6);
-		context.curveLockedAsset3 = await DummyToken.new("DAI", "DAI", 18, ether('1000000'));
-		context.curvePool = await CurvePool.new()
-		await context.curvePool.setPool(ether('1'), [context.curveLockedAsset1.address, context.curveLockedAsset2.address, context.curveLockedAsset3.address])
-		context.curveRegistry = await CurveRegistryMock.new(context.mainCollateral.address, context.curvePool.address, 3)
-		context.curveProvider = await CurveProviderMock.new(context.curveRegistry.address)
 		context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address, context.weth.address)
 
 		await context.oracleRegistry.setOracle(5, context.chainlinkOracleMainAsset.address);
@@ -194,6 +189,8 @@ module.exports = (context, mode) => {
 			context.vaultParameters.address,
 			context.oracleRegistry.address,
 		)
+
+		context.forceTransferAssetStore = await ForceTransferAssetStore.new(context.vaultParameters.address, []);
 
 		if (isLP) {
 			context.oraclePoolToken = await OraclePoolToken.new(context.oracleRegistry.address);
@@ -275,6 +272,18 @@ module.exports = (context, mode) => {
 
 
 		} else if (curveLP) {
+
+			// curveLockedAssets is underlying tokens
+			// `mainCollateral` is LP is this case
+			// `wrappedAsset` is the collateral
+			context.curveLockedAsset1 = await DummyToken.new("USDC", "USDC", 6, 1000000e6);
+			context.curveLockedAsset2 = await DummyToken.new("USDT", "USDT", 6, 1000000e6);
+			context.curveLockedAsset3 = await DummyToken.new("DAI", "DAI", 18, ether('1000000'));
+			context.curvePool = await CurvePool.new()
+			await context.curvePool.setPool(ether('1'), [context.curveLockedAsset1.address, context.curveLockedAsset2.address, context.curveLockedAsset3.address])
+			context.curveRegistry = await CurveRegistryMock.new(context.mainCollateral.address, context.curvePool.address, 3)
+			context.curveProvider = await CurveProviderMock.new(context.curveRegistry.address)
+
 			context.curveLockedAssetUsdPrice = await ChainlinkAggregator.new(1e8.toString(), 8);
 			await context.chainlinkOracleMainAsset.setAggregators(
 				[context.curveLockedAsset1.address, context.curveLockedAsset2.address, context.curveLockedAsset3.address],
@@ -296,10 +305,37 @@ module.exports = (context, mode) => {
 
 			context.wrappedAsset = await DummyToken.new("Wrapper Curve LP", "WCLP", 18, ether('100000000000'))
 
+			await context.forceTransferAssetStore.add(context.wrappedAsset.address);
+
 			await context.wrappedToUnderlyingOracle.setUnderlying(context.wrappedAsset.address, context.mainCollateral.address)
 
 			context.oracleRegistry.setOracle(mainAssetOracleType, context.wrappedToUnderlyingOracle.address)
 			context.oracleRegistry.setOracleTypeForAsset(context.wrappedAsset.address, mainAssetOracleType)
+
+		} else if (cyWETHsample) {
+			mainAssetOracleType = 14
+      let totalSupply = new BN('1000000000000000000000000');
+      let cyTokenImplementation = '0x1A9e503562CE800Ea8e68E2cf0cfA0AEC2eDb509';
+			let sampleRate = new BN('100000000000000000000000000');
+			context.cyWETH = await CyWETH.new(totalSupply,context.weth.address,cyTokenImplementation,sampleRate);
+
+			context.keep3rOracleMainAssetMock = await Keep3rOracleMainAssetMock.new(
+				context.uniswapFactory.address,
+				context.weth.address,
+				context.ethUsd.address,
+			)
+
+			context.oracleRegistry.setOracle(7, context.keep3rOracleMainAssetMock.address)
+			context.oracleRegistry.setOracleTypeForAsset(context.mainCollateral.address, 7)
+
+			context.CyTokenOracle = await CyTokenOracle.new(
+				context.vaultParameters.address,
+				context.oracleRegistry.address,
+				cyTokenImplementation,
+			)
+
+			context.oracleRegistry.setOracle(mainAssetOracleType, context.CyTokenOracle.address)
+			context.oracleRegistry.setOracleTypeForAsset(context.CyTokenOracle.address, 14)
 
 		}
 
@@ -318,9 +354,8 @@ module.exports = (context, mode) => {
 
 		context.liquidationAuction = await LiquidationAuction.new(
 			context.vaultManagerParameters.address,
-			context.oracleRegistry.address,
-			context.curveProvider.address,
-			context.cdpRegistry.address
+			context.cdpRegistry.address,
+			context.forceTransferAssetStore.address
 		);
 
 		if (keydonix) {
@@ -352,7 +387,7 @@ module.exports = (context, mode) => {
 		await context.vaultParameters.setVaultAccess(context.liquidationAuction.address, true);
 
 		await context.vaultManagerParameters.setCollateral(
-			bearingAssetSimple ? context.bearingAsset.address : curveLP ? context.wrappedAsset.address : context.mainCollateral.address,
+			cyWETHsample ? context.cyWETH.address : bearingAssetSimple ? context.bearingAsset.address : curveLP ? context.wrappedAsset.address : context.mainCollateral.address,
 			'0', // stability fee
 			'13', // liquidation fee
 			'67', // initial collateralization

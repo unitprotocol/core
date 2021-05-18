@@ -177,6 +177,7 @@ module.exports = function(context, mode) {
 		sushiswapKeep3rPoolToken: simpleWrapper,
 		bearingAssetSimple: simpleWrapper,
 		curveLP: simpleWrapper,
+		cyWETHsample: simpleWrapper,
 	}
 	return wrappers[mode];
 }
