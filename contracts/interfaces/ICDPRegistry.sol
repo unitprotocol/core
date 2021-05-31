@@ -1,13 +1,18 @@
+// SPDX-License-Identifier: bsl-1.1
+
+/*
+  Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
+*/
+pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
-
 interface ICDPRegistry {
-    
+
     struct CDP {
         address asset;
         address owner;
     }
-    
+
     function batchCheckpoint ( address[] calldata assets, address[] calldata owners ) external;
     function batchCheckpointForAsset ( address asset, address[] calldata owners ) external;
     function checkpoint ( address asset, address owner ) external;
