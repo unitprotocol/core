@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: bsl-1.1
+
+/*
+  Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
+*/
+pragma solidity ^0.7.6;
+
 interface IVault {
     function DENOMINATOR_1E2 (  ) external view returns ( uint256 );
     function DENOMINATOR_1E5 (  ) external view returns ( uint256 );
