@@ -24,7 +24,7 @@ contract UniswapV2Router02 {
         _;
     }
 
-    constructor(address _factory, address payable _WETH) public {
+    constructor(address _factory, address payable _WETH) {
         factory = _factory;
         weth = _WETH;
     }
