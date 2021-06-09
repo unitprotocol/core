@@ -22,5 +22,5 @@ contract DummyToken is EmptyToken {
         _totalSupply,
         msg.sender
     )
-    public {}
+    {}
 }
