@@ -18,7 +18,7 @@ import "../helpers/SafeMath.sol";
 contract KeydonixOraclePoolToken_Mock is ChainlinkedKeydonixOraclePoolTokenAbstract {
     using SafeMath for uint;
 
-    constructor(address _keydonixOracleMainAsset_Mock) public {
+    constructor(address _keydonixOracleMainAsset_Mock) {
         uniswapOracleMainAsset = ChainlinkedKeydonixOracleMainAssetAbstract(_keydonixOracleMainAsset_Mock);
     }
 

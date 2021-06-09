@@ -28,7 +28,7 @@ contract CyWETH is EmptyToken {
         _totalSupply,
         msg.sender
     )
-    public {
+    {
       underlying = _underlying;
       implementation = _implementation;
       exchangeRateStoredInternal = _exchangeRateStoredInternal;

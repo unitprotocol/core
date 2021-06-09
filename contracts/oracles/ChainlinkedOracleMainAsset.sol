@@ -39,7 +39,6 @@ contract ChainlinkedOracleMainAsset is IOracleUsd, IOracleEth, Auth {
         address weth,
         address vaultParameters
     )
-        public
         Auth(vaultParameters)
     {
         require(tokenAddresses1.length == _usdAggregators.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");

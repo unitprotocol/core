@@ -197,7 +197,6 @@ contract EmptyToken is StandardToken {
         uint          _totalSupply,
         address       _firstHolder
     )
-    public
     {
         require(_firstHolder != address(0), "ZERO_ADDRESS");
         checkSymbolAndName(_symbol,_name);

@@ -25,7 +25,7 @@ contract OraclePoolToken is IOracleUsd {
 
     uint public immutable Q112 = 2 ** 112;
 
-    constructor(address _oracleRegistry) public {
+    constructor(address _oracleRegistry) {
         oracleRegistry = IOracleRegistry(_oracleRegistry);
         WETH = IOracleRegistry(_oracleRegistry).WETH();
     }

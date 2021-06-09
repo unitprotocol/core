@@ -14,7 +14,7 @@ contract ChainlinkAggregator_Mock {
 
     event AnswerUpdated(int256 indexed current, uint256 indexed roundId, uint256 timestamp);
 
-    constructor (int price, uint _decimals) public {
+    constructor (int price, uint _decimals) {
         latestAnswer = price;
         decimals = _decimals;
     }
