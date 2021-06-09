@@ -16,10 +16,10 @@ contract('CyTokenOracle', function([
 		await this.utils.deploy()
 	});
 
-	it('Should check implementation of cyWETH with data from CyTokenOracle', async function () {
-		const oracleImplementation = await this.CyTokenOracle.cytokenImplementation();
+	it('Should check that the implementation of cyWETH is enabled', async function () {
 		const tokenImplementation = await this.cyWETH.implementation();
-		expect(tokenImplementation).to.equal(oracleImplementation);
+    const isEnabled = await this.CyTokenOracle.enabledImplementations(tokenImplementation);
+		expect(isEnabled).to.equal(true);
 	});
 
 	it('Should check that underlying of cyWETH equal to WETH address', async function () {
@@ -35,7 +35,6 @@ contract('CyTokenOracle', function([
 	});
 
 	it('Should quote cyWETH', async function () {
-		const storedRate = await this.cyWETH.exchangeRateStored();
 		const rate = await this.CyTokenOracle.bearingToUnderlying(this.cyWETH.address, cyWETHamount);
 		// since 1 WETH token costs 250$
 		const expectedUsdValue_q112 = rate[1].mul(Q112).mul(new BN('250'));
