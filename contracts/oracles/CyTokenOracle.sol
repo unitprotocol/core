@@ -11,7 +11,7 @@ import "../interfaces/IOracleEth.sol";
 import "../VaultParameters.sol";
 
 /**
- * @title CyTokensOracle
+ * @title CyTokenOracle
  * @dev Wrapper to quote cyToken assets like cyWETH, cyDAI, cyUSDT, cyUSDC
  * @dev cyToken list:  https://docs.cream.finance/iron-bank/iron-bank#yearn-token-cytoken
  **/
@@ -21,21 +21,26 @@ contract CyTokenOracle is IOracleUsd, Auth  {
 
     uint constant expScale = 1e18;
 
-    address public cytokenImplementation;
+    mapping (address => bool) public enabledImplementations;
 
     IOracleRegistry public immutable oracleRegistry;
 
-    event NewImplementation(address indexed implementation);
+    event ImplementationChanged(address indexed implementation, bool enabled);
 
-    constructor(address _vaultParameters, address _oracleRegistry, address _cytokenImplementation) Auth(_vaultParameters) {
+    constructor(address _vaultParameters, address _oracleRegistry, address[] memory impls) Auth(_vaultParameters) {
         require(_vaultParameters != address(0) && _oracleRegistry != address(0), "Unit Protocol: ZERO_ADDRESS");
         oracleRegistry = IOracleRegistry(_oracleRegistry);
-        cytokenImplementation = _cytokenImplementation;
+        for (uint i = 0; i < impls.length; i++) {
+          require(impls[i] != address(0), "Unit Protocol: ZERO_ADDRESS");
+          enabledImplementations[impls[i]] = true;
+          emit ImplementationChanged(impls[i], true);
+        }
     }
 
-    function setNewImplementation(address newImplementation) external onlyManager {
-        cytokenImplementation = newImplementation;
-        emit NewImplementation(newImplementation);
+    function setImplementation(address impl, bool enable) external onlyManager {
+      require(impl != address(0), "Unit Protocol: ZERO_ADDRESS");
+      enabledImplementations[impl] = enable;
+      emit ImplementationChanged(impl, enable);
     }
 
     // returns Q112-encoded value
@@ -51,7 +56,7 @@ contract CyTokenOracle is IOracleUsd, Auth  {
         address _underlying = IcyToken(bearing).underlying();
         require(_underlying != address(0), "Unit Protocol: UNDEFINED_UNDERLYING");
         address _implementation = IcyToken(bearing).implementation();
-        require(_implementation == cytokenImplementation, "Unit Protocol: CYTOKEN_IMPLEMENTATION_CHANGED");
+        require(enabledImplementations[_implementation], "Unit Protocol: UNSUPPORTED_CYTOKEN_IMPLEMENTATION");
         uint _exchangeRateStored = IcyToken(bearing).exchangeRateStored();
         uint _totalSupply = ERC20Like(bearing).totalSupply();
         require(amount <= _totalSupply, "Unit Protocol: AMOUNT_EXCEEDS_SUPPLY");
