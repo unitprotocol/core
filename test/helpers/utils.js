@@ -5,6 +5,7 @@ const USDP = artifacts.require('USDP');
 const WETH = artifacts.require('WETH');
 const DummyToken = artifacts.require('DummyToken');
 const CyWETH = artifacts.require('CyWETH');
+const YvWETH = artifacts.require('YvWETH');
 const CurveRegistryMock = artifacts.require('CurveRegistryMock');
 const CurvePool = artifacts.require('CurvePool');
 const CurveProviderMock = artifacts.require('CurveProviderMock');
@@ -28,7 +29,7 @@ const CDPRegistry = artifacts.require('CDPRegistry');
 const ForceTransferAssetStore = artifacts.require('ForceTransferAssetStore');
 const CollateralRegistry = artifacts.require('CollateralRegistry');
 const CyTokenOracle = artifacts.require('CyTokenOracle');
-
+const YvTokenOracle = artifacts.require('YvTokenOracle');
 
 const { ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce, deployContractBytecode } = require('./deployUtils');
@@ -65,6 +66,8 @@ module.exports = (context, mode) => {
 	const bearingAssetSimple = mode.startsWith('bearingAssetSimple');
 	const curveLP = mode.startsWith('curveLP');
 	const cyWETHsample = mode.startsWith('cyWETHsample');
+	const yvWETHsample = mode.startsWith('yvWETHsample');
+
 
 	const isLP = mode.includes('PoolToken');
 
@@ -331,11 +334,35 @@ module.exports = (context, mode) => {
 			context.CyTokenOracle = await CyTokenOracle.new(
 				context.vaultParameters.address,
 				context.oracleRegistry.address,
-				[cyTokenImplementation],
+				cyTokenImplementation,
 			)
 
 			context.oracleRegistry.setOracle(mainAssetOracleType, context.CyTokenOracle.address)
 			context.oracleRegistry.setOracleTypeForAsset(context.CyTokenOracle.address, 14)
+
+		} else if (yvWETHsample) {
+			mainAssetOracleType = 15
+      let totalSupply = new BN('10000000000000000000000');
+			let pricePerShare = new BN('1015000000000000000');
+			let emergencyShutdown = false;
+			context.yvWETH = await YvWETH.new(totalSupply, context.weth.address, pricePerShare, emergencyShutdown);
+
+			context.keep3rOracleMainAssetMock = await Keep3rOracleMainAssetMock.new(
+				context.uniswapFactory.address,
+				context.weth.address,
+				context.ethUsd.address,
+			)
+
+			context.oracleRegistry.setOracle(7, context.keep3rOracleMainAssetMock.address)
+			context.oracleRegistry.setOracleTypeForAsset(context.mainCollateral.address, 7)
+
+			context.YvTokenOracle = await YvTokenOracle.new(
+				context.vaultParameters.address,
+				context.oracleRegistry.address,
+			)
+
+			context.oracleRegistry.setOracle(mainAssetOracleType, context.YvTokenOracle.address)
+			context.oracleRegistry.setOracleTypeForAsset(context.YvTokenOracle.address, 15)
 
 		}
 
@@ -387,7 +414,7 @@ module.exports = (context, mode) => {
 		await context.vaultParameters.setVaultAccess(context.liquidationAuction.address, true);
 
 		await context.vaultManagerParameters.setCollateral(
-			cyWETHsample ? context.cyWETH.address : bearingAssetSimple ? context.bearingAsset.address : curveLP ? context.wrappedAsset.address : context.mainCollateral.address,
+			yvWETHsample ? context.yvWETH.address : cyWETHsample ? context.cyWETH.address : bearingAssetSimple ? context.bearingAsset.address : curveLP ? context.wrappedAsset.address : context.mainCollateral.address,
 			'0', // stability fee
 			'13', // liquidation fee
 			'67', // initial collateralization
