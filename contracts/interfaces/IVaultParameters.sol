@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: bsl-1.1
+
+/*
+  Copyright 2020 Unit Protocol: Artem Zakharov (az@unit.xyz).
+*/
+pragma solidity ^0.7.6;
+
 interface IVaultParameters {
     function canModifyVault ( address ) external view returns ( bool );
     function foundation (  ) external view returns ( address );

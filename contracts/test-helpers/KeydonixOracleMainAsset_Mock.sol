@@ -30,7 +30,6 @@ contract KeydonixOracleMainAsset_Mock is ChainlinkedKeydonixOracleMainAssetAbstr
         address weth,
         IAggregator chainlinkAggregator
     )
-        public
     {
         require(address(uniFactory) != address(0), "Unit Protocol: ZERO_ADDRESS");
         require(weth != address(0), "Unit Protocol: ZERO_ADDRESS");

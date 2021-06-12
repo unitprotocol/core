@@ -331,7 +331,7 @@ module.exports = (context, mode) => {
 			context.CyTokenOracle = await CyTokenOracle.new(
 				context.vaultParameters.address,
 				context.oracleRegistry.address,
-				cyTokenImplementation,
+				[cyTokenImplementation],
 			)
 
 			context.oracleRegistry.setOracle(mainAssetOracleType, context.CyTokenOracle.address)

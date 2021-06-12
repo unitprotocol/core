@@ -16,7 +16,7 @@
 | USDP | 0x1456688345527bE1f37E9e627DA0837D6f08C925      |
 | VaultParameters      | 0xB46F8CF42e504Efe8BEf895f848741daA55e9f1D |
 | VaultManagerParameters      | 0x203153522B9EAef4aE17c6e99851EE7b2F7D312E      |
-| LiquidationAuction01      | 0xa41a3625c02c60Ae932515E7F921ada1811aF6a5      |
+| LiquidationAuction02      | 0xaEF1ed4C492BF4C57221bE0706def67813D79955      |
 | CDPManager01      | 0x0e13ab042eC5AB9Fc6F43979406088B9028F66fA      |
 | CDPManager01_Fallback      | 0xaD3617D11f4c1d30603551eA75e9Ace9CB386e15      |
 
@@ -42,6 +42,7 @@
 | AssetParametersViewer | 0xd51F509Fb80b4fF4D4Bfb4144eEd877F0F499AF6      |
 | CollateralRegistry      | 0x3DB39B538Db1123389c77F888a213F1A6dd22EF3 |
 | CDPRegistry      | 0x1a5Ff58BC3246Eb233fEA20D32b79B5F01eC650c      |
+| ForceTransferAssetStore      | 0xF7633FA353E74Edb211B1d22e23c96aE4d7b24C0      |
 
 
 # Binance smart chain
