@@ -38,8 +38,6 @@ contract YvTokenOracle is IOracleUsd, Auth  {
     function bearingToUnderlying(address bearing, uint amount) public view returns (address, uint) {
         address _underlying = IyvToken(bearing).token();
         require(_underlying != address(0), "Unit Protocol: UNDEFINED_UNDERLYING");
-        bool _emergencyShutdown = IyvToken(bearing).emergencyShutdown();
-        require(_emergencyShutdown != true, "Unit Protocol: BEARING_EMERGENCY_SHUTDOWN_STATUS");
         uint _totalSupply = ERC20Like(bearing).totalSupply();
         require(amount <= _totalSupply, "Unit Protocol: AMOUNT_EXCEEDS_SUPPLY");
         uint _pricePerShare = IyvToken(bearing).pricePerShare();
