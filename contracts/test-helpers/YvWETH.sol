@@ -14,13 +14,11 @@ contract YvWETH is EmptyToken {
 
   uint256 public pricePerShare;
 
-  bool public emergencyShutdown;
 
     constructor(
         uint256          _totalSupply,
         address          _token,
-        uint256          _pricePerShare,
-        bool             _emergencyShutdown
+        uint256          _pricePerShare
     ) EmptyToken(
         "WETH yVault",
         "yvWETH",
@@ -31,7 +29,6 @@ contract YvWETH is EmptyToken {
     public {
       token = _token;
       pricePerShare = _pricePerShare;
-      emergencyShutdown = _emergencyShutdown;
     }
 
 }

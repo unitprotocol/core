@@ -344,8 +344,7 @@ module.exports = (context, mode) => {
 			mainAssetOracleType = 15
       let totalSupply = new BN('10000000000000000000000');
 			let pricePerShare = new BN('1015000000000000000');
-			let emergencyShutdown = false;
-			context.yvWETH = await YvWETH.new(totalSupply, context.weth.address, pricePerShare, emergencyShutdown);
+			context.yvWETH = await YvWETH.new(totalSupply, context.weth.address, pricePerShare);
 
 			context.keep3rOracleMainAssetMock = await Keep3rOracleMainAssetMock.new(
 				context.uniswapFactory.address,

@@ -22,11 +22,6 @@ contract('YvTokenOracle', function([
 		expect(yvWethUnderlyingAddress).to.equal(underlyingAddress);
 	});
 
-	it('Should check that yvWETH emergencyShutdown status is false', async function () {
-		const emergencyShutdown = await this.yvWETH.emergencyShutdown();
-		expect(emergencyShutdown == false).to.be.true;
-	});
-
   let yvWETHamount = 1000000;
 
 	it('Should check that yvWETH totalSupply not less then yvWETH amount', async function () {
