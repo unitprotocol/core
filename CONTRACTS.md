@@ -34,6 +34,7 @@
 | WrappedToUnderlyingOracle      | 0x220Ea780a484c18fd0Ab252014c58299759a1Fbd      |
 | CurveLPOracle      | 0x0E08d9e1DC22a400EbcA25E9a8f292910fa8fe08      |
 | CyTokenOracle      | 0x40B743Ca424E3eC7b97f5AD93d2263Ae01DAE1D8      |
+| YvTokenOracle      | 0x759EB07A8258BcF5590E9303763803DcF264652d      |
 
 ### Helpers & Registries
 
