@@ -17,7 +17,7 @@
 | USDP | [0x1456688345527bE1f37E9e627DA0837D6f08C925](https://etherscan.io/address/0x1456688345527bE1f37E9e627DA0837D6f08C925#code)      | [0xdacd011a71f8c9619642bf482f1d4ceb338cffcf](https://bscscan.com/address/0xdacd011a71f8c9619642bf482f1d4ceb338cffcf#code)      |
 | VaultParameters      | [0xB46F8CF42e504Efe8BEf895f848741daA55e9f1D](https://etherscan.io/address/0xB46F8CF42e504Efe8BEf895f848741daA55e9f1D#code) | [0x56c7CA666d192332F72a5842E72eED5f59F0fb48](https://bscscan.com/address/0x56c7CA666d192332F72a5842E72eED5f59F0fb48#code) |
 | VaultManagerParameters      | [0x203153522B9EAef4aE17c6e99851EE7b2F7D312E](https://etherscan.io/address/0x203153522B9EAef4aE17c6e99851EE7b2F7D312E#code)      | [0x99f2B13C28A4183a5d5e0fe02B1B5aeEe85FAF5A](https://bscscan.com/address/0x99f2B13C28A4183a5d5e0fe02B1B5aeEe85FAF5A#code)      |
-| LiquidationAuction02      | [0xaEF1ed4C492BF4C57221bE0706def67813D79955](https://etherscan.io/address/0xaEF1ed4C492BF4C57221bE0706def67813D79955#code)      | [0x754106b2f312c987Dd34161F8b4735392fa93F06](https://bscscan.com/address/0x754106b2f312c987Dd34161F8b4735392fa93F06#code)      |
+| LiquidationAuction02      | [0xaEF1ed4C492BF4C57221bE0706def67813D79955](https://etherscan.io/address/0xaEF1ed4C492BF4C57221bE0706def67813D79955#code)      | [0x852de08f3cD5b92dD8b3B92b321363D04EeEc39E](https://bscscan.com/address/0x852de08f3cD5b92dD8b3B92b321363D04EeEc39E#code)      |
 | CDPManager01      | [0x0e13ab042eC5AB9Fc6F43979406088B9028F66fA](https://etherscan.io/address/0x0e13ab042eC5AB9Fc6F43979406088B9028F66fA#code)      | [0x1337daC01Fc21Fa21D17914f96725f7a7b73868f](https://bscscan.com/address/0x1337daC01Fc21Fa21D17914f96725f7a7b73868f#code)      |
 | CDPManager01_Fallback      | [0xaD3617D11f4c1d30603551eA75e9Ace9CB386e15](https://etherscan.io/address/0xaD3617D11f4c1d30603551eA75e9Ace9CB386e15#code)      | - |
 
@@ -30,7 +30,7 @@
 | AssetParametersViewer | [0xd51F509Fb80b4fF4D4Bfb4144eEd877F0F499AF6](https://etherscan.io/address/0xd51F509Fb80b4fF4D4Bfb4144eEd877F0F499AF6#code)      | - |
 | CollateralRegistry      | [0x3DB39B538Db1123389c77F888a213F1A6dd22EF3](https://etherscan.io/address/0x3DB39B538Db1123389c77F888a213F1A6dd22EF3#code) | [0xA1ad3602697c15113E089C2723c15eBF3038465C](https://bscscan.com/address/0xA1ad3602697c15113E089C2723c15eBF3038465C#code)      |
 | CDPRegistry      | [0x1a5Ff58BC3246Eb233fEA20D32b79B5F01eC650c](https://etherscan.io/address/0x1a5Ff58BC3246Eb233fEA20D32b79B5F01eC650c#code)      | [0xE8372dcef80189c0F88631507f6466b3f60E24A4](https://bscscan.com/address/0xE8372dcef80189c0F88631507f6466b3f60E24A4#code)      |
-| ForceTransferAssetStore      | [0xF7633FA353E74Edb211B1d22e23c96aE4d7b24C0](https://etherscan.io/address/0xF7633FA353E74Edb211B1d22e23c96aE4d7b24C0#code)      | - |
+| ForceTransferAssetStore      | [0xF7633FA353E74Edb211B1d22e23c96aE4d7b24C0](https://etherscan.io/address/0xF7633FA353E74Edb211B1d22e23c96aE4d7b24C0#code)      | [0x7815ed0f9B00E7b34f52543779783023c7621fA1](https://bscscan.com/address/0x7815ed0f9B00E7b34f52543779783023c7621fA1#code)      |
 | PancakeV2Twap | - | [0x11b1bd923f4D0669958e16A511567f540Bc21d2e](https://bscscan.com/address/0x11b1bd923f4D0669958e16A511567f540Bc21d2e#code)      |
 
 ### Oracles
