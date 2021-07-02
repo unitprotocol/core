@@ -178,6 +178,7 @@ module.exports = function(context, mode) {
 		bearingAssetSimple: simpleWrapper,
 		curveLP: simpleWrapper,
 		cyWETHsample: simpleWrapper,
+		yvWETHsample: simpleWrapper,
 	}
 	return wrappers[mode];
 }
