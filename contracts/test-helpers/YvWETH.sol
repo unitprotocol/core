@@ -25,8 +25,7 @@ contract YvWETH is EmptyToken {
         18,
         _totalSupply,
         msg.sender
-    )
-    public {
+    ) {
       token = _token;
       pricePerShare = _pricePerShare;
     }

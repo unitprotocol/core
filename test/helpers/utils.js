@@ -6,6 +6,8 @@ const WETH = artifacts.require('WETH');
 const DummyToken = artifacts.require('DummyToken');
 const CyWETH = artifacts.require('CyWETH');
 const YvWETH = artifacts.require('YvWETH');
+const WstETH = artifacts.require('WstETH');
+const StETH = artifacts.require('StETH');
 const CurveRegistryMock = artifacts.require('CurveRegistryMock');
 const CurvePool = artifacts.require('CurvePool');
 const CurveProviderMock = artifacts.require('CurveProviderMock');
@@ -30,6 +32,10 @@ const ForceTransferAssetStore = artifacts.require('ForceTransferAssetStore');
 const CollateralRegistry = artifacts.require('CollateralRegistry');
 const CyTokenOracle = artifacts.require('CyTokenOracle');
 const YvTokenOracle = artifacts.require('YvTokenOracle');
+const WstEthOracle = artifacts.require('WstEthOracle');
+const StETHPriceFeed = artifacts.require('StETHPriceFeed');
+const StETHStableSwapOracle = artifacts.require('StETHStableSwapOracle');
+const StETHCurvePool = artifacts.require('StETHCurvePool');
 
 const { ether } = require('openzeppelin-test-helpers');
 const { calculateAddressAtNonce, deployContractBytecode } = require('./deployUtils');
@@ -67,6 +73,7 @@ module.exports = (context, mode) => {
 	const curveLP = mode.startsWith('curveLP');
 	const cyWETHsample = mode.startsWith('cyWETHsample');
 	const yvWETHsample = mode.startsWith('yvWETHsample');
+	const wstETHsample = mode.startsWith('wstETHsample');
 
 
 	const isLP = mode.includes('PoolToken');
@@ -363,6 +370,49 @@ module.exports = (context, mode) => {
 			context.oracleRegistry.setOracle(mainAssetOracleType, context.YvTokenOracle.address)
 			context.oracleRegistry.setOracleTypeForAsset(context.YvTokenOracle.address, 15)
 
+		} else if (wstETHsample) {
+			mainAssetOracleType = 16;
+
+			// StETH
+			let totalPooledEther = new BN('1000000000000000000000000');
+			let totalShares = new BN('2000000000000000000000000');
+			context.stETH = await StETH.new(totalPooledEther, totalShares);
+
+			// StETHCurvePool
+			let priceCurvePool = new BN('900000000000000000');
+			context.stETHCurvePool = await StETHCurvePool.new(priceCurvePool);
+
+			// StableSwapStateOracle
+			let priceStableSwapStateOracle = new BN('850000000000000000');
+			context.stETHStableSwapOracle = await StETHStableSwapOracle.new(priceStableSwapStateOracle);
+
+			// StETHPriceFeed
+			context.stETHPriceFeed = await StETHPriceFeed.new(context.stETHCurvePool.address, context.stETHStableSwapOracle.address);
+
+			// WstETH
+			let totalSupplyWstEth = new BN('3000000000000000000000000');
+			context.wstETH = await WstETH.new(totalSupplyWstEth, context.stETH.address);
+
+			context.keep3rOracleMainAssetMock = await Keep3rOracleMainAssetMock.new(
+				context.uniswapFactory.address,
+				context.weth.address,
+				context.ethUsd.address,
+			)
+
+			context.oracleRegistry.setOracle(7, context.keep3rOracleMainAssetMock.address)
+			context.oracleRegistry.setOracleTypeForAsset(context.mainCollateral.address, 7)
+
+      let stEthDecimals = 18;
+			context.WstEthOracle = await WstEthOracle.new(
+				context.vaultParameters.address,
+				context.oracleRegistry.address,
+				stEthDecimals,
+				context.stETHPriceFeed.address,
+			)
+
+			context.oracleRegistry.setOracle(mainAssetOracleType, context.WstEthOracle.address)
+			context.oracleRegistry.setOracleTypeForAsset(context.WstEthOracle.address, 16)
+
 		}
 
 		context.collateralRegistry = await CollateralRegistry.new(context.vaultParameters.address, [context.mainCollateral.address]);
@@ -413,7 +463,7 @@ module.exports = (context, mode) => {
 		await context.vaultParameters.setVaultAccess(context.liquidationAuction.address, true);
 
 		await context.vaultManagerParameters.setCollateral(
-			yvWETHsample ? context.yvWETH.address : cyWETHsample ? context.cyWETH.address : bearingAssetSimple ? context.bearingAsset.address : curveLP ? context.wrappedAsset.address : context.mainCollateral.address,
+			wstETHsample ? context.wstETH.address : yvWETHsample ? context.yvWETH.address : cyWETHsample ? context.cyWETH.address : bearingAssetSimple ? context.bearingAsset.address : curveLP ? context.wrappedAsset.address : context.mainCollateral.address,
 			'0', // stability fee
 			'13', // liquidation fee
 			'67', // initial collateralization
