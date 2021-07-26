@@ -50,4 +50,13 @@ contract StETHPriceFeed {
     return (currentPrice, is_safe);
   }
 
+  function full_price_info() public view returns (uint256, bool, uint256) {
+    uint256 currentPrice = 0;
+    bool has_changed_unsafely = true;
+    uint256 oracle_price = 0;
+    (currentPrice, has_changed_unsafely, oracle_price) = _current_price();
+    bool is_safe = currentPrice <= 10**18 && !has_changed_unsafely;
+    return (currentPrice, is_safe, oracle_price);
+  }
+
 }

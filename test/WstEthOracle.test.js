@@ -55,20 +55,35 @@ contract('WstEthOracle', function([
 	});
 
 	it('Should check priceStableSwapStateOracle', async function () {
-		let priceSetted = 850000000000000000;
+		let priceSetted = 880000000000000000;
 		console.log('priceSetted: ', priceSetted);
 		const priceGetted = await this.stETHStableSwapOracle.stethPrice();
 		console.log('priceGetted: ', priceGetted.toString(10));
 		expect((priceSetted == priceGetted)).to.be.true;
 	});
 
+	function percentageDiff(nv, ov) {
+			if (nv > ov) {
+				return ( nv - ov ) * 10000 / ov;
+			} else {
+				return ( ov - nv ) * 10000 / ov;
+			}
+	}
+
 	it('Should check stETHPriceFeed', async function () {
 		let priceSettedToCurvePool = 900000000000000000;
+		let priceSettedToOracle = 880000000000000000;
 		console.log('priceSettedToCurvePool: ', priceSettedToCurvePool);
-		const priceGetted = await this.stETHPriceFeed.current_price();
+		console.log('priceSettedToOracle: ', priceSettedToOracle);
+		const priceGetted = await this.stETHPriceFeed.full_price_info();
 		priceFromFeed = priceGetted[0];
-		console.log('priceGetted: ', priceGetted[0].toString(10));
+		console.log('priceGettedFromCurvePool: ', priceGetted[0].toString(10));
 		console.log('priceIsSafe: ', priceGetted[1].toString());
+		console.log('priceGettedFromOracle: ', priceGetted[2].toString(10));
+    let poolPrice = Number(priceGetted[0].toString(10));
+		let oraclePrice = Number(priceGetted[2].toString(10));
+		console.log('percentageDiff: ', percentageDiff(poolPrice, oraclePrice));
+		console.log('isSafeByOurselves: ', poolPrice <= 10**18 && !(percentageDiff(poolPrice, oraclePrice) > 500));
 		expect((priceSettedToCurvePool == priceGetted[0])).to.be.true;
 	});
 

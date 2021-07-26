@@ -383,7 +383,7 @@ module.exports = (context, mode) => {
 			context.stETHCurvePool = await StETHCurvePool.new(priceCurvePool);
 
 			// StableSwapStateOracle
-			let priceStableSwapStateOracle = new BN('850000000000000000');
+			let priceStableSwapStateOracle = new BN('880000000000000000');
 			context.stETHStableSwapOracle = await StETHStableSwapOracle.new(priceStableSwapStateOracle);
 
 			// StETHPriceFeed
@@ -402,11 +402,11 @@ module.exports = (context, mode) => {
 			context.oracleRegistry.setOracle(7, context.keep3rOracleMainAssetMock.address)
 			context.oracleRegistry.setOracleTypeForAsset(context.mainCollateral.address, 7)
 
-      let stEthDecimals = 18;
+      // let stEthDecimals = 18;
 			context.WstEthOracle = await WstEthOracle.new(
 				context.vaultParameters.address,
 				context.oracleRegistry.address,
-				stEthDecimals,
+				context.wstETH.address,
 				context.stETHPriceFeed.address,
 			)
 
