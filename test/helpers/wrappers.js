@@ -179,6 +179,7 @@ module.exports = function(context, mode) {
 		curveLP: simpleWrapper,
 		cyWETHsample: simpleWrapper,
 		yvWETHsample: simpleWrapper,
+		wstETHsample: simpleWrapper,
 	}
 	return wrappers[mode];
 }
