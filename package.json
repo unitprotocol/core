@@ -10,6 +10,7 @@
     "test:single-point": "truffle test test/*Keep3r*.test.js test/*Wrapped*.test.js test/Li*Bearing*.test.js test/CDP*Bearing*.test.js test/LiquidationAuction.test.js test/LiquidationTrigger_Chainlink.test.js test/LiquidationTrigger_PoolToken_Chainlink.test.js",
     "test:cytoken": "truffle test test/CyTokenOracle.test.js",
     "test:yvtoken": "truffle test test/YvTokenOracle.test.js",
+    "test:wsteth": "truffle test test/WstEthOracle.test.js",
     "build": "rm -rf build && truffle compile",
     "coverage": "truffle run coverage"
   },
