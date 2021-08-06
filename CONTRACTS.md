@@ -20,13 +20,14 @@
 | LiquidationAuction02      | [0xaEF1ed4C492BF4C57221bE0706def67813D79955](https://etherscan.io/address/0xaEF1ed4C492BF4C57221bE0706def67813D79955#code)      | [0x852de08f3cD5b92dD8b3B92b321363D04EeEc39E](https://bscscan.com/address/0x852de08f3cD5b92dD8b3B92b321363D04EeEc39E#code)      |
 | CDPManager01      | [0x0e13ab042eC5AB9Fc6F43979406088B9028F66fA](https://etherscan.io/address/0x0e13ab042eC5AB9Fc6F43979406088B9028F66fA#code)      | [0x1337daC01Fc21Fa21D17914f96725f7a7b73868f](https://bscscan.com/address/0x1337daC01Fc21Fa21D17914f96725f7a7b73868f#code)      |
 | CDPManager01_Fallback      | [0xaD3617D11f4c1d30603551eA75e9Ace9CB386e15](https://etherscan.io/address/0xaD3617D11f4c1d30603551eA75e9Ace9CB386e15#code)      | - |
+| QDUCK      | [0xE85d5FE256F5f5c9E446502aE994fDA12fd6700a](https://etherscan.io/address/0xE85d5FE256F5f5c9E446502aE994fDA12fd6700a#code)      | - |
 
 ### Helpers & Registries
 
 | Name          | Mainnet       | Bsc       |
 | ------------- |:-------------:|:-------------:|
 | OracleRegistry | [0x75fBFe26B21fd3EA008af0C764949f8214150C8f](https://etherscan.io/address/0x75fBFe26B21fd3EA008af0C764949f8214150C8f#code)      | [0xbea721ACe12e881cb44Dbe9361ffEd9141CE547F](https://bscscan.com/address/0xbea721ACe12e881cb44Dbe9361ffEd9141CE547F#code)      |
-| ParametersBatchUpdater | [0x4DD1A6DB148BEcDADAdFC407D23b725eDd3cfB6f](https://etherscan.io/address/0x4DD1A6DB148BEcDADAdFC407D23b725eDd3cfB6f#code)      | - |
+| ParametersBatchUpdater | [0x4DD1A6DB148BEcDADAdFC407D23b725eDd3cfB6f](https://etherscan.io/address/0x4DD1A6DB148BEcDADAdFC407D23b725eDd3cfB6f#code)      | [0x3f03b937b986ad10dd171c393562f3fbe03abd9d](https://bscscan.com/address/0x3f03b937b986ad10dd171c393562f3fbe03abd9d#code) |
 | AssetParametersViewer | [0xd51F509Fb80b4fF4D4Bfb4144eEd877F0F499AF6](https://etherscan.io/address/0xd51F509Fb80b4fF4D4Bfb4144eEd877F0F499AF6#code)      | - |
 | CollateralRegistry      | [0x3DB39B538Db1123389c77F888a213F1A6dd22EF3](https://etherscan.io/address/0x3DB39B538Db1123389c77F888a213F1A6dd22EF3#code) | [0xA1ad3602697c15113E089C2723c15eBF3038465C](https://bscscan.com/address/0xA1ad3602697c15113E089C2723c15eBF3038465C#code)      |
 | CDPRegistry      | [0x1a5Ff58BC3246Eb233fEA20D32b79B5F01eC650c](https://etherscan.io/address/0x1a5Ff58BC3246Eb233fEA20D32b79B5F01eC650c#code)      | [0xE8372dcef80189c0F88631507f6466b3f60E24A4](https://bscscan.com/address/0xE8372dcef80189c0F88631507f6466b3f60E24A4#code)      |
