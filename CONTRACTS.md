@@ -10,7 +10,7 @@
 | [ETH/USD](https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd) ([BNB/USD](https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd)) Chainlink Aggregator Proxy     | [0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419](https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419#code)      | [0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE](https://bscscan.com/address/0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE#code)      |
 | DUCK      | [0x92E187a03B6CD19CB6AF293ba17F2745Fd2357D5](https://etherscan.io/address/0x92E187a03B6CD19CB6AF293ba17F2745Fd2357D5#code)      | - |
 | QDUCK      | [0xE85d5FE256F5f5c9E446502aE994fDA12fd6700a](https://etherscan.io/address/0xE85d5FE256F5f5c9E446502aE994fDA12fd6700a#code)      | - |
-| FeeDistribution      | [0x3f93dE882dA8150Dc98a3a1F4626E80E3282df46](https://etherscan.io/address/0x3f93dE882dA8150Dc98a3a1F4626E80E3282df46#code)      | - |
+| [FeeDistribution](https://github.com/unitprotocol/fee-distribution)      | [0x3f93dE882dA8150Dc98a3a1F4626E80E3282df46](https://etherscan.io/address/0x3f93dE882dA8150Dc98a3a1F4626E80E3282df46#code)      | - |
 
 ### Core
 
