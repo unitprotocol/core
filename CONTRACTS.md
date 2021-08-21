@@ -8,6 +8,9 @@
 | [Uniswap Factory](https://github.com/Uniswap/uniswap-v2-core/blob/master/contracts/UniswapV2Factory.sol)      | [0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f](https://etherscan.io/address/0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f#code)      | - |
 | [SushiSwap](https://github.com/sushiswap/sushiswap/blob/master/contracts/uniswapv2/UniswapV2Factory.sol) ([PancakeV2](https://github.com/pancakeswap/pancake-swap-core/blob/master/contracts/PancakeFactory.sol)) Factory | [0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac](https://etherscan.io/address/0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac#code)      | [0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73](https://bscscan.com/address/0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73#code)      |
 | [ETH/USD](https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd) ([BNB/USD](https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd)) Chainlink Aggregator Proxy     | [0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419](https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419#code)      | [0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE](https://bscscan.com/address/0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE#code)      |
+| DUCK      | [0x92E187a03B6CD19CB6AF293ba17F2745Fd2357D5](https://etherscan.io/address/0x92E187a03B6CD19CB6AF293ba17F2745Fd2357D5#code)      | - |
+| QDUCK      | [0xE85d5FE256F5f5c9E446502aE994fDA12fd6700a](https://etherscan.io/address/0xE85d5FE256F5f5c9E446502aE994fDA12fd6700a#code)      | - |
+| FeeDistribution      | [0x3f93dE882dA8150Dc98a3a1F4626E80E3282df46](https://etherscan.io/address/0x3f93dE882dA8150Dc98a3a1F4626E80E3282df46#code)      | - |
 
 ### Core
 
@@ -20,8 +23,6 @@
 | LiquidationAuction02      | [0xaEF1ed4C492BF4C57221bE0706def67813D79955](https://etherscan.io/address/0xaEF1ed4C492BF4C57221bE0706def67813D79955#code)      | [0x852de08f3cD5b92dD8b3B92b321363D04EeEc39E](https://bscscan.com/address/0x852de08f3cD5b92dD8b3B92b321363D04EeEc39E#code)      |
 | CDPManager01      | [0x0e13ab042eC5AB9Fc6F43979406088B9028F66fA](https://etherscan.io/address/0x0e13ab042eC5AB9Fc6F43979406088B9028F66fA#code)      | [0x1337daC01Fc21Fa21D17914f96725f7a7b73868f](https://bscscan.com/address/0x1337daC01Fc21Fa21D17914f96725f7a7b73868f#code)      |
 | CDPManager01_Fallback      | [0xaD3617D11f4c1d30603551eA75e9Ace9CB386e15](https://etherscan.io/address/0xaD3617D11f4c1d30603551eA75e9Ace9CB386e15#code)      | - |
-| QDUCK      | [0xE85d5FE256F5f5c9E446502aE994fDA12fd6700a](https://etherscan.io/address/0xE85d5FE256F5f5c9E446502aE994fDA12fd6700a#code)      | - |
-| FeeDistribution      | [0x3f93dE882dA8150Dc98a3a1F4626E80E3282df46](https://etherscan.io/address/0x3f93dE882dA8150Dc98a3a1F4626E80E3282df46#code)      | - |
 
 ### Helpers & Registries
 
