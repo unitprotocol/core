@@ -51,4 +51,4 @@
 | ChainlinkedKeydonixOracleMainAsset (Sushiswap)      | 13 (7) | [0x769E35030f5cE160b287Bce0462d46Decf29b6DD](https://etherscan.io/address/0x769E35030f5cE160b287Bce0462d46Decf29b6DD#code)      |
 | CyTokenOracle      | 14 | [0x40B743Ca424E3eC7b97f5AD93d2263Ae01DAE1D8](https://etherscan.io/address/0x40B743Ca424E3eC7b97f5AD93d2263Ae01DAE1D8#code)      |
 | YvTokenOracle      | 15 | [0x759EB07A8258BcF5590E9303763803DcF264652d](https://etherscan.io/address/0x759EB07A8258BcF5590E9303763803DcF264652d#code)      |
-| [UniswapV3Oracle](https://github.com/unitprotocol/uniswap-v3-oracle)      | 16 | [0x807983026C476D4E0d695E80413309Aa186E0bA7](https://etherscan.io/address/0x807983026c476d4e0d695e80413309aa186e0ba7#code)      |
+| [UniswapV3Oracle](https://github.com/unitprotocol/uniswap-v3-oracle)      | 16 | [0xd31817a1E1578C4BECE02FbFb235d76f5716f18f](https://etherscan.io/address/0xd31817a1E1578C4BECE02FbFb235d76f5716f18f#code)      |
