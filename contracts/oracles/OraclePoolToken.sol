@@ -10,6 +10,7 @@ import "../helpers/IUniswapV2PairFull.sol";
 import "../interfaces/IOracleEth.sol";
 import "../interfaces/IOracleUsd.sol";
 import "../interfaces/IOracleRegistry.sol";
+import "../interfaces/IToken.sol";
 
 
 /**
@@ -59,10 +60,15 @@ contract OraclePoolToken is IOracleUsd {
         address oracle = oracleRegistry.oracleByAsset(underlyingAsset);
         require(oracle != address(0), "Unit Protocol: ORACLE_NOT_FOUND");
 
-        uint usdValue_q112 = IOracleUsd(oracle).assetToUsd(underlyingAsset, 1);
-        // average price of 1 token unit in ETH
-        uint eAvg = IOracleEth(oracleRegistry.oracleByAsset(WETH)).usdToEth(usdValue_q112);
+        uint eAvg;
 
+        { // fix stack too deep
+          uint assetPrecision = 10 ** IToken(underlyingAsset).decimals();
+
+          uint usdValue_q112 = IOracleUsd(oracle).assetToUsd(underlyingAsset, assetPrecision) / assetPrecision;
+          // average price of 1 token unit in ETH
+          eAvg = IOracleEth(oracleRegistry.oracleByAsset(WETH)).usdToEth(usdValue_q112);
+        }
 
         (uint112 _reserve0, uint112 _reserve1,) = pair.getReserves();
         uint aPool; // current asset pool
