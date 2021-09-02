@@ -47,7 +47,7 @@
 | ChainlinkedKeep3rV1OracleMainAsset | 7 | - | [0x7562FB711173095Bc2d8100C107e6Da639E0F4B0](https://bscscan.com/address/0x7562FB711173095Bc2d8100C107e6Da639E0F4B0#code)      |
 | CurveLPOracle      | 10 | [0x0E08d9e1DC22a400EbcA25E9a8f292910fa8fe08](https://etherscan.io/address/0x0E08d9e1DC22a400EbcA25E9a8f292910fa8fe08#code)      |
 | WrappedToUnderlyingOracle      | 11 | [0x220Ea780a484c18fd0Ab252014c58299759a1Fbd](https://etherscan.io/address/0x220Ea780a484c18fd0Ab252014c58299759a1Fbd#code)      |
-| OraclePoolToken      | 12 (4, 8) | [0x5968Bc303930155d36fA9AeE2B5b0F6D39598434](https://etherscan.io/address/0x5968Bc303930155d36fA9AeE2B5b0F6D39598434#code) |
+| OraclePoolToken      | 12 (4, 8) | [0xd88e1F40b6CD9793aa10A6C3ceEA1d01C2a507f9](https://etherscan.io/address/0xd88e1F40b6CD9793aa10A6C3ceEA1d01C2a507f9#code) |
 | ChainlinkedKeydonixOracleMainAsset (Sushiswap)      | 13 (7) | [0x769E35030f5cE160b287Bce0462d46Decf29b6DD](https://etherscan.io/address/0x769E35030f5cE160b287Bce0462d46Decf29b6DD#code)      |
 | CyTokenOracle      | 14 | [0x40B743Ca424E3eC7b97f5AD93d2263Ae01DAE1D8](https://etherscan.io/address/0x40B743Ca424E3eC7b97f5AD93d2263Ae01DAE1D8#code)      |
 | YvTokenOracle      | 15 | [0x759EB07A8258BcF5590E9303763803DcF264652d](https://etherscan.io/address/0x759EB07A8258BcF5590E9303763803DcF264652d#code)      |
