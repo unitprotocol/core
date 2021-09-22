@@ -12,6 +12,7 @@ import '../interfaces/IVaultManagerParameters.sol';
 import '../interfaces/IVaultParameters.sol';
 import '../interfaces/IWrappedToUnderlyingOracle.sol';
 import '../interfaces/IForceTransferAssetStore.sol';
+import '../interfaces/IFoundation.sol';
 
 import '../helpers/ReentrancyGuard.sol';
 import '../helpers/SafeMath.sol';
@@ -119,6 +120,10 @@ contract LiquidationAuction02 is ReentrancyGuard {
             penalty,
             msg.sender
         );
+
+        uint fee = repayment > penalty ? penalty : repayment;
+        IFoundation(IVaultParameters(vaultManagerParameters.vaultParameters()).foundation()).submitLiquidationFee(fee);
+
         // fire an buyout event
         emit Buyout(asset, user, msg.sender, collateralToBuyer, repayment, penalty);
     }
