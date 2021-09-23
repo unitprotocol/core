@@ -6,12 +6,11 @@ const BN = web3.utils.BN
 const { expect } = require('chai')
 const utils = require('./helpers/utils')
 
-contract('CDPManager with bearing assets', function([deployer, foundation]) {
+contract('CDPManager with bearing assets', function([deployer]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'bearingAssetSimple')
 		this.deployer = deployer
-		this.foundation = foundation;
 		await this.utils.deploy()
 
 		// make 1 bearing asset equal to 2 main tokens

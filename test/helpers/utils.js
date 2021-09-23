@@ -1,5 +1,6 @@
 const Vault = artifacts.require('Vault');
 const VaultParameters = artifacts.require('VaultParameters');
+const FoundationMock = artifacts.require('FoundationMock');
 const VaultManagerParameters = artifacts.require('VaultManagerParameters');
 const USDP = artifacts.require('USDP');
 const WETH = artifacts.require('WETH');
@@ -145,6 +146,7 @@ module.exports = (context, mode) => {
 
 	const deploy = async () => {
 		context.weth = await WETH.new();
+    context.foundation = await FoundationMock.new();
 		context.mainCollateral = await DummyToken.new("STAKE clone", "STAKE", 18, ether('1000000'));
 
 		const uniswapFactoryAddr = await deployContractBytecode(UniswapV2FactoryDeployCode, context.deployer, web3);
@@ -166,7 +168,7 @@ module.exports = (context, mode) => {
 		context.usdp = await USDP.new(parametersAddr);
 
 		const vaultAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
-		context.vaultParameters = await VaultParameters.new(vaultAddr, context.foundation);
+		context.vaultParameters = await VaultParameters.new(vaultAddr, context.foundation.address);
 		context.vault = await Vault.new(context.vaultParameters.address, '0x0000000000000000000000000000000000000000', context.usdp.address, context.weth.address);
 
 		let minColPercent, maxColPercent

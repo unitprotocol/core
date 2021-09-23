@@ -10,13 +10,11 @@ const utils = require('./helpers/utils');
 contract('LiquidationTriggerKeydonixMainAsset', function([
 	positionOwner,
 	liquidator,
-	foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'keydonixMainAsset');
 		this.deployer = positionOwner;
-		this.foundation = foundation;
 		await this.utils.deploy();
 	});
 
