@@ -7,13 +7,11 @@ const utils = require('./helpers/utils');
 contract('LiquidationTriggerChainlinkPoolToken', function([
  positionOwner,
  liquidator,
- foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'chainlinkPoolToken');
 		this.deployer = positionOwner;
-		this.foundation = foundation;
 		await this.utils.deploy();
 	});
 

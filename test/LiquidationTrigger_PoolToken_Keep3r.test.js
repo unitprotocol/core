@@ -7,13 +7,11 @@ const utils = require('./helpers/utils');
 contract('LiquidationTriggerKeep3rPoolToken', function([
  positionOwner,
  liquidator,
- foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'sushiswapKeep3rPoolToken');
 		this.deployer = positionOwner;
-		this.foundation = foundation;
 		await this.utils.deploy();
 	});
 

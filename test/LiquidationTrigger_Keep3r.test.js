@@ -10,13 +10,11 @@ const utils = require('./helpers/utils');
 contract('LiquidationTriggerKeep3rMainAsset', function([
 	positionOwner,
 	liquidator,
-	foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'sushiswapKeep3rMainAsset');
 		this.deployer = positionOwner;
-		this.foundation = foundation;
 		await this.utils.deploy();
 	});
 

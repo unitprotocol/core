@@ -15,14 +15,12 @@ const increaseTime = require('./helpers/timeTravel');
 ].forEach(oracleMode =>
 	contract(`CDPManager with ${oracleMode} oracle wrapper`, function([
 		deployer,
-		foundation,
 		liquidator,
 	]) {
 		// deploy & initial settings
 		beforeEach(async function() {
 			this.utils = utils(this, oracleMode);
 			this.deployer = deployer;
-			this.foundation = foundation;
 			await this.utils.deploy();
 		});
 

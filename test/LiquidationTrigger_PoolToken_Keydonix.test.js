@@ -7,13 +7,11 @@ const utils = require('./helpers/utils');
 contract('LiquidationTriggerKeydonixPoolToken', function([
 	positionOwner,
 	liquidator,
-	foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'keydonixPoolToken');
 		this.deployer = positionOwner;
-		this.foundation = foundation;
 		await this.utils.deploy();
 	});
 

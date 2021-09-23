@@ -6,13 +6,11 @@ const Q112 = new BN('2').pow(new BN('112'))
 
 contract('BearingAssetsOracle', function([
 	account1,
- 	foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'bearingAssetSimple')
 		this.deployer = account1
-		this.foundation = foundation;
 		await this.utils.deploy()
 	});
 

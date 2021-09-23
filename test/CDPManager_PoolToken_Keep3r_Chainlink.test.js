@@ -12,13 +12,11 @@ const utils = require('./helpers/utils');
 ].forEach(oracleMode =>
 	contract(`CDPManager with ${oracleMode} oracle`, function([
 		deployer,
-		foundation,
 	]) {
 		// deploy & initial settings
 		beforeEach(async function() {
 			this.utils = utils(this, oracleMode);
 			this.deployer = deployer;
-			this.foundation = foundation;
 			await this.utils.deploy();
 		});
 

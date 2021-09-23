@@ -6,12 +6,11 @@ const BN = web3.utils.BN
 const { expect } = require('chai')
 const utils = require('./helpers/utils')
 
-contract('CDPManager with wrapped assets', function([deployer, foundation]) {
+contract('CDPManager with wrapped assets', function([deployer]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'curveLP')
 		this.deployer = deployer
-		this.foundation = foundation;
 		await this.utils.deploy()
 	});
 
