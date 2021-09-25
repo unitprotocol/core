@@ -4,5 +4,8 @@
 /build/
 coverage
 coverage.json
+/package-lock.json
 
 **/artifacts/
+/DEPLOYED/
+/cache/
