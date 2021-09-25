@@ -1,4 +1,8 @@
 const RLP = require('rlp');
+const l = console.log;
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
 
 async function buildDeployFn(deployer, contract) {
 	const gasPrice = Number(await contract.web3.eth.getGasPrice());
@@ -44,9 +48,83 @@ function calculateAddressAtNonce(sender, nonce, web3Inst = web3) {
 }
 
 
+// --- Hardhat deployment script helpers --------------------------------------
+
+async function _deploymentStep(name, args, scope, signer) {
+    const convertedArgs = [];
+    for (const arg of args) {
+        if (Array.isArray(arg) || typeof arg == 'boolean' || typeof arg == 'number' || ethers.utils.isAddress(arg)) {
+            convertedArgs.push(arg);
+        }
+        else if (typeof arg == 'object' && 'addressAtNextNonce' in arg) {
+            const nonce = await signer.getTransactionCount();
+            convertedArgs.push("0x" + ethers.utils.keccak256(
+                RLP.encode([signer.address, nonce + arg.addressAtNextNonce])
+            ).slice(12).substring(14));
+        }
+        else {
+            if (typeof arg != 'string')
+                throw new Error('Bad arg type');
+            if (!(arg in scope))
+                throw new Error(`${arg} is not deployed yet, but was referenced by ${name}`);
+
+            convertedArgs.push(scope[arg]);
+        }
+    }
+
+    const dot = name.indexOf('.');
+    if (-1 != dot) {
+        // Transaction.
+        const fnName = name.substr(dot + 1);
+        const contractName = name.substr(0, dot);
+        if (!(contractName in scope))
+            throw new Error(`${contractName} is not deployed yet, but was referenced by ${name}`);
+
+        const contract = await ethers.getContractAt(contractName, scope[contractName], signer);
+        const tx = await contract[fnName](...convertedArgs);
+        const receipt = await tx.wait();
+        if (1 != receipt.status)
+            throw new Error(`${name} failed`);
+
+        return;
+    }
+
+    // Contract deployment.
+    if (name in scope)
+        throw new Error(`${name} is already deployed`);
+
+    const factory = await ethers.getContractFactory(name, signer);
+    const contract = await factory.deploy(...convertedArgs);
+    await contract.deployed();
+
+    scope[name] = contract.address;
+}
+
+async function runDeployment(deployment, scope=undefined, signer=undefined)
+{
+    if (!('hre' in global))
+        throw new Error('hardhat runtime environment is required');
+
+    if (signer === undefined)
+        signer = (await ethers.getSigners())[0];
+    if (scope === undefined)
+        scope = {};
+
+    for (const step of deployment) {
+        await _deploymentStep(step[0], step.slice(1), scope, signer);
+    }
+
+    return scope;
+}
+
+// --- / Hardhat deployment script helpers ------------------------------------
+
+
 module.exports = {
 	buildDeployFn,
 	estimateDeploymentGas,
 	calculateAddressAtNonce,
 	deployContractBytecode,
+	runDeployment,
+	ZERO_ADDRESS,
 };
