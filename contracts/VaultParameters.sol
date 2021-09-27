@@ -14,7 +14,7 @@ pragma solidity 0.7.6;
 contract Auth {
 
     // address of the the contract with vault parameters
-    VaultParameters public vaultParameters;
+    VaultParameters public immutable vaultParameters;
 
     constructor(address _parameters) {
         vaultParameters = VaultParameters(_parameters);
@@ -65,7 +65,7 @@ contract VaultParameters is Auth {
     mapping(uint => mapping (address => bool)) public isOracleTypeEnabled;
 
     // address of the Vault
-    address payable public vault;
+    address payable public immutable vault;
 
     // The foundation address
     address public foundation;
