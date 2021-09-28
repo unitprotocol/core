@@ -1,5 +1,8 @@
+require("dotenv").config({ path: require("find-config")(".env") });
+
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-etherscan");
 require("hardhat-local-networks-config-plugin");
 
 
@@ -51,11 +54,17 @@ module.exports = {
         },
     },
 
-	mocha: {
-		reporter: 'eth-gas-reporter',
-		reporterOptions: {
-			currency: 'USD',
-			gasPrice: 90
-		}
-	},
+    mocha: {
+        reporter: 'eth-gas-reporter',
+        reporterOptions: {
+            currency: 'USD',
+            gasPrice: 90
+        }
+    },
+
+    etherscan: {
+        // Your API key for Etherscan
+        // Obtain one at https://etherscan.io/
+        apiKey: process.env.ETHERSCAN_API_KEY
+    }
 };
