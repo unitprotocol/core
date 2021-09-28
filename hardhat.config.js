@@ -1,5 +1,6 @@
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-waffle");
+require("hardhat-local-networks-config-plugin");
 
 
 task('deploy', 'Runs a core deployment')
@@ -25,10 +26,21 @@ task('deploy', 'Runs a core deployment')
     });
 
 
+task('accounts', 'Show current accounts')
+    .setAction(async (taskArgs) => {
+        const signers = await ethers.getSigners();
+        for (const acc of signers)
+            console.log(acc.address, Number((await acc.getBalance()).toBigInt()) / 1e18);
+    });
+
+
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
+    // Configure your network credentials at ~/.hardhat/networks.json,
+    // see https://hardhat.org/plugins/hardhat-local-networks-config-plugin.html#usage
+
     solidity: {
         version: "0.7.6",
         settings: {
