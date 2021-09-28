@@ -244,10 +244,14 @@ module.exports = (context, mode) => {
 		await context.oracleRegistry.setOracle(5, context.chainlinkOracleMainAsset.address);
 		await context.oracleRegistry.setOracleTypeForAsset(context.weth.address, 5);
 
-		context.wrappedToUnderlyingOracle = await WrappedToUnderlyingOracle.new(
-			context.vaultParameters.address,
-			context.oracleRegistry.address,
-		)
+		if (useDeployment) {
+			context.wrappedToUnderlyingOracle = await WrappedToUnderlyingOracle.at(context.deployed.WrappedToUnderlyingOracle);
+		} else {
+			context.wrappedToUnderlyingOracle = await WrappedToUnderlyingOracle.new(
+				context.vaultParameters.address,
+				context.oracleRegistry.address,
+			)
+		}
 
 		if (isLP) {
 			context.oraclePoolToken = await OraclePoolToken.new(context.oracleRegistry.address);
