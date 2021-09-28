@@ -39,12 +39,26 @@ const StETHStableSwapOracle = artifacts.require('StETHStableSwapOracle');
 const StETHCurvePool = artifacts.require('StETHCurvePool');
 
 const { ether } = require('openzeppelin-test-helpers');
-const { calculateAddressAtNonce, deployContractBytecode } = require('./deployUtils');
+const { calculateAddressAtNonce, deployContractBytecode, runDeployment } = require('./deployUtils');
+const { createDeployment } = require('../../lib/deployments/core');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
 const getWrapper = require('./wrappers');
 
 const MAX_UINT = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+
+let _hre;
+const _loadHRE = async function() {
+	if (_hre === undefined) {
+		process.env.HARDHAT_NETWORK = 'localhost';
+		_hre = require("hardhat");
+
+		await _hre.run("compile");
+	}
+
+	return _hre;
+}
+
 
 async function expectRevert(promise, expectedError) {
 	try {
@@ -164,12 +178,37 @@ module.exports = (context, mode) => {
 			context.poolToken = await getPoolToken(context.mainCollateral.address);
 		}
 
-		const parametersAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
-		context.usdp = await USDP.new(parametersAddr);
+		const useDeployment = process.env.USE_DEPLOYMENT && !keydonix;
+		if (useDeployment) {
+		    const deployment = await createDeployment({
+				deployer: context.deployer,
+				foundation: context.foundation.address,
+				manager: context.deployer,
+				wtoken: context.weth.address
+			});
+			const hre = await _loadHRE();
+			const deployed = await runDeployment(deployment, {hre, deployer: context.deployer});
+			context.deployed = deployed;
 
-		const vaultAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
-		context.vaultParameters = await VaultParameters.new(vaultAddr, context.foundation.address);
-		context.vault = await Vault.new(context.vaultParameters.address, '0x0000000000000000000000000000000000000000', context.usdp.address, context.weth.address);
+			context.usdp = await USDP.at(deployed.USDP);
+			context.vaultParameters = await VaultParameters.at(deployed.VaultParameters);
+			context.vault = await Vault.at(deployed.Vault);
+			context.oracleRegistry = await OracleRegistry.at(deployed.OracleRegistry);
+			context.forceTransferAssetStore = await ForceTransferAssetStore.at(deployed.ForceTransferAssetStore);
+			context.chainlinkOracleMainAsset = await ChainlinkOracleMainAsset.at(deployed.ChainlinkedOracleMainAsset);
+		}
+		else {
+			const parametersAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
+			context.usdp = await USDP.new(parametersAddr);
+
+			const vaultAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
+			context.vaultParameters = await VaultParameters.new(vaultAddr, context.foundation.address);
+			context.vault = await Vault.new(context.vaultParameters.address, '0x0000000000000000000000000000000000000000', context.usdp.address, context.weth.address);
+
+			context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address, context.weth.address)
+
+			context.forceTransferAssetStore = await ForceTransferAssetStore.new(context.vaultParameters.address, []);
+		}
 
 		let minColPercent, maxColPercent
 		let mainAssetOracleType, poolTokenOracleType
@@ -184,16 +223,24 @@ module.exports = (context, mode) => {
 		context.ethUsd = await ChainlinkAggregator.new(250e8, 8);
 		context.mainUsd = await ChainlinkAggregator.new(2e8, 8);
 		context.mainEth = await ChainlinkAggregator.new(0.008e18, 18); // 1/125 ETH
-		context.chainlinkOracleMainAsset = await ChainlinkOracleMainAsset.new(
-			[context.mainCollateral.address, context.weth.address],
-			[context.mainUsd.address, context.ethUsd.address],
-			[],
-			[],
-			context.weth.address,
-			context.vaultParameters.address
-		);
-		context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address, context.weth.address)
-
+		if (useDeployment) {
+			await context.chainlinkOracleMainAsset.setAggregators(
+				[context.mainCollateral.address, context.weth.address],
+				[context.mainUsd.address, context.ethUsd.address],
+				[],
+				[]
+			);
+		}
+		else {
+			context.chainlinkOracleMainAsset = await ChainlinkOracleMainAsset.new(
+				[context.mainCollateral.address, context.weth.address],
+				[context.mainUsd.address, context.ethUsd.address],
+				[],
+				[],
+				context.weth.address,
+				context.vaultParameters.address
+			);
+		}
 		await context.oracleRegistry.setOracle(5, context.chainlinkOracleMainAsset.address);
 		await context.oracleRegistry.setOracleTypeForAsset(context.weth.address, 5);
 
@@ -201,8 +248,6 @@ module.exports = (context, mode) => {
 			context.vaultParameters.address,
 			context.oracleRegistry.address,
 		)
-
-		context.forceTransferAssetStore = await ForceTransferAssetStore.new(context.vaultParameters.address, []);
 
 		if (isLP) {
 			context.oraclePoolToken = await OraclePoolToken.new(context.oracleRegistry.address);
@@ -417,24 +462,39 @@ module.exports = (context, mode) => {
 
 		}
 
-		context.collateralRegistry = await CollateralRegistry.new(context.vaultParameters.address, [context.mainCollateral.address]);
-		context.cdpRegistry = await CDPRegistry.new(context.vault.address, context.collateralRegistry.address);
-		context.vaultManagerParameters = await VaultManagerParameters.new(context.vaultParameters.address);
-		await context.vaultParameters.setManager(context.vaultManagerParameters.address, true);
+		if (useDeployment) {
+			context.collateralRegistry = await CollateralRegistry.at(context.deployed.CollateralRegistry);
+			context.cdpRegistry = await CDPRegistry.at(context.deployed.CDPRegistry);
+			context.vaultManagerParameters = await VaultManagerParameters.at(context.deployed.VaultManagerParameters);
+		}
+		else {
+			context.collateralRegistry = await CollateralRegistry.new(context.vaultParameters.address, [context.mainCollateral.address]);
+			context.cdpRegistry = await CDPRegistry.new(context.vault.address, context.collateralRegistry.address);
+			context.vaultManagerParameters = await VaultManagerParameters.new(context.vaultParameters.address);
+			await context.vaultParameters.setManager(context.vaultManagerParameters.address, true);
+		}
 
 		if (keydonix) {
 			context.liquidatorKeydonixMainAsset = await LiquidatorKeydonixMainAsset.new(context.vaultManagerParameters.address, context.keydonixOracleMainAssetMock.address);
 			context.liquidatorKeydonixPoolToken = await LiquidatorKeydonixPoolToken.new(context.vaultManagerParameters.address, context.keydonixOraclePoolTokenMock.address);
 		} else {
-			context.vaultManager = await CDPManager.new(context.vaultManagerParameters.address, context.oracleRegistry.address, context.cdpRegistry.address);
+			if (useDeployment) {
+				context.vaultManager = await CDPManager.at(context.deployed.CDPManager01);
+			} else {
+				context.vaultManager = await CDPManager.new(context.vaultManagerParameters.address, context.oracleRegistry.address, context.cdpRegistry.address);
+			}
 		}
 
 
-		context.liquidationAuction = await LiquidationAuction.new(
-			context.vaultManagerParameters.address,
-			context.cdpRegistry.address,
-			context.forceTransferAssetStore.address
-		);
+		if (useDeployment) {
+			context.liquidationAuction = await LiquidationAuction.at(context.deployed.LiquidationAuction02);
+		} else {
+			context.liquidationAuction = await LiquidationAuction.new(
+				context.vaultManagerParameters.address,
+				context.cdpRegistry.address,
+				context.forceTransferAssetStore.address
+			);
+		}
 
 		if (keydonix) {
 			context.vaultManagerKeydonixMainAsset = await VaultManagerKeydonixMainAsset.new(
@@ -459,10 +519,14 @@ module.exports = (context, mode) => {
 			await context.vaultParameters.setVaultAccess(context.liquidatorKeydonixPoolToken.address, true);
 			await context.vaultParameters.setVaultAccess(context.vaultManagerStandard.address, true);
 		} else {
-			await context.vaultParameters.setVaultAccess(context.vaultManager.address, true);
+			if (!useDeployment) {
+				await context.vaultParameters.setVaultAccess(context.vaultManager.address, true);
+			}
 		}
 
-		await context.vaultParameters.setVaultAccess(context.liquidationAuction.address, true);
+		if (!useDeployment) {
+			await context.vaultParameters.setVaultAccess(context.liquidationAuction.address, true);
+		}
 
 		await context.vaultManagerParameters.setCollateral(
 			wstETHsample ? context.wstETH.address : yvWETHsample ? context.yvWETH.address : cyWETHsample ? context.cyWETH.address : bearingAssetSimple ? context.bearingAsset.address : curveLP ? context.wrappedAsset.address : context.mainCollateral.address,

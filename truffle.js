@@ -38,6 +38,13 @@ module.exports = {
 			gas: 0x6691b7,
 			gasPrice: 0x01
 		},
+		localhost: {
+			host: 'localhost',
+			network_id: '*',
+			port: 8545,
+			gas: 0x6691b7,
+			gasPrice: 0x01
+		},
 		ropsten: {
 			network_id: "3",
 			provider: function() {
