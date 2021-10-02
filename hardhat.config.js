@@ -1,4 +1,5 @@
 require("dotenv").config({ path: require("find-config")(".env") });
+const { types } = require("hardhat/config")
 
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-waffle");
@@ -11,6 +12,7 @@ task('deploy', 'Runs a core deployment')
     .addParam('manager', 'Address of a manager account/contract')
     .addParam('wtoken', 'Address of a wrapped network token (e.g. WETH for Ethereum)')
     .addOptionalParam('deployer', 'Address of a deployer account to use (defaults to the first account)')
+    .addOptionalParam('noVerify', 'Skip contracts verification on *scan block explorer', false, types.boolean)
     .setAction(async (taskArgs) => {
         const {createDeployment} = require('./lib/deployments/core');
         const {runDeployment} = require('./test/helpers/deployUtils');
@@ -23,7 +25,7 @@ task('deploy', 'Runs a core deployment')
             wtoken: taskArgs.wtoken
         });
 
-        const deployed = await runDeployment(deployment, {deployer});
+        const deployed = await runDeployment(deployment, {deployer, verify: !taskArgs.noVerify});
 
         console.log('Success!', deployed);
     });

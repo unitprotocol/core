@@ -51,7 +51,7 @@ function calculateAddressAtNonce(sender, nonce, web3Inst = web3) {
 // --- Hardhat deployment script helpers --------------------------------------
 
 async function _deploymentStep(name, args, options) {
-    const {scope, signer, hre} = options;
+    const {scope, signer, hre, verify} = options;
     const ethers = hre.ethers;
 
     const convertedArgs = [];
@@ -101,6 +101,13 @@ async function _deploymentStep(name, args, options) {
     await contract.deployed();
 
     scope[name] = contract.address;
+
+    if (verify) {
+        await hre.run("verify:verify", {
+            address: contract.address,
+            constructorArguments: convertedArgs,
+        });
+    }
 }
 
 /*
@@ -109,11 +116,12 @@ async function _deploymentStep(name, args, options) {
  * @param options.scope - some pre-deployed contract addresses, default to an empty one
  * @param options.deployer - account (address) to use to sign transactions, default to the first one
  * @param options.hre - hardhat runtime environment object, default to global variable `hre`
+ * @param options.verify - bool, verify the contracts on *scan block explorers
  * @returns updated scope object
  */
 async function runDeployment(deployment, options)
 {
-    let {scope, deployer: signer, hre} = options;
+    let {scope, deployer: signer, hre, verify} = options;
 
     if (hre === undefined) {
         if (!('hre' in global))
@@ -131,7 +139,7 @@ async function runDeployment(deployment, options)
         scope = {};
 
     for (const step of deployment) {
-        await _deploymentStep(step[0], step.slice(1), {scope, signer, hre});
+        await _deploymentStep(step[0], step.slice(1), {scope, signer, hre, verify});
     }
 
     return scope;
