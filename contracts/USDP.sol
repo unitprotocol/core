@@ -37,6 +37,9 @@ contract USDP is Auth {
     // token allowance mapping
     mapping(address => mapping(address => uint)) public allowance;
 
+    // minters mapping
+    mapping(address => bool) public isMinter;
+
     /**
      * @dev Trigger on any successful call to approve(address spender, uint amount)
     **/
@@ -48,18 +51,39 @@ contract USDP is Auth {
     event Transfer(address indexed from, address indexed to, uint value);
 
     /**
+     * @dev Trigger minter is set/unset
+    **/
+    event Minter(address indexed who, bool flag);
+
+    modifier onlyMinter() {
+        require(isMinter[msg.sender], "Unit Protocol: NOT_A_MINTER");
+        _;
+    }
+
+    /**
       * @param _parameters The address of system parameters contract
      **/
     constructor(address _parameters) Auth(_parameters) {}
 
     /**
-      * @notice Only Vault can mint USDP
+      * @notice Only manager is able to manage minters
+      * @dev Allows and disallows 'who' to mint/burn the token
+      * @param who The address of the minter
+      * @param flag The permission flag
+     **/
+    function setMinter(address who, bool flag) external onlyManager {
+        isMinter[who] = flag;
+        emit Minter(who, flag);
+    }
+
+    /**
+      * @notice Only minter can mint USDP
       * @dev Mints 'amount' of tokens to address 'to', and MUST fire the
       * Transfer event
       * @param to The address of the recipient
       * @param amount The amount of token to be minted
      **/
-    function mint(address to, uint amount) external onlyVault {
+    function mint(address to, uint amount) external onlyMinter {
         require(to != address(0), "Unit Protocol: ZERO_ADDRESS");
 
         balanceOf[to] = balanceOf[to].add(amount);
@@ -78,12 +102,12 @@ contract USDP is Auth {
     }
 
     /**
-      * @notice Only Vault can burn tokens from any balance
+      * @notice Only minter can burn tokens from any address
       * @dev Burns 'amount' of tokens from 'from' address, and MUST fire the Transfer event
       * @param from The address of the balance owner
       * @param amount The amount of token to be burned
      **/
-    function burn(address from, uint amount) external onlyVault {
+    function burn(address from, uint amount) external onlyMinter {
         _burn(from, amount);
     }
 

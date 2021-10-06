@@ -22,9 +22,6 @@ import "./interfaces/IWETH.sol";
 contract Vault is Auth {
     using SafeMath for uint;
 
-    // COL token address
-    address public immutable col;
-
     // WETH token address
     address payable public immutable weth;
 
@@ -37,9 +34,6 @@ contract Vault is Auth {
 
     // collaterals whitelist
     mapping(address => mapping(address => uint)) public collaterals;
-
-    // COL token collaterals
-    mapping(address => mapping(address => uint)) public colToken;
 
     // user debts
     mapping(address => mapping(address => uint)) public debts;
@@ -55,6 +49,9 @@ contract Vault is Auth {
 
     // stability fee pinned to each position
     mapping(address => mapping(address => uint)) public stabilityFee;
+
+    // accumulated stability fee pinned to each position
+    mapping(address => mapping(address => uint)) public accumulatedStabilityFee;
 
     // liquidation fee pinned to each position, 0 decimals
     mapping(address => mapping(address => uint)) public liquidationFee;
@@ -72,11 +69,10 @@ contract Vault is Auth {
 
     /**
      * @param _parameters The address of the system parameters
-     * @param _col COL token address
      * @param _usdp USDP token address
+     * @param _weth WETH token address
      **/
-    constructor(address _parameters, address _col, address _usdp, address payable _weth) Auth(_parameters) {
-        col = _col;
+    constructor(address _parameters, address _usdp, address payable _weth) Auth(_parameters) {
         usdp = _usdp;
         weth = _weth;
     }
@@ -93,10 +89,7 @@ contract Vault is Auth {
      **/
     function update(address asset, address user) public hasVaultAccess notLiquidating(asset, user) {
 
-        // calculate fee using stored stability fee
-        uint debtWithFee = getTotalDebt(asset, user);
-        tokenDebts[asset] = tokenDebts[asset].sub(debts[asset][user]).add(debtWithFee);
-        debts[asset][user] = debtWithFee;
+        accumulatedStabilityFee[asset][user] = getFee(asset, user);
 
         stabilityFee[asset][user] = vaultParameters.stabilityFee(asset);
         liquidationFee[asset][user] = vaultParameters.liquidationFee(asset);
@@ -121,6 +114,7 @@ contract Vault is Auth {
      **/
     function destroy(address asset, address user) public hasVaultAccess notLiquidating(asset, user) {
         delete stabilityFee[asset][user];
+        delete accumulatedStabilityFee[asset][user];
         delete oracleType[asset][user];
         delete lastUpdate[asset][user];
         delete liquidationFee[asset][user];
@@ -167,29 +161,6 @@ contract Vault is Auth {
         collaterals[weth][user] = collaterals[weth][user].sub(amount);
         IWETH(weth).withdraw(amount);
         TransferHelper.safeTransferETH(user, amount);
-    }
-
-    /**
-     * @notice Tokens must be pre-approved
-     * @dev Adds COL token to a position
-     * @param asset The address of the main collateral token
-     * @param user The address of a position's owner
-     * @param amount The amount of tokens to deposit
-     **/
-    function depositCol(address asset, address user, uint amount) external hasVaultAccess notLiquidating(asset, user) {
-        colToken[asset][user] = colToken[asset][user].add(amount);
-        TransferHelper.safeTransferFrom(col, user, address(this), amount);
-    }
-
-    /**
-     * @dev Withdraws COL token from a position
-     * @param asset The address of the main collateral token
-     * @param user The address of a position's owner
-     * @param amount The amount of tokens to withdraw
-     **/
-    function withdrawCol(address asset, address user, uint amount) external hasVaultAccess notLiquidating(asset, user) {
-        colToken[asset][user] = colToken[asset][user].sub(amount);
-        TransferHelper.safeTransfer(col, user, amount);
     }
 
     /**
@@ -243,7 +214,7 @@ contract Vault is Auth {
         tokenDebts[asset] = tokenDebts[asset].sub(amount);
         USDP(usdp).burn(user, amount);
 
-        return debts[asset][user];
+        return debts[asset][user].add(accumulatedStabilityFee[asset][user]);
     }
 
     /**
@@ -256,6 +227,27 @@ contract Vault is Auth {
         if (amount != 0) {
             TransferHelper.safeTransferFrom(asset, user, vaultParameters.foundation(), amount);
         }
+    }
+
+    /**
+     * @dev Decreases accumulated fee
+     * @param asset The address of the collateral
+     * @param user The address of the position owner
+     * @param amount The amount of fee
+     **/
+    function decreaseFee(address asset, address user, uint amount) external hasVaultAccess notLiquidating(asset, user) {
+        accumulatedStabilityFee[asset][user] = accumulatedStabilityFee[asset][user].sub(amount);
+    }
+
+    /**
+     * @dev Checkpoints stability fee
+     * @param asset The address of the collateral
+     * @param user The address the position owner
+     **/
+    function checkpointFee(address asset, address user) external hasVaultAccess notLiquidating(asset, user) returns(uint) {
+        accumulatedStabilityFee[asset][user] = getFee(asset, user);
+        lastUpdate[asset][user] = block.timestamp;
+        return accumulatedStabilityFee[asset][user];
     }
 
     /**
@@ -288,9 +280,7 @@ contract Vault is Auth {
      * @param asset The address of the main collateral token
      * @param positionOwner The address of a position's owner
      * @param mainAssetToLiquidator The amount of main asset to send to a liquidator
-     * @param colToLiquidator The amount of COL to send to a liquidator
      * @param mainAssetToPositionOwner The amount of main asset to send to a position owner
-     * @param colToPositionOwner The amount of COL to send to a position owner
      * @param repayment The repayment in USDP
      * @param penalty The liquidation penalty in USDP
      * @param liquidator The address of a liquidator
@@ -299,9 +289,7 @@ contract Vault is Auth {
         address asset,
         address positionOwner,
         uint mainAssetToLiquidator,
-        uint colToLiquidator,
         uint mainAssetToPositionOwner,
-        uint colToPositionOwner,
         uint repayment,
         uint penalty,
         address liquidator
@@ -314,14 +302,12 @@ contract Vault is Auth {
         uint mainAssetInPosition = collaterals[asset][positionOwner];
         uint mainAssetToFoundation = mainAssetInPosition.sub(mainAssetToLiquidator).sub(mainAssetToPositionOwner);
 
-        uint colInPosition = colToken[asset][positionOwner];
-        uint colToFoundation = colInPosition.sub(colToLiquidator).sub(colToPositionOwner);
+        tokenDebts[asset] = tokenDebts[asset].sub(debts[asset][positionOwner]);
 
         delete liquidationPrice[asset][positionOwner];
         delete liquidationBlock[asset][positionOwner];
         delete debts[asset][positionOwner];
         delete collaterals[asset][positionOwner];
-        delete colToken[asset][positionOwner];
 
         destroy(asset, positionOwner);
 
@@ -342,25 +328,13 @@ contract Vault is Auth {
             TransferHelper.safeTransfer(asset, liquidator, mainAssetToLiquidator);
         }
 
-        if (colToLiquidator != 0) {
-            TransferHelper.safeTransfer(col, liquidator, colToLiquidator);
-        }
-
         // send the rest of collateral to a position owner
         if (mainAssetToPositionOwner != 0) {
             TransferHelper.safeTransfer(asset, positionOwner, mainAssetToPositionOwner);
         }
 
-        if (colToPositionOwner != 0) {
-            TransferHelper.safeTransfer(col, positionOwner, colToPositionOwner);
-        }
-
         if (mainAssetToFoundation != 0) {
             TransferHelper.safeTransfer(asset, vaultParameters.foundation(), mainAssetToFoundation);
-        }
-
-        if (colToFoundation != 0) {
-            TransferHelper.safeTransfer(col, vaultParameters.foundation(), colToFoundation);
         }
     }
 
@@ -382,10 +356,18 @@ contract Vault is Auth {
      * @return user debt of a position plus accumulated fee
      **/
     function getTotalDebt(address asset, address user) public view returns (uint) {
-        uint debt = debts[asset][user];
-        if (liquidationBlock[asset][user] != 0) return debt;
-        uint fee = calculateFee(asset, user, debt);
-        return debt.add(fee);
+        return debts[asset][user].add(getFee(asset, user));
+    }
+
+    /**
+     * @dev Calculates the total amount of position's fee
+     * @param asset The address of the main collateral
+     * @param user The address of a position's owner
+     * @return user accumulated fee
+     **/
+    function getFee(address asset, address user) public view returns (uint) {
+        if (liquidationBlock[asset][user] != 0) return 0;
+        return accumulatedStabilityFee[asset][user].add(calculateFee(asset, user, debts[asset][user]));
     }
 
     /**

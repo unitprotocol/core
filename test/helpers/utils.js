@@ -169,7 +169,9 @@ module.exports = (context, mode) => {
 
 		const vaultAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
 		context.vaultParameters = await VaultParameters.new(vaultAddr, context.foundation.address);
-		context.vault = await Vault.new(context.vaultParameters.address, '0x0000000000000000000000000000000000000000', context.usdp.address, context.weth.address);
+		context.vault = await Vault.new(context.vaultParameters.address, context.usdp.address, context.weth.address);
+
+		await context.usdp.setMinter(context.vault.address, true);
 
 		let minColPercent, maxColPercent
 		let mainAssetOracleType, poolTokenOracleType

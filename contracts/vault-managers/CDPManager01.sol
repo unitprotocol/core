@@ -182,6 +182,43 @@ contract CDPManager01 is ReentrancyGuard {
     }
 
     /**
+      * @notice Tx sender must have a sufficient USDP balance to pay the debt
+      * @dev Withdraws collateral and repays all the debt
+      * @param asset The address of the collateral
+      * @param withdraw Whether the collateral be withdrawn or not
+      **/
+    function repayAll(address asset, bool withdraw) public nonReentrant checkpoint(asset, msg.sender) returns (uint) {
+
+        uint debt = vault.debts(asset, msg.sender);
+        uint fee = vault.getFee(asset, msg.sender);
+
+        // check usefulness of tx
+        require(debt != 0 || fee != 0, "Unit Protocol: USELESS_TX");
+
+        if (fee != 0) {
+            vault.chargeFee(vault.usdp(), msg.sender, fee);
+        }
+
+        if (debt != 0) {
+            vault.repay(asset, msg.sender, debt);
+        }
+
+        uint assetAmount;
+
+        if (withdraw) {
+            assetAmount = vault.collaterals(asset, msg.sender);
+            vault.withdrawMain(asset, msg.sender, assetAmount);
+        }
+
+        vault.destroy(asset, msg.sender);
+
+        // fire an event
+        emit Exit(asset, msg.sender, assetAmount, debt);
+
+        return debt.add(fee);
+    }
+
+    /**
       * @notice Repayment is the sum of the principal and interest
       * @dev Withdraws collateral and repays specified amount of debt
       * @param asset The address of the collateral
@@ -222,8 +259,11 @@ contract CDPManager01 is ReentrancyGuard {
 
     // decreases debt
     function _repay(address asset, address owner, uint usdpAmount) internal {
+        vault.checkpointFee(asset, owner);
+
         uint fee = vault.calculateFee(asset, owner, usdpAmount);
         vault.chargeFee(vault.usdp(), owner, fee);
+        vault.decreaseFee(asset, owner, fee);
 
         // burn USDP from the owner's balance
         uint debtAfter = vault.repay(asset, owner, usdpAmount);

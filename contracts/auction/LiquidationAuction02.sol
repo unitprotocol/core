@@ -113,9 +113,7 @@ contract LiquidationAuction02 is ReentrancyGuard {
             asset,
             user,
             collateralToBuyer,
-            0, // colToLiquidator
             collateralToOwner,
-            0, // colToPositionOwner
             repayment,
             penalty,
             msg.sender
