@@ -244,7 +244,7 @@ contract Vault is Auth {
      * @param asset The address of the collateral
      * @param user The address the position owner
      **/
-    function checkpointFee(address asset, address user) external hasVaultAccess notLiquidating(asset, user) returns(uint) {
+    function checkpointFee(address asset, address user) public hasVaultAccess notLiquidating(asset, user) returns(uint) {
         accumulatedStabilityFee[asset][user] = getFee(asset, user);
         lastUpdate[asset][user] = block.timestamp;
         return accumulatedStabilityFee[asset][user];
