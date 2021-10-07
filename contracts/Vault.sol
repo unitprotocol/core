@@ -268,8 +268,7 @@ contract Vault is Auth {
         // reverts if oracle type is disabled
         require(vaultParameters.isOracleTypeEnabled(oracleType[asset][positionOwner], asset), "Unit Protocol: WRONG_ORACLE_TYPE");
 
-        // fix the debt
-        debts[asset][positionOwner] = getTotalDebt(asset, positionOwner);
+        checkpointFee(asset, positionOwner);
 
         liquidationBlock[asset][positionOwner] = block.number;
         liquidationPrice[asset][positionOwner] = initialPrice;
@@ -366,7 +365,7 @@ contract Vault is Auth {
      * @return user accumulated fee
      **/
     function getFee(address asset, address user) public view returns (uint) {
-        if (liquidationBlock[asset][user] != 0) return 0;
+        if (liquidationBlock[asset][user] != 0) return accumulatedStabilityFee[asset][user];
         return accumulatedStabilityFee[asset][user].add(calculateFee(asset, user, debts[asset][user]));
     }
 
