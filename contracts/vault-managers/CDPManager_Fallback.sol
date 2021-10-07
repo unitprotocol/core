@@ -134,23 +134,16 @@ contract CDPManager01_Fallback is ReentrancyGuard {
     if (assetAmount == 0) {
       _repay(asset, msg.sender, usdpAmount);
     } else {
-      if (debt == usdpAmount) {
-        vault.withdrawMain(asset, msg.sender, assetAmount);
-        if (usdpAmount != 0) {
-          _repay(asset, msg.sender, usdpAmount);
-        }
-      } else {
-        // withdraw collateral to the owner address
-        vault.withdrawMain(asset, msg.sender, assetAmount);
+      // withdraw collateral to the owner address
+      vault.withdrawMain(asset, msg.sender, assetAmount);
 
-        if (usdpAmount != 0) {
-          _repay(asset, msg.sender, usdpAmount);
-        }
-
-        vault.update(asset, msg.sender);
-
-        _ensurePositionCollateralization(asset, msg.sender, proofData);
+      if (usdpAmount != 0) {
+        _repay(asset, msg.sender, usdpAmount);
       }
+
+      vault.update(asset, msg.sender);
+
+      _ensurePositionCollateralization(asset, msg.sender, proofData);
     }
 
     // fire an event
@@ -175,9 +168,8 @@ contract CDPManager01_Fallback is ReentrancyGuard {
 
   // decreases debt
   function _repay(address asset, address owner, uint usdpAmount) internal {
-    vault.checkpointFee(asset, owner);
-
     uint fee = vault.calculateFee(asset, owner, usdpAmount);
+    vault.checkpointFee(asset, owner);
     vault.chargeFee(vault.usdp(), owner, fee);
     vault.decreaseFee(asset, owner, fee);
 
