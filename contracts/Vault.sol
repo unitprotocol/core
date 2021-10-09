@@ -238,7 +238,16 @@ contract Vault is Auth {
      * @param user The address of the position owner
      * @param amount The amount of fee
      **/
-    function decreaseFee(address asset, address user, uint amount) external hasVaultAccess notLiquidating(asset, user) {
+    function decreaseFee(
+      address asset,
+      address user,
+      uint amount
+    )
+    external
+    hasVaultAccess
+    notLiquidating(asset, user)
+    checkpointFee(asset, user)
+    {
         accumulatedStabilityFee[asset][user] = accumulatedStabilityFee[asset][user].sub(amount);
     }
 
