@@ -206,7 +206,7 @@ contract CDPManager01 is ReentrancyGuard {
         vault.destroy(asset, msg.sender);
 
         // fire an event
-        emit Exit(asset, msg.sender, assetAmount, debt);
+        emit Exit(asset, msg.sender, assetAmount, debt.add(fee));
 
         return debt.add(fee);
     }
