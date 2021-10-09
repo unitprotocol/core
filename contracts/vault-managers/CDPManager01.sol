@@ -212,20 +212,6 @@ contract CDPManager01 is ReentrancyGuard {
     }
 
     /**
-      * @notice Repayment is the sum of the principal and interest
-      * @dev Withdraws collateral and repays specified amount of debt
-      * @param asset The address of the collateral
-      * @param assetAmount The amount of the collateral to withdraw
-      * @param repayment The target repayment amount
-      **/
-    function exit_targetRepayment(address asset, uint assetAmount, uint repayment) external returns (uint) {
-
-        uint usdpAmount = _calcPrincipal(asset, msg.sender, repayment);
-
-        return exit(asset, assetAmount, usdpAmount);
-    }
-
-    /**
       * @notice Withdraws WETH and converts to ETH
       * @param ethAmount ETH amount to withdraw
       * @param usdpAmount The amount of USDP token to repay
@@ -237,17 +223,6 @@ contract CDPManager01 is ReentrancyGuard {
         (bool success, ) = msg.sender.call{value:ethAmount}("");
         require(success, "Unit Protocol: ETH_TRANSFER_FAILED");
         return usdpAmount;
-    }
-
-    /**
-      * @notice Repayment is the sum of the principal and interest
-      * @notice Withdraws WETH and converts to ETH
-      * @param ethAmount ETH amount to withdraw
-      * @param repayment The target repayment amount
-      **/
-    function exit_Eth_targetRepayment(uint ethAmount, uint repayment) external returns (uint) {
-        uint usdpAmount = _calcPrincipal(WETH, msg.sender, repayment);
-        return exit_Eth(ethAmount, usdpAmount);
     }
 
     // decreases debt
@@ -396,10 +371,5 @@ contract CDPManager01 is ReentrancyGuard {
         require(IToken(asset).decimals() <= 18, "Unit Protocol: NOT_SUPPORTED_DECIMALS");
 
         return collateralLiqPrice / vault.collaterals(asset, owner) / 10 ** (18 - IToken(asset).decimals());
-    }
-
-    function _calcPrincipal(address asset, address owner, uint repayment) internal view returns (uint) {
-        uint fee = vault.stabilityFee(asset, owner) * (block.timestamp - vault.lastUpdate(asset, owner)) / 365 days;
-        return repayment * DENOMINATOR_1E5 / (DENOMINATOR_1E5 + fee);
     }
 }
