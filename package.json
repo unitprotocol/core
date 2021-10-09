@@ -22,6 +22,8 @@
     "chai-arrays": "^2.2.0",
     "dotenv": "^8.2.0",
     "eth-gas-reporter": "^0.2.17",
+    "ethereum-waffle": "^3.4.0",
+    "ethers": "^5.4.7",
     "find-config": "^1.0.0",
     "openzeppelin-test-helpers": "^0.5.1",
     "rlp": "^2.2.5",

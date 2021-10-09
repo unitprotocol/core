@@ -31,16 +31,6 @@ module.exports = function(context, mode) {
 				usdpAmount,	// USDP
 			);
 		},
-		exitTarget: async (asset, mainAmount, repayment) => {
-			if (+repayment > 0) {
-				await context.usdp.approve(context.vault.address, repayment)
-			}
-			return context.vaultManager.exit_targetRepayment(
-				asset.address,
-				mainAmount, // main
-				repayment,	// USDP
-			);
-		},
 		exitEth: async (mainAmount, usdpAmount) => {
 			const debt = await context.vault.debts(context.weth.address, context.deployer)
 			await context.usdp.approve(context.vault.address, debt)
@@ -64,7 +54,7 @@ module.exports = function(context, mode) {
 			spawn: async (main, mainAmount, usdpAmount, { from = context.deployer, noApprove } = {}) => {
 				if (!noApprove)
 					await context.approveCollaterals(main, mainAmount, from);
-				return context.vaultManagerKeydonixMainAsset.spawn(
+				return context.vaultManagerKeydonix.spawn(
 					main.address,
 					mainAmount, // main
 					usdpAmount,	// USDP
@@ -73,14 +63,16 @@ module.exports = function(context, mode) {
 				);
 			},
 			spawnEth: async (mainAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixMainAsset.spawn_Eth(
+				return context.vaultManagerKeydonix.spawn_Eth(
 					usdpAmount,	// USDP
 					{ value: mainAmount }
 				);
 			},
-			join: async (main, mainAmount, usdpAmount) => {
-				await main.approve(context.vault.address, mainAmount);
-				return context.vaultManagerKeydonixMainAsset.depositAndBorrow(
+			join: async (main, mainAmount, usdpAmount, { noApprove } = {}) => {
+			  if (!noApprove) {
+          await main.approve(context.vault.address, mainAmount);
+        }
+				return context.vaultManagerKeydonix.join(
 					main.address,
 					mainAmount, // main
 					usdpAmount,	// USDP
@@ -88,7 +80,7 @@ module.exports = function(context, mode) {
 				)
 			},
 			exit: async (main, mainAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixMainAsset.withdrawAndRepay(
+				return context.vaultManagerKeydonix.exit(
 					main.address,
 					mainAmount, // main
 					usdpAmount,	// USDP
@@ -96,7 +88,7 @@ module.exports = function(context, mode) {
 				);
 			},
 			triggerLiquidation: (main, user, from = context.deployer) => {
-				return context.liquidatorKeydonixMainAsset.triggerLiquidation(
+				return context.vaultManagerKeydonix.triggerLiquidation(
 					main.address,
 					user,
 					['0x', '0x', '0x', '0x'], // main price proof
@@ -104,17 +96,11 @@ module.exports = function(context, mode) {
 				);
 			},
 			withdrawAndRepay: async (main, mainAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixMainAsset.withdrawAndRepay(
+				return context.vaultManagerKeydonix.exit(
 					main.address,
 					mainAmount,
 					usdpAmount,
 					['0x', '0x', '0x', '0x'], // main price proof
-				);
-			},
-			withdrawAndRepayEth: async (mainAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixMainAsset.withdrawAndRepay_Eth(
-					mainAmount,
-					usdpAmount,
 				);
 			},
 		},
@@ -122,16 +108,18 @@ module.exports = function(context, mode) {
 			spawn: async (main, mainAmount, usdpAmount, { from = context.deployer, noApprove } = {}) => {
 				if (!noApprove)
 					await context.approveCollaterals(main, mainAmount, from);
-				return context.vaultManagerKeydonixPoolToken.spawn(
+				return context.vaultManagerKeydonix.spawn(
 					main.address,
 					mainAmount, // main
 					usdpAmount,	// USDP
 					['0x', '0x', '0x', '0x'], // underlying token price proof
 				);
 			},
-			join: async (main, mainAmount, usdpAmount) => {
-				await main.approve(context.vault.address, mainAmount);
-				return context.vaultManagerKeydonixPoolToken.depositAndBorrow(
+			join: async (main, mainAmount, usdpAmount, { noApprove } = {}) => {
+			  if (!noApprove) {
+          await main.approve(context.vault.address, mainAmount);
+        }
+				return context.vaultManagerKeydonix.join(
 					main.address,
 					mainAmount, // main
 					usdpAmount,	// USDP
@@ -139,7 +127,7 @@ module.exports = function(context, mode) {
 				);
 			},
 			exit: async (main, mainAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixPoolToken.withdrawAndRepay(
+				return context.vaultManagerKeydonix.exit(
 					main.address,
 					mainAmount, // main
 					usdpAmount,	// USDP
@@ -147,7 +135,7 @@ module.exports = function(context, mode) {
 				);
 			},
 			triggerLiquidation: (main, user, from = context.deployer) => {
-				return context.liquidatorKeydonixPoolToken.triggerLiquidation(
+				return context.vaultManagerKeydonix.triggerLiquidation(
 					main.address,
 					user,
 					['0x', '0x', '0x', '0x'], // main price proof
@@ -155,7 +143,7 @@ module.exports = function(context, mode) {
 				);
 			},
 			withdrawAndRepay: async (main, mainAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixPoolToken.withdrawAndRepay(
+				return context.vaultManagerKeydonix.exit(
 					main.address,
 					mainAmount,
 					usdpAmount,
@@ -163,7 +151,7 @@ module.exports = function(context, mode) {
 				);
 			},
 			spawnEth: async (mainAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixMainAsset.spawn_Eth(
+				return context.vaultManagerKeydonix.spawn_Eth(
 					usdpAmount,	// USDP
 					{ value: mainAmount }
 				);

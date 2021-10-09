@@ -6,7 +6,6 @@ const balance = require('./helpers/balances');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
 const utils = require('./helpers/utils');
-const increaseTime = require('./helpers/timeTravel');
 
 [
 	'chainlinkMainAsset',
@@ -116,37 +115,6 @@ const increaseTime = require('./helpers/timeTravel');
 
 					expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount.sub(mainToWithdraw));
 					expect(usdpInPosition).to.be.bignumber.equal(usdpAmount.sub(usdpToRepay));
-				})
-
-				it('Should partially repay the debt of a position using `exit_targetRepayment`', async function() {
-					await this.vaultParameters.setStabilityFee(this.mainCollateral.address, 10_001);
-					const mainAmount = ether('100');
-					const usdpAmount = ether('20');
-
-					await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
-
-					await increaseTime(3600 * 24 * 365);
-
-					await this.utils.updatePrice();
-
-					const mainToWithdraw = ether('1');
-					const repayment = ether('11');
-
-					const receipt = await this.utils.exitTarget(this.mainCollateral, mainToWithdraw, repayment);
-
-					expectEvent(receipt, 'Exit', {
-						asset: this.mainCollateral.address,
-						owner: deployer,
-						main: mainToWithdraw,
-					});
-
-					// the principal is about 10 USDP
-					expect(ether('10').sub(receipt.logs[0].args.usdp)).to.be.bignumber.lt(ether('0.001'));
-
-					const usdpInPosition = await this.vault.debts(this.mainCollateral.address, deployer);
-
-					// accumulated debt is about 1 USDP
-					expect(usdpInPosition.sub(ether('11'))).to.be.bignumber.lt(ether('0.001'));
 				})
 
 				it('Should partially repay the debt of a position and withdraw collaterals partially using ETH', async function() {
