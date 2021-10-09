@@ -67,6 +67,12 @@ contract Vault is Auth {
         _;
     }
 
+    modifier checkpointFee(address asset, address user) {
+        accumulatedStabilityFee[asset][user] = getFee(asset, user);
+        lastUpdate[asset][user] = block.timestamp;
+        _;
+    }
+
     /**
      * @param _parameters The address of the system parameters
      * @param _usdp USDP token address
@@ -87,13 +93,9 @@ contract Vault is Auth {
      * @param asset The address of the main collateral token
      * @param user The owner of a position
      **/
-    function update(address asset, address user) public hasVaultAccess notLiquidating(asset, user) {
-
-        accumulatedStabilityFee[asset][user] = getFee(asset, user);
-
+    function update(address asset, address user) public hasVaultAccess notLiquidating(asset, user) checkpointFee(asset, user) {
         stabilityFee[asset][user] = vaultParameters.stabilityFee(asset);
         liquidationFee[asset][user] = vaultParameters.liquidationFee(asset);
-        lastUpdate[asset][user] = block.timestamp;
     }
 
     /**
@@ -207,6 +209,7 @@ contract Vault is Auth {
     external
     hasVaultAccess
     notLiquidating(asset, user)
+    checkpointFee(asset, user)
     returns(uint)
     {
         uint debt = debts[asset][user];
@@ -240,17 +243,6 @@ contract Vault is Auth {
     }
 
     /**
-     * @dev Checkpoints stability fee
-     * @param asset The address of the collateral
-     * @param user The address the position owner
-     **/
-    function checkpointFee(address asset, address user) public hasVaultAccess notLiquidating(asset, user) returns(uint) {
-        accumulatedStabilityFee[asset][user] = getFee(asset, user);
-        lastUpdate[asset][user] = block.timestamp;
-        return accumulatedStabilityFee[asset][user];
-    }
-
-    /**
      * @dev Deletes position and transfers collateral to liquidation system
      * @param asset The address of the main collateral token
      * @param positionOwner The address of a position's owner
@@ -264,11 +256,10 @@ contract Vault is Auth {
     external
     hasVaultAccess
     notLiquidating(asset, positionOwner)
+    checkpointFee(asset, positionOwner)
     {
         // reverts if oracle type is disabled
         require(vaultParameters.isOracleTypeEnabled(oracleType[asset][positionOwner], asset), "Unit Protocol: WRONG_ORACLE_TYPE");
-
-        checkpointFee(asset, positionOwner);
 
         liquidationBlock[asset][positionOwner] = block.number;
         liquidationPrice[asset][positionOwner] = initialPrice;
@@ -376,7 +367,7 @@ contract Vault is Auth {
      * @param amount The repayment amount
      * @return fee amount
      **/
-    function calculateFee(address asset, address user, uint amount) public view returns (uint) {
+    function calculateFee(address asset, address user, uint amount) internal view returns (uint) {
         uint sFeePercent = stabilityFee[asset][user];
         uint timePast = block.timestamp.sub(lastUpdate[asset][user]);
 

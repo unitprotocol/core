@@ -9,7 +9,6 @@ interface IVault {
     function DENOMINATOR_1E2 (  ) external view returns ( uint256 );
     function DENOMINATOR_1E5 (  ) external view returns ( uint256 );
     function borrow ( address asset, address user, uint256 amount ) external returns ( uint256 );
-    function calculateFee ( address asset, address user, uint256 amount ) external view returns ( uint256 );
     function changeOracleType ( address asset, address user, uint256 newOracleType ) external;
     function chargeFee ( address asset, address user, uint256 amount ) external;
     function decreaseFee ( address asset, address user, uint amount ) external;
@@ -22,7 +21,6 @@ interface IVault {
     function depositEth ( address user ) external payable;
     function depositMain ( address asset, address user, uint256 amount ) external;
     function destroy ( address asset, address user ) external;
-    function checkpointFee( address asset, address user ) external view returns ( uint256 );
     function getTotalDebt ( address asset, address user ) external view returns ( uint256 );
     function lastUpdate ( address, address ) external view returns ( uint256 );
     function liquidate ( address asset, address positionOwner, uint256 mainAssetToLiquidator, uint256 mainAssetToPositionOwner, uint256 repayment, uint256 penalty, address liquidator ) external;

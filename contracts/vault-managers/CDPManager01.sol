@@ -59,8 +59,8 @@ contract CDPManager01 is ReentrancyGuard {
      **/
     constructor(address _vaultManagerParameters, address _oracleRegistry, address _cdpRegistry) {
         require(
-            _vaultManagerParameters != address(0) && 
-            _oracleRegistry != address(0) && 
+            _vaultManagerParameters != address(0) &&
+            _oracleRegistry != address(0) &&
             _cdpRegistry != address(0),
                 "Unit Protocol: INVALID_ARGS"
         );
@@ -252,7 +252,14 @@ contract CDPManager01 is ReentrancyGuard {
 
     // decreases debt
     function _repay(address asset, address owner, uint usdpAmount) internal {
-        uint fee = vault.checkpointFee(asset, owner);
+        uint fee = vault.getFee(asset, owner);
+
+        if (fee > usdpAmount) {
+          fee = usdpAmount;
+        }
+
+        usdpAmount = usdpAmount - fee;
+
         vault.chargeFee(vault.usdp(), owner, fee);
         vault.decreaseFee(asset, owner, fee);
 
@@ -274,7 +281,7 @@ contract CDPManager01 is ReentrancyGuard {
         // revert if collateralization is not enough
         require(vault.getTotalDebt(asset, owner) <= usdLimit, "Unit Protocol: UNDERCOLLATERALIZED");
     }
-    
+
     // Liquidation Trigger
 
     /**
@@ -288,7 +295,7 @@ contract CDPManager01 is ReentrancyGuard {
 
         // USD value of the collateral
         uint usdValue_q112 = getCollateralUsdValue_q112(asset, owner);
-        
+
         // reverts if a position is not liquidatable
         require(_isLiquidatablePosition(asset, owner, usdValue_q112), "Unit Protocol: SAFE_POSITION");
 
@@ -363,12 +370,12 @@ contract CDPManager01 is ReentrancyGuard {
     ) public view returns (uint) {
         uint debt = vault.getTotalDebt(asset, owner);
         if (debt == 0) return 0;
-        
+
         uint usdValue_q112 = getCollateralUsdValue_q112(asset, owner);
 
         return debt.mul(100).mul(Q112).div(usdValue_q112);
     }
-    
+
 
     /**
      * @dev Calculates liquidation price
@@ -383,7 +390,7 @@ contract CDPManager01 is ReentrancyGuard {
 
         uint debt = vault.getTotalDebt(asset, owner);
         if (debt == 0) return uint(-1);
-        
+
         uint collateralLiqPrice = debt.mul(100).mul(Q112).div(vaultManagerParameters.liquidationRatio(asset));
 
         require(IToken(asset).decimals() <= 18, "Unit Protocol: NOT_SUPPORTED_DECIMALS");

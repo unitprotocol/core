@@ -168,7 +168,14 @@ contract CDPManager01_Fallback is ReentrancyGuard {
 
   // decreases debt
   function _repay(address asset, address owner, uint usdpAmount) internal {
-    uint fee = vault.checkpointFee(asset, owner);
+    uint fee = vault.getFee(asset, owner);
+
+    if (fee > usdpAmount) {
+      fee = usdpAmount;
+    }
+
+    usdpAmount = usdpAmount - fee;
+
     vault.chargeFee(vault.usdp(), owner, fee);
     vault.decreaseFee(asset, owner, fee);
 
