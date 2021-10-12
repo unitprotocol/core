@@ -126,7 +126,7 @@ contract CDPManager01_Fallback is ReentrancyGuard {
     // check usefulness of tx
     require(assetAmount != 0 || usdpAmount != 0, "Unit Protocol: USELESS_TX");
 
-    uint debt = vault.debts(asset, msg.sender);
+    uint debt = vault.getTotalDebt(asset, msg.sender);
 
     // catch full repayment
     if (usdpAmount > debt) { usdpAmount = debt; }
@@ -143,7 +143,9 @@ contract CDPManager01_Fallback is ReentrancyGuard {
 
       vault.update(asset, msg.sender);
 
-      _ensurePositionCollateralization(asset, msg.sender, proofData);
+      if (usdpAmount != debt) {
+        _ensurePositionCollateralization(asset, msg.sender, proofData);
+      }
     }
 
     // fire an event
