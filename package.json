@@ -17,6 +17,7 @@
   "dependencies": {
     "@keydonix/uniswap-oracle-contracts": "^1.0.0",
     "@keydonix/uniswap-oracle-sdk": "^1.0.1",
+    "@openzeppelin/contracts": "3.4.0",
     "@truffle/hdwallet-provider": "^1.0.38-next.2",
     "chai": "^4.2.0",
     "chai-arrays": "^2.2.0",

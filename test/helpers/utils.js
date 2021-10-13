@@ -8,6 +8,7 @@ const DummyToken = artifacts.require('DummyToken');
 const CyWETH = artifacts.require('CyWETH');
 const YvWETH = artifacts.require('YvWETH');
 const WstETH = artifacts.require('WstETH');
+const UnitProxy = artifacts.require('UnitProxy');
 const StETH = artifacts.require('StETH');
 const CurveRegistryMock = artifacts.require('CurveRegistryMock');
 const CurvePool = artifacts.require('CurvePool');
@@ -165,14 +166,22 @@ module.exports = (context, mode) => {
 			context.poolToken = await getPoolToken(context.mainCollateral.address);
 		}
 
-		const parametersAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
-		context.usdp = await USDP.new(parametersAddr);
+		const vaultParametersAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
+		context.usdp = await USDP.new(vaultParametersAddr);
 
-		const vaultAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
-		context.vaultParameters = await VaultParameters.new(vaultAddr, context.foundation.address);
-		context.vault = await Vault.new(context.vaultParameters.address, context.usdp.address, context.weth.address);
+    const vaultProxyAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 2);
+		context.vaultParameters = await VaultParameters.new(vaultProxyAddr, context.foundation.address);
 
-		await context.usdp.setMinter(context.vault.address, true);
+    // prevent calls to proxy by deployer
+    if (context.vault) {
+      context.vault.constructor.class_defaults.from = context.deployer
+    }
+    context.vaultImplementation = await Vault.new(context.vaultParameters.address, context.usdp.address, context.weth.address);
+    context.vault.constructor.class_defaults.from = '0x0000000000000000000000000000000000000000'
+
+    await UnitProxy.new(context.vaultImplementation.address, context.deployer, '0x');
+    context.vault = await Vault.at(vaultProxyAddr)
+    await context.usdp.setMinter(context.vault.address, true);
 
 		let mainAssetOracleType, poolTokenOracleType
 
