@@ -163,9 +163,8 @@ contract CDPManager01 is ReentrancyGuard {
                 _repay(asset, msg.sender, usdpAmount);
             }
 
-            vault.update(asset, msg.sender);
-
           if (usdpAmount != debt) {
+            vault.update(asset, msg.sender);
             _ensurePositionCollateralization(asset, msg.sender);
           }
         }
