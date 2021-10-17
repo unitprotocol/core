@@ -59,8 +59,8 @@ contract CDPManager01 is ReentrancyGuard {
      **/
     constructor(address _vaultManagerParameters, address _oracleRegistry, address _cdpRegistry) {
         require(
-            _vaultManagerParameters != address(0) && 
-            _oracleRegistry != address(0) && 
+            _vaultManagerParameters != address(0) &&
+            _oracleRegistry != address(0) &&
             _cdpRegistry != address(0),
                 "Unit Protocol: INVALID_ARGS"
         );
@@ -146,7 +146,7 @@ contract CDPManager01 is ReentrancyGuard {
         // check usefulness of tx
         require(assetAmount != 0 || usdpAmount != 0, "Unit Protocol: USELESS_TX");
 
-        uint debt = vault.debts(asset, msg.sender);
+        uint debt = vault.getTotalDebt(asset, msg.sender);
 
         // catch full repayment
         if (usdpAmount > debt) { usdpAmount = debt; }
@@ -154,25 +154,19 @@ contract CDPManager01 is ReentrancyGuard {
         if (assetAmount == 0) {
             _repay(asset, msg.sender, usdpAmount);
         } else {
-            if (debt == usdpAmount) {
-                vault.withdrawMain(asset, msg.sender, assetAmount);
-                if (usdpAmount != 0) {
-                    _repay(asset, msg.sender, usdpAmount);
-                }
-            } else {
-                _ensureOracle(asset);
+            _ensureOracle(asset);
 
-                // withdraw collateral to the owner address
-                vault.withdrawMain(asset, msg.sender, assetAmount);
+            // withdraw collateral to the owner address
+            vault.withdrawMain(asset, msg.sender, assetAmount);
 
-                if (usdpAmount != 0) {
-                    _repay(asset, msg.sender, usdpAmount);
-                }
-
-                vault.update(asset, msg.sender);
-
-                _ensurePositionCollateralization(asset, msg.sender);
+            if (usdpAmount != 0) {
+                _repay(asset, msg.sender, usdpAmount);
             }
+
+          if (usdpAmount != debt) {
+            vault.update(asset, msg.sender);
+            _ensurePositionCollateralization(asset, msg.sender);
+          }
         }
 
         // fire an event
@@ -182,17 +176,40 @@ contract CDPManager01 is ReentrancyGuard {
     }
 
     /**
-      * @notice Repayment is the sum of the principal and interest
-      * @dev Withdraws collateral and repays specified amount of debt
+      * @notice Tx sender must have a sufficient USDP balance to pay the debt
+      * @dev Withdraws collateral and repays all the debt
       * @param asset The address of the collateral
-      * @param assetAmount The amount of the collateral to withdraw
-      * @param repayment The target repayment amount
+      * @param withdraw Whether the collateral be withdrawn or not
       **/
-    function exit_targetRepayment(address asset, uint assetAmount, uint repayment) external returns (uint) {
+    function repayAll(address asset, bool withdraw) public nonReentrant checkpoint(asset, msg.sender) returns (uint) {
 
-        uint usdpAmount = _calcPrincipal(asset, msg.sender, repayment);
+        uint debt = vault.debts(asset, msg.sender);
+        uint fee = vault.getFee(asset, msg.sender);
 
-        return exit(asset, assetAmount, usdpAmount);
+        // check usefulness of tx
+        require(debt != 0 || fee != 0, "Unit Protocol: USELESS_TX");
+
+        if (fee != 0) {
+            vault.chargeFee(vault.usdp(), msg.sender, fee);
+        }
+
+        if (debt != 0) {
+            vault.repay(asset, msg.sender, debt);
+        }
+
+        uint assetAmount;
+
+        if (withdraw) {
+            assetAmount = vault.collaterals(asset, msg.sender);
+            vault.withdrawMain(asset, msg.sender, assetAmount);
+        }
+
+        vault.destroy(asset, msg.sender);
+
+        // fire an event
+        emit Exit(asset, msg.sender, assetAmount, debt.add(fee));
+
+        return debt.add(fee);
     }
 
     /**
@@ -209,21 +226,18 @@ contract CDPManager01 is ReentrancyGuard {
         return usdpAmount;
     }
 
-    /**
-      * @notice Repayment is the sum of the principal and interest
-      * @notice Withdraws WETH and converts to ETH
-      * @param ethAmount ETH amount to withdraw
-      * @param repayment The target repayment amount
-      **/
-    function exit_Eth_targetRepayment(uint ethAmount, uint repayment) external returns (uint) {
-        uint usdpAmount = _calcPrincipal(WETH, msg.sender, repayment);
-        return exit_Eth(ethAmount, usdpAmount);
-    }
-
     // decreases debt
     function _repay(address asset, address owner, uint usdpAmount) internal {
-        uint fee = vault.calculateFee(asset, owner, usdpAmount);
+        uint fee = vault.getFee(asset, owner);
+
+        if (fee > usdpAmount) {
+          fee = usdpAmount;
+        }
+
+        usdpAmount = usdpAmount - fee;
+
         vault.chargeFee(vault.usdp(), owner, fee);
+        vault.decreaseFee(asset, owner, fee);
 
         // burn USDP from the owner's balance
         uint debtAfter = vault.repay(asset, owner, usdpAmount);
@@ -243,7 +257,7 @@ contract CDPManager01 is ReentrancyGuard {
         // revert if collateralization is not enough
         require(vault.getTotalDebt(asset, owner) <= usdLimit, "Unit Protocol: UNDERCOLLATERALIZED");
     }
-    
+
     // Liquidation Trigger
 
     /**
@@ -257,7 +271,7 @@ contract CDPManager01 is ReentrancyGuard {
 
         // USD value of the collateral
         uint usdValue_q112 = getCollateralUsdValue_q112(asset, owner);
-        
+
         // reverts if a position is not liquidatable
         require(_isLiquidatablePosition(asset, owner, usdValue_q112), "Unit Protocol: SAFE_POSITION");
 
@@ -332,12 +346,12 @@ contract CDPManager01 is ReentrancyGuard {
     ) public view returns (uint) {
         uint debt = vault.getTotalDebt(asset, owner);
         if (debt == 0) return 0;
-        
+
         uint usdValue_q112 = getCollateralUsdValue_q112(asset, owner);
 
         return debt.mul(100).mul(Q112).div(usdValue_q112);
     }
-    
+
 
     /**
      * @dev Calculates liquidation price
@@ -352,16 +366,11 @@ contract CDPManager01 is ReentrancyGuard {
 
         uint debt = vault.getTotalDebt(asset, owner);
         if (debt == 0) return uint(-1);
-        
+
         uint collateralLiqPrice = debt.mul(100).mul(Q112).div(vaultManagerParameters.liquidationRatio(asset));
 
         require(IToken(asset).decimals() <= 18, "Unit Protocol: NOT_SUPPORTED_DECIMALS");
 
         return collateralLiqPrice / vault.collaterals(asset, owner) / 10 ** (18 - IToken(asset).decimals());
-    }
-
-    function _calcPrincipal(address asset, address owner, uint repayment) internal view returns (uint) {
-        uint fee = vault.stabilityFee(asset, owner) * (block.timestamp - vault.lastUpdate(asset, owner)) / 365 days;
-        return repayment * DENOMINATOR_1E5 / (DENOMINATOR_1E5 + fee);
     }
 }

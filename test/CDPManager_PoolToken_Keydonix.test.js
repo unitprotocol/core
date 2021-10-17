@@ -1,6 +1,6 @@
 const {
 	expectEvent,
-	expectRevert,
+	ether,
 } = require('openzeppelin-test-helpers');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
@@ -32,7 +32,7 @@ const time = require('./helpers/time');
 
 					expectEvent.inLogs(logs, 'Join', {
 						asset: this.poolToken.address,
-						user: deployer,
+						owner: deployer,
 						main: mainAmount,
 						usdp: usdpAmount,
 					});
@@ -57,7 +57,7 @@ const time = require('./helpers/time');
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.poolToken.address,
-						user: deployer,
+						owner: deployer,
 						main: mainAmount,
 						usdp: usdpAmount,
 					});
@@ -80,20 +80,23 @@ const time = require('./helpers/time');
 
 					const accumulatedDebt = await this.vault.getTotalDebt(this.poolToken.address, deployer);
 
-					let expectedDebt = usdpAmount.mul(new BN('3000')).mul((await time.latest()).sub(timeStart)).div(new BN(365*24*60*60)).div(new BN('100000')).add(usdpAmount);
+          const expectedDebt = usdpAmount.mul(new BN('3000')).mul((await time.latest()).sub(timeStart)).div(new BN(365*24*60*60)).div(new BN('100000')).add(usdpAmount);
 
 					expect(accumulatedDebt.div(new BN(10 ** 12))).to.be.bignumber.equal(
 						expectedDebt.div(new BN(10 ** 12))
 					);
 
 					// get some usdp to cover fee
-					await this.utils.updatePrice();
-					await this.utils.spawnEth(new BN('2'), new BN('1'), new BN('2'));
+          await this.usdp.setMinter(deployer, true);
+          await this.usdp.mint(deployer, ether('2'))
+
+          await this.utils.updatePrice();
 
 					// repay debt partially
-					await this.utils.repay(this.poolToken, deployer, usdpAmount.div(new BN(2)));
+					await this.utils.repay(this.poolToken, usdpAmount.div(new BN(2)));
 
-					let accumulatedDebtAfterRepayment = await this.vault.getTotalDebt(this.poolToken.address, deployer);
+					const accumulatedDebtAfterRepayment = await this.vault.getTotalDebt(this.poolToken.address, deployer);
+
 					expect(accumulatedDebtAfterRepayment.div(new BN(10 ** 12))).to.be.bignumber.equal(
 						expectedDebt.div(new BN(2)).div(new BN(10 ** 12))
 					);
@@ -114,7 +117,7 @@ const time = require('./helpers/time');
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.poolToken.address,
-						user: deployer,
+						owner: deployer,
 						main: mainToWithdraw,
 						usdp: usdpToRepay,
 					});
@@ -137,7 +140,7 @@ const time = require('./helpers/time');
 
 				expectEvent.inLogs(logs, 'Join', {
 					asset: this.poolToken.address,
-					user: deployer,
+					owner: deployer,
 					main: mainAmount,
 					usdp: usdpAmount,
 				});
@@ -212,20 +215,6 @@ const time = require('./helpers/time');
 				})
 			})
 
-			describe('Join', function () {
-				it('Reverts non-spawned position', async function() {
-					const mainAmount = new BN('100');
-					const usdpAmount = new BN('20');
-
-					const tx = this.utils.join(
-						this.poolToken,
-						mainAmount,
-						usdpAmount
-					);
-					await this.utils.expectRevert(tx, "Unit Protocol: NOT_SPAWNED_POSITION");
-				})
-			})
-
 			describe('Exit', function () {
 				it('Reverts non valuable tx', async function() {
 					const mainAmount = new BN('100');
@@ -235,16 +224,6 @@ const time = require('./helpers/time');
 
 					const tx = this.utils.exit(this.poolToken, 0, 0, 0);
 					await this.utils.expectRevert(tx, "Unit Protocol: USELESS_TX");
-				})
-
-				it('Reverts when specified repayment amount is greater than the accumulated debt', async function() {
-					const mainAmount = new BN('100');
-					const usdpAmount = new BN('20');
-
-					await this.utils.spawn(this.poolToken, mainAmount, usdpAmount);
-
-					const tx = this.utils.exit(this.poolToken, mainAmount, usdpAmount.add(new BN(1)));
-					await expectRevert.unspecified(tx);
 				})
 
 				it('Reverts when position state after exit becomes undercollateralized', async function() {
