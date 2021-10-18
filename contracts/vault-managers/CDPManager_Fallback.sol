@@ -126,7 +126,7 @@ contract CDPManager01_Fallback is ReentrancyGuard {
     // check usefulness of tx
     require(assetAmount != 0 || usdpAmount != 0, "Unit Protocol: USELESS_TX");
 
-    uint debt = vault.debts(asset, msg.sender);
+    uint debt = vault.getTotalDebt(asset, msg.sender);
 
     // catch full repayment
     if (usdpAmount > debt) { usdpAmount = debt; }
@@ -134,21 +134,15 @@ contract CDPManager01_Fallback is ReentrancyGuard {
     if (assetAmount == 0) {
       _repay(asset, msg.sender, usdpAmount);
     } else {
-      if (debt == usdpAmount) {
-        vault.withdrawMain(asset, msg.sender, assetAmount);
-        if (usdpAmount != 0) {
-          _repay(asset, msg.sender, usdpAmount);
-        }
-      } else {
-        // withdraw collateral to the owner address
-        vault.withdrawMain(asset, msg.sender, assetAmount);
+      // withdraw collateral to the owner address
+      vault.withdrawMain(asset, msg.sender, assetAmount);
 
-        if (usdpAmount != 0) {
-          _repay(asset, msg.sender, usdpAmount);
-        }
+      if (usdpAmount != 0) {
+        _repay(asset, msg.sender, usdpAmount);
+      }
 
+      if (usdpAmount != debt) {
         vault.update(asset, msg.sender);
-
         _ensurePositionCollateralization(asset, msg.sender, proofData);
       }
     }
@@ -159,24 +153,18 @@ contract CDPManager01_Fallback is ReentrancyGuard {
     return usdpAmount;
   }
 
-  /**
-    * @notice Repayment is the sum of the principal and interest
-    * @dev Withdraws collateral and repays specified amount of debt
-    * @param asset The address of the collateral
-    * @param assetAmount The amount of the collateral to withdraw
-    * @param repayment The target repayment amount
-    **/
-  function exit_targetRepayment(address asset, uint assetAmount, uint repayment, KeydonixOracleAbstract.ProofDataStruct calldata proofData) external returns (uint) {
-
-    uint usdpAmount = _calcPrincipal(asset, msg.sender, repayment);
-
-    return exit(asset, assetAmount, usdpAmount, proofData);
-  }
-
   // decreases debt
   function _repay(address asset, address owner, uint usdpAmount) internal {
-    uint fee = vault.calculateFee(asset, owner, usdpAmount);
+    uint fee = vault.getFee(asset, owner);
+
+    if (fee > usdpAmount) {
+      fee = usdpAmount;
+    }
+
+    usdpAmount = usdpAmount - fee;
+
     vault.chargeFee(vault.usdp(), owner, fee);
+    vault.decreaseFee(asset, owner, fee);
 
     // burn USDP from the owner's balance
     uint debtAfter = vault.repay(asset, owner, usdpAmount);
@@ -312,11 +300,6 @@ contract CDPManager01_Fallback is ReentrancyGuard {
     require(IToken(asset).decimals() <= 18, "Unit Protocol: NOT_SUPPORTED_DECIMALS");
 
     return collateralLiqPrice / vault.collaterals(asset, owner) / 10 ** (18 - IToken(asset).decimals());
-  }
-
-  function _calcPrincipal(address asset, address owner, uint repayment) internal view returns (uint) {
-    uint fee = vault.stabilityFee(asset, owner) * (block.timestamp - vault.lastUpdate(asset, owner)) / 365 days;
-    return repayment * DENOMINATOR_1E5 / (DENOMINATOR_1E5 + fee);
   }
 
   function _getOracleType(address asset) internal view returns (uint) {
