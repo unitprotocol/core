@@ -14,6 +14,8 @@ task('deploy', 'Runs a core deployment')
     .addOptionalParam('deployer', 'Address of a deployer account to use (defaults to the first account)')
     .addOptionalParam('noVerify', 'Skip contracts verification on *scan block explorer', false, types.boolean)
     .setAction(async (taskArgs) => {
+        await hre.run("compile");
+
         const {createDeployment} = require('./lib/deployments/core');
         const {runDeployment} = require('./test/helpers/deployUtils');
 

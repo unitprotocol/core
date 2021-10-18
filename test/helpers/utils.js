@@ -181,6 +181,7 @@ module.exports = (context, mode) => {
 		}
 
 		const useDeployment = process.env.USE_DEPLOYMENT && !keydonix;
+		// run with: USE_DEPLOYMENT=1 HARDHAT_NETWORK=localhost truffle --network localhost test
 		if (useDeployment) {
 		    const deployment = await createDeployment({
 				deployer: context.deployer,
@@ -198,6 +199,8 @@ module.exports = (context, mode) => {
 			context.oracleRegistry = await OracleRegistry.at(deployed.OracleRegistry);
 			context.forceTransferAssetStore = await ForceTransferAssetStore.at(deployed.ForceTransferAssetStore);
 			context.chainlinkOracleMainAsset = await ChainlinkOracleMainAsset.at(deployed.ChainlinkedOracleMainAsset);
+
+			Vault.class_defaults.from = '0x0000000000000000000000000000000000000000';
 		}
 		else {
 		const vaultParametersAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
@@ -516,7 +519,6 @@ module.exports = (context, mode) => {
         context.cdpRegistry.address
       );
     }
-    context.vaultManager = await CDPManager.new(context.vaultManagerParameters.address, context.oracleRegistry.address, context.cdpRegistry.address);
 
 
 		if (keydonix) {

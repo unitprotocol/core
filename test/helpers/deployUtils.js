@@ -51,12 +51,13 @@ function calculateAddressAtNonce(sender, nonce, web3Inst = web3) {
 // --- Hardhat deployment script helpers --------------------------------------
 
 async function _deploymentStep(name, args, options) {
-    const {scope, signer, hre, verify} = options;
+    const {scope, signer, hre, verify, proxy} = options;
     const ethers = hre.ethers;
 
     const convertedArgs = [];
     for (const arg of args) {
-        if (Array.isArray(arg) || typeof arg == 'boolean' || typeof arg == 'number' || ethers.utils.isAddress(arg)) {
+        if (Array.isArray(arg) || typeof arg == 'boolean' || typeof arg == 'number' || ethers.utils.isAddress(arg)
+                || (typeof arg == 'string' && arg.toLowerCase().startsWith('0x'))) {
             convertedArgs.push(arg);
         }
         else if (typeof arg == 'object' && 'addressAtNextNonce' in arg) {
@@ -78,6 +79,9 @@ async function _deploymentStep(name, args, options) {
     const dot = name.indexOf('.');
     if (-1 != dot) {
         // Transaction.
+        if (proxy !== undefined)
+            throw new Error(`Can't use proxy option for transaction: ${name}`);
+
         const fnName = name.substr(dot + 1);
         const contractName = name.substr(0, dot);
         if (!(contractName in scope))
@@ -96,18 +100,27 @@ async function _deploymentStep(name, args, options) {
     if (name in scope)
         throw new Error(`${name} is already deployed`);
 
-    const factory = await ethers.getContractFactory(name, signer);
-    const contract = await factory.deploy(...convertedArgs);
-    await contract.deployed();
+    const deployContract = async (name, args) => {
+        const factory = await ethers.getContractFactory(name, signer);
+        const contract = await factory.deploy(...args);
+        await contract.deployed();
 
-    scope[name] = contract.address;
+        if (verify) {
+            await hre.run("verify:verify", {
+                address: contract.address,
+                constructorArguments: args,
+            });
+        }
 
-    if (verify) {
-        await hre.run("verify:verify", {
-            address: contract.address,
-            constructorArguments: convertedArgs,
-        });
+        return contract.address;
+    };
+
+    let address = await deployContract(name, convertedArgs);
+    if (proxy !== undefined) {
+        address = await deployContract('UnitProxy', [address, proxy.admin, proxy.data || '0x']);
     }
+
+    scope[name] = address;
 }
 
 /*
@@ -139,7 +152,8 @@ async function runDeployment(deployment, options)
         scope = {};
 
     for (const step of deployment) {
-        await _deploymentStep(step[0], step.slice(1), {scope, signer, hre, verify});
+        const stepOptions = (typeof step[0] == 'object') ? step.shift() : {};
+        await _deploymentStep(step[0], step.slice(1), {scope, signer, hre, verify, ...stepOptions});
     }
 
     return scope;
