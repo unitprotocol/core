@@ -58,7 +58,7 @@ module.exports = {
         },
     },
 
-    mocha: {
+    mocha: process.env.NO_COVERAGE ? {} : {
         reporter: 'eth-gas-reporter',
         reporterOptions: {
             currency: 'USD',

@@ -52,7 +52,8 @@ const MAX_UINT = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 let _hre;
 const _loadHRE = async function() {
 	if (_hre === undefined) {
-		process.env.HARDHAT_NETWORK = 'localhost';
+		if (!process.env.HARDHAT_NETWORK)
+			process.env.HARDHAT_NETWORK = 'localhost';
 		_hre = require("hardhat");
 
 		await _hre.run("compile");
