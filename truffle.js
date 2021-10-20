@@ -31,6 +31,10 @@ const getWalletProvider = function(network) {
 	return provider;
 };
 
+const FANTOM_KEYS = [process.env.FANTOM_WALLET_PRIVATE_KEY, process.env.FANTOM_WALLET_PRIVATE_KEY2,
+    process.env.FANTOM_WALLET_PRIVATE_KEY3, process.env.FANTOM_WALLET_PRIVATE_KEY4];
+
+
 module.exports = {
 	networks: {
 		coverage: {
@@ -75,7 +79,7 @@ module.exports = {
 			network_id: "250",
 		    provider: function() {
 		        return new NewHDWalletProvider({
-                    privateKeys: [process.env.FANTOM_WALLET_PRIVATE_KEY, process.env.FANTOM_WALLET_PRIVATE_KEY2],
+                    privateKeys: FANTOM_KEYS,
                     providerOrUrl: new Web3HttpProvider(process.env.FANTOM_NODE_URL, {timeout: 1800000}),
                 });
             }
@@ -84,7 +88,7 @@ module.exports = {
 			network_id: "4002",
 		    provider: function() {
 		        return new NewHDWalletProvider({
-                    privateKeys: [process.env.FANTOM_WALLET_PRIVATE_KEY, process.env.FANTOM_WALLET_PRIVATE_KEY2],
+                    privateKeys: FANTOM_KEYS,
                     providerOrUrl: new Web3HttpProvider('https://rpc.testnet.fantom.network/', {timeout: 180000}),
                 });
             }
@@ -93,7 +97,7 @@ module.exports = {
 			network_id: "4003",
 		    provider: function() {
 		        return new NewHDWalletProvider({
-                    privateKeys: [process.env.FANTOM_WALLET_PRIVATE_KEY, process.env.FANTOM_WALLET_PRIVATE_KEY2],
+                    privateKeys: FANTOM_KEYS,
                     providerOrUrl: new Web3HttpProvider('http://localhost:4000', {timeout: 30000}),
                 });
             }

@@ -202,6 +202,11 @@ module.exports = (context, mode) => {
 			context.chainlinkOracleMainAsset = await ChainlinkOracleMainAsset.at(deployed.ChainlinkedOracleMainAsset);
 
 			Vault.class_defaults.from = '0x0000000000000000000000000000000000000000';
+
+            // This shit doesn't care about cache invalidation and non-trivial workflows, so we'll do it the hard way.
+            for (const subProvider of web3.currentProvider.engine._providers)
+                if ('nonceCache' in subProvider)
+                    subProvider.nonceCache = {};
 		}
 		else {
 		const vaultParametersAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
