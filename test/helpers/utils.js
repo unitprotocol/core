@@ -503,18 +503,6 @@ module.exports = (context, mode) => {
 			await context.vaultParameters.setManager(context.vaultManagerParameters.address, true);
 		}
 
-		if (keydonix) {
-			context.liquidatorKeydonixMainAsset = await LiquidatorKeydonixMainAsset.new(context.vaultManagerParameters.address, context.keydonixOracleMainAssetMock.address);
-			context.liquidatorKeydonixPoolToken = await LiquidatorKeydonixPoolToken.new(context.vaultManagerParameters.address, context.keydonixOraclePoolTokenMock.address);
-		} else {
-			if (useDeployment) {
-				context.vaultManager = await CDPManager.at(context.deployed.CDPManager01);
-			} else {
-				context.vaultManager = await CDPManager.new(context.vaultManagerParameters.address, context.oracleRegistry.address, context.cdpRegistry.address);
-			}
-		}
-
-
 		if (useDeployment) {
 			context.liquidationAuction = await LiquidationAuction.at(context.deployed.LiquidationAuction02);
 		} else {
@@ -532,6 +520,12 @@ module.exports = (context, mode) => {
         context.cdpRegistry.address
       );
     }
+
+        if (useDeployment) {
+            context.vaultManager = await CDPManager.at(context.deployed.CDPManager01);
+        } else {
+            context.vaultManager = await CDPManager.new(context.vaultManagerParameters.address, context.oracleRegistry.address, context.cdpRegistry.address);
+        }
 
 
 		if (keydonix) {
