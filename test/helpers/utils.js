@@ -83,6 +83,9 @@ async function expectRevert(promise, expectedError) {
 }
 
 function resetNonceCache() {
+    if (undefined === web3.currentProvider.engine)
+        return;
+
 	for (const subProvider of web3.currentProvider.engine._providers)
 		if ('nonceCache' in subProvider)
 			subProvider.nonceCache = {};
