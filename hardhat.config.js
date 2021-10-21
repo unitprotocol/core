@@ -47,6 +47,17 @@ task('accounts', 'Show current accounts')
 module.exports = {
     // Configure your network credentials at ~/.hardhat/networks.json,
     // see https://hardhat.org/plugins/hardhat-local-networks-config-plugin.html#usage
+    //
+    // E.g.:
+    // {
+    //     "networks": {
+    //         "fantom-testnet": {
+    //             "url": "https://rpc.testnet.fantom.network/",
+    //             "accounts": [ ... ],
+    //             "timeout": 180000
+    //         },
+    //     }
+    // }
 
     solidity: {
         version: "0.7.6",

@@ -82,6 +82,13 @@ async function expectRevert(promise, expectedError) {
 	expect.fail('Expected an exception but none was received');
 }
 
+function resetNonceCache() {
+	for (const subProvider of web3.currentProvider.engine._providers)
+		if ('nonceCache' in subProvider)
+			subProvider.nonceCache = {};
+}
+
+
 module.exports = (context, mode) => {
 	const keydonix = mode.startsWith('keydonix');
 	const uniswapKeep3r = mode.startsWith('uniswapKeep3r');
@@ -162,6 +169,8 @@ module.exports = (context, mode) => {
 	};
 
 	const deploy = async () => {
+	    resetNonceCache();  // may be needed after the previous test case execution
+
 		context.weth = await WETH.new();
     context.foundation = await FoundationMock.new();
 		context.mainCollateral = await DummyToken.new("STAKE clone", "STAKE", 18, ether('1000000'));
@@ -204,9 +213,7 @@ module.exports = (context, mode) => {
 			Vault.class_defaults.from = '0x0000000000000000000000000000000000000000';
 
             // This shit doesn't care about cache invalidation and non-trivial workflows, so we'll do it the hard way.
-            for (const subProvider of web3.currentProvider.engine._providers)
-                if ('nonceCache' in subProvider)
-                    subProvider.nonceCache = {};
+            resetNonceCache();
 		}
 		else {
 		const vaultParametersAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
