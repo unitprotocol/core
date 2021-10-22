@@ -109,6 +109,8 @@ async function _deploymentStep(name, args, options) {
             await hre.run("verify:verify", {
                 address: contract.address,
                 constructorArguments: args,
+                // FIXME hackish workaround for the contracts with the same bytecode
+                contract: name == 'UnitProxy' ? 'contracts/helpers/UnitProxy.sol:UnitProxy' : undefined,
             });
         }
 
