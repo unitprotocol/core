@@ -27,6 +27,7 @@ contract LiquidationAuction02 is ReentrancyGuard {
     IVaultManagerParameters public immutable vaultManagerParameters;
     ICDPRegistry public immutable cdpRegistry;
     IForceTransferAssetStore public immutable forceTransferAssetStore;
+    bool public immutable notifyFoundation;
 
     uint public constant DENOMINATOR_1E2 = 1e2;
     uint public constant WRAPPED_TO_UNDERLYING_ORACLE_TYPE = 11;
@@ -46,7 +47,7 @@ contract LiquidationAuction02 is ReentrancyGuard {
      * @param _cdpRegistry The address of the CDP registry
      * @param _forceTransferAssetStore The address of the ForceTransferAssetStore
      **/
-    constructor(address _vaultManagerParameters, address _cdpRegistry, address _forceTransferAssetStore) {
+    constructor(address _vaultManagerParameters, address _cdpRegistry, address _forceTransferAssetStore, bool _notifyFoundation) {
         require(
             _vaultManagerParameters != address(0) &&
             _forceTransferAssetStore != (address(0)),
@@ -56,6 +57,7 @@ contract LiquidationAuction02 is ReentrancyGuard {
         vault = IVault(IVaultParameters(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()).vault());
         cdpRegistry = ICDPRegistry(_cdpRegistry);
         forceTransferAssetStore = IForceTransferAssetStore(_forceTransferAssetStore);
+        notifyFoundation = _notifyFoundation;
     }
 
     /**
@@ -119,8 +121,10 @@ contract LiquidationAuction02 is ReentrancyGuard {
             msg.sender
         );
 
-        uint fee = repayment > penalty ? penalty : repayment;
-        IFoundation(IVaultParameters(vaultManagerParameters.vaultParameters()).foundation()).submitLiquidationFee(fee);
+        if (notifyFoundation) {
+            uint fee = repayment > penalty ? penalty : repayment;
+            IFoundation(IVaultParameters(vaultManagerParameters.vaultParameters()).foundation()).submitLiquidationFee(fee);
+        }
 
         // fire an buyout event
         emit Buyout(asset, user, msg.sender, collateralToBuyer, repayment, penalty);

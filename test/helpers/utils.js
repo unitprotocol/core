@@ -512,7 +512,8 @@ module.exports = (context, mode) => {
 			context.liquidationAuction = await LiquidationAuction.new(
 				context.vaultManagerParameters.address,
 				context.cdpRegistry.address,
-				context.forceTransferAssetStore.address
+				context.forceTransferAssetStore.address,
+				false
 			);
 		}
 
