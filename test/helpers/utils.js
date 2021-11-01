@@ -2,6 +2,7 @@ const Vault = artifacts.require('Vault');
 const VaultParameters = artifacts.require('VaultParameters');
 const FoundationMock = artifacts.require('FoundationMock');
 const VaultManagerParameters = artifacts.require('VaultManagerParameters');
+const VaultManagerBorrowFeeParameters = artifacts.require('VaultManagerBorrowFeeParameters');
 const USDP = artifacts.require('USDP');
 const WETH = artifacts.require('WETH');
 const DummyToken = artifacts.require('DummyToken');
@@ -48,6 +49,10 @@ const { expect } = require('chai');
 const getWrapper = require('./wrappers');
 
 const MAX_UINT = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+
+const BASE_BORROW_FEE = new BN(1234); // 1.234%
+const BORROW_FEE_100_PERCENT = new BN('100000'); // 100.000%
+const BORROW_FEE_RECEIVER_ADDRESS = '0x0000000000000000000000000000000123456789';
 
 let _hre;
 const _loadHRE = async function() {
@@ -105,6 +110,8 @@ module.exports = (context, mode) => {
 
 
 	const isLP = mode.includes('PoolToken');
+
+	context.INITIAL_USDP_AMOUNT = ether('100');
 
 	const poolDeposit = async (token, collateralAmount, decimals) => {
 		collateralAmount = decimals ? String(collateralAmount * 10 ** decimals) : ether(collateralAmount.toString());
@@ -498,11 +505,13 @@ module.exports = (context, mode) => {
 			context.collateralRegistry = await CollateralRegistry.at(context.deployed.CollateralRegistry);
 			context.cdpRegistry = await CDPRegistry.at(context.deployed.CDPRegistry);
 			context.vaultManagerParameters = await VaultManagerParameters.at(context.deployed.VaultManagerParameters);
+			context.vaultManagerBorrowFeeParameters = await VaultManagerBorrowFeeParameters.at(context.deployed.VaultManagerBorrowFeeParameters);
 		}
 		else {
 			context.collateralRegistry = await CollateralRegistry.new(context.vaultParameters.address, [context.mainCollateral.address]);
 			context.cdpRegistry = await CDPRegistry.new(context.vault.address, context.collateralRegistry.address);
 			context.vaultManagerParameters = await VaultManagerParameters.new(context.vaultParameters.address);
+			context.vaultManagerBorrowFeeParameters = await VaultManagerBorrowFeeParameters.new(context.vaultParameters.address, BASE_BORROW_FEE, BORROW_FEE_RECEIVER_ADDRESS);
 			await context.vaultParameters.setManager(context.vaultManagerParameters.address, true);
 		}
 
@@ -521,14 +530,15 @@ module.exports = (context, mode) => {
       context.vaultManagerKeydonix = await CDPManagerFallback.new(
         context.vaultManagerParameters.address,
         context.oracleRegistry.address,
-        context.cdpRegistry.address
+        context.cdpRegistry.address,
+				context.vaultManagerBorrowFeeParameters.address
       );
     }
 
         if (useDeployment) {
             context.vaultManager = await CDPManager.at(context.deployed.CDPManager01);
         } else {
-            context.vaultManager = await CDPManager.new(context.vaultManagerParameters.address, context.oracleRegistry.address, context.cdpRegistry.address);
+            context.vaultManager = await CDPManager.new(context.vaultManagerParameters.address, context.oracleRegistry.address, context.cdpRegistry.address, context.vaultManagerBorrowFeeParameters.address);
         }
 
 
@@ -590,10 +600,12 @@ module.exports = (context, mode) => {
 
 	const w = getWrapper(context, mode);
 
+	const calcBorrowFee = (usdpAmount) => {
+		return usdpAmount.mul(BASE_BORROW_FEE).div(BORROW_FEE_100_PERCENT)
+	};
+
 	return {
 		poolDeposit,
-		spawn: w.join,
-		spawnEth: w.joinEth,
 		approveCollaterals: context.approveCollaterals,
 		join: w.join,
 		joinEth: w.joinEth,
@@ -608,5 +620,7 @@ module.exports = (context, mode) => {
 		updatePrice,
 		repay,
 		expectRevert,
+		calcBorrowFee,
+		BORROW_FEE_RECEIVER_ADDRESS
 	}
 }

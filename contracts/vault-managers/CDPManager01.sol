@@ -5,6 +5,8 @@
 */
 pragma solidity 0.7.6;
 
+import './BaseCDPManager.sol';
+
 import '../interfaces/IOracleRegistry.sol';
 import '../interfaces/IOracleUsd.sol';
 import '../interfaces/IWETH.sol';
@@ -20,55 +22,21 @@ import '../helpers/SafeMath.sol';
 /**
  * @title CDPManager01
  **/
-contract CDPManager01 is ReentrancyGuard {
+contract CDPManager01 is BaseCDPManager {
     using SafeMath for uint;
 
-    IVault public immutable vault;
-    IVaultManagerParameters public immutable vaultManagerParameters;
-    IOracleRegistry public immutable oracleRegistry;
-    ICDPRegistry public immutable cdpRegistry;
     address payable public immutable WETH;
-
-    uint public constant Q112 = 2 ** 112;
-    uint public constant DENOMINATOR_1E5 = 1e5;
-
-    /**
-     * @dev Trigger when joins are happened
-    **/
-    event Join(address indexed asset, address indexed owner, uint main, uint usdp);
-
-    /**
-     * @dev Trigger when exits are happened
-    **/
-    event Exit(address indexed asset, address indexed owner, uint main, uint usdp);
-
-    /**
-     * @dev Trigger when liquidations are initiated
-    **/
-    event LiquidationTriggered(address indexed asset, address indexed owner);
-
-    modifier checkpoint(address asset, address owner) {
-        _;
-        cdpRegistry.checkpoint(asset, owner);
-    }
 
     /**
      * @param _vaultManagerParameters The address of the contract with Vault manager parameters
      * @param _oracleRegistry The address of the oracle registry
      * @param _cdpRegistry The address of the CDP registry
+     * @param _vaultManagerBorrowFeeParameters The address of the vault manager borrow fee parameters
      **/
-    constructor(address _vaultManagerParameters, address _oracleRegistry, address _cdpRegistry) {
-        require(
-            _vaultManagerParameters != address(0) &&
-            _oracleRegistry != address(0) &&
-            _cdpRegistry != address(0),
-                "Unit Protocol: INVALID_ARGS"
-        );
-        vaultManagerParameters = IVaultManagerParameters(_vaultManagerParameters);
-        vault = IVault(IVaultParameters(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()).vault());
-        oracleRegistry = IOracleRegistry(_oracleRegistry);
+    constructor(address _vaultManagerParameters, address _oracleRegistry, address _cdpRegistry, address _vaultManagerBorrowFeeParameters)
+        BaseCDPManager(_vaultManagerParameters, _oracleRegistry, _cdpRegistry, _vaultManagerBorrowFeeParameters)
+    {
         WETH = IVault(IVaultParameters(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()).vault()).weth();
-        cdpRegistry = ICDPRegistry(_cdpRegistry);
     }
 
     // only accept ETH via fallback from the WETH contract
@@ -107,6 +75,8 @@ contract CDPManager01 is ReentrancyGuard {
             if (assetAmount != 0) {
                 vault.depositMain(asset, msg.sender, assetAmount);
             }
+
+            _chargeBorrowFee(asset, usdpAmount);
 
             // mint USDP to owner
             vault.borrow(asset, msg.sender, usdpAmount);

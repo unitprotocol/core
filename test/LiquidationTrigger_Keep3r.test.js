@@ -27,7 +27,7 @@ contract('LiquidationTriggerKeep3rMainAsset', function([
 		 * collateral value = 60 * 2 = 120$
 		 * utilization percent = 70 / 120 = ~58.33%
 		 */
-		await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+		await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
 		/*
 		 * Main collateral/WETH pool params before swap:
@@ -86,7 +86,7 @@ contract('LiquidationTriggerKeep3rMainAsset', function([
 		const mainAmount = ether('60');
 		const usdpAmount = ether('70');
 
-		await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+		await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
 		const tx = this.utils.triggerLiquidation(this.mainCollateral, positionOwner, liquidator);
 		await this.utils.expectRevert(tx, "Unit Protocol: SAFE_POSITION");
