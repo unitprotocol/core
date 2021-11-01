@@ -16,7 +16,7 @@ import "../helpers/ReentrancyGuard.sol";
 import '../helpers/TransferHelper.sol';
 import "../helpers/SafeMath.sol";
 
-import "../USDP.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 /**
@@ -31,6 +31,7 @@ abstract contract BaseCDPManager is ReentrancyGuard {
     IOracleRegistry public immutable oracleRegistry;
     ICDPRegistry public immutable cdpRegistry;
     IVaultManagerBorrowFeeParameters public immutable vaultManagerBorrowFeeParameters;
+    IERC20 public immutable usdp;
 
     uint public constant Q112 = 2 ** 112;
     uint public constant DENOMINATOR_1E5 = 1e5;
@@ -70,10 +71,12 @@ abstract contract BaseCDPManager is ReentrancyGuard {
             "Unit Protocol: INVALID_ARGS"
         );
         vaultManagerParameters = IVaultManagerParameters(_vaultManagerParameters);
-        vault = IVault(IVaultParameters(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()).vault());
+        IVault vault_local = IVault(IVaultParameters(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()).vault());
+        vault = vault_local;
         oracleRegistry = IOracleRegistry(_oracleRegistry);
         cdpRegistry = ICDPRegistry(_cdpRegistry);
         vaultManagerBorrowFeeParameters = IVaultManagerBorrowFeeParameters(_vaultManagerBorrowFeeParameters);
+        usdp = IERC20(vault_local.usdp());
     }
 
     /**
@@ -91,10 +94,10 @@ abstract contract BaseCDPManager is ReentrancyGuard {
         }
 
         // to fail with concrete reason, not with TRANSFER_FROM_FAILED from safeTransferFrom
-        require(USDP(vault.usdp()).allowance(msg.sender, address(this)) >= borrowFee, "Unit Protocol: BORROW_FEE_NOT_APPROVED");
+        require(usdp.allowance(msg.sender, address(this)) >= borrowFee, "Unit Protocol: BORROW_FEE_NOT_APPROVED");
 
         TransferHelper.safeTransferFrom(
-            vault.usdp(),
+            address(usdp),
             msg.sender,
             vaultManagerBorrowFeeParameters.feeReceiver(),
             borrowFee
