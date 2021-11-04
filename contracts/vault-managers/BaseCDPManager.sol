@@ -10,6 +10,7 @@ import "../interfaces/IVaultManagerParameters.sol";
 import '../interfaces/IVaultParameters.sol';
 import "../interfaces/IOracleRegistry.sol";
 import "../interfaces/ICDPRegistry.sol";
+import '../interfaces/IToken.sol';
 import "../interfaces/parameters/IVaultManagerBorrowFeeParameters.sol";
 
 import "../helpers/ReentrancyGuard.sol";
@@ -102,5 +103,66 @@ abstract contract BaseCDPManager is ReentrancyGuard {
             vaultManagerBorrowFeeParameters.feeReceiver(),
             borrowFee
         );
+    }
+
+    // decreases debt
+    function _repay(address asset, address owner, uint usdpAmount) internal {
+        uint fee = vault.getFee(asset, owner);
+
+        if (fee > usdpAmount) {
+            fee = usdpAmount;
+        }
+
+        usdpAmount = usdpAmount - fee;
+
+        vault.chargeFee(vault.usdp(), owner, fee);
+        vault.decreaseFee(asset, owner, fee);
+
+        // burn USDP from the owner's balance
+        uint debtAfter = vault.repay(asset, owner, usdpAmount);
+        if (debtAfter == 0) {
+            // clear unused storage
+            vault.destroy(asset, owner);
+        }
+    }
+
+    /**
+     * @dev Calculates liquidation price
+     * @param asset The address of the collateral
+     * @param owner The owner of the position
+     * @return Q112-encoded liquidation price
+     **/
+    function liquidationPrice_q112(
+        address asset,
+        address owner
+    ) external view returns (uint) {
+        uint debt = vault.getTotalDebt(asset, owner);
+        if (debt == 0) return uint(-1);
+
+        uint collateralLiqPrice = debt.mul(100).mul(Q112).div(vaultManagerParameters.liquidationRatio(asset));
+
+        require(IToken(asset).decimals() <= 18, "Unit Protocol: NOT_SUPPORTED_DECIMALS");
+
+        return collateralLiqPrice / vault.collaterals(asset, owner) / 10 ** (18 - IToken(asset).decimals());
+    }
+
+    /**
+     * @dev Determines whether a position is liquidatable
+     * @param asset The address of the collateral
+     * @param owner The owner of the position
+     * @param usdValue_q112 Q112-encoded USD value of the collateral
+     * @return boolean value, whether a position is liquidatable
+     **/
+    function _isLiquidatablePosition(
+        address asset,
+        address owner,
+        uint usdValue_q112
+    ) internal view returns (bool) {
+        uint debt = vault.getTotalDebt(asset, owner);
+
+        // position is collateralized if there is no debt
+        if (debt == 0) return false;
+
+        return debt.mul(100).mul(Q112).div(usdValue_q112) >= vaultManagerParameters.liquidationRatio(asset);
     }
 }

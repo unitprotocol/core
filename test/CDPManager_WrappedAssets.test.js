@@ -51,7 +51,7 @@ contract('CDPManager with wrapped assets', function([deployer]) {
 				const borrowFeeReceiverUsdpBalance = await this.usdp.balanceOf(this.utils.BORROW_FEE_RECEIVER_ADDRESS);
 
 				expect(assetAmountInPosition).to.be.bignumber.equal(mainAmount);
-				expect(usdpBalance).to.be.bignumber.equal(this.INITIAL_USDP_AMOUNT.add(usdpAmount).sub(usdpBorrowFee));
+				expect(usdpBalance).to.be.bignumber.equal(usdpAmount.sub(usdpBorrowFee));
 				expect(borrowFeeReceiverUsdpBalance).to.be.bignumber.equal(usdpBorrowFee);
 			})
 		})
@@ -73,8 +73,10 @@ contract('CDPManager with wrapped assets', function([deployer]) {
 				});
 
 				const mainAmountInPosition = await this.vault.collaterals(this.wrappedAsset.address, deployer);
+				const usdpBalance = await this.usdp.balanceOf(deployer);
 
 				expect(mainAmountInPosition).to.be.bignumber.equal(new BN(0));
+				expect(usdpBalance).to.be.bignumber.equal(new BN(0));
 			})
 
 			it('Should partially repay the debt of a position and withdraw the part of the collateral', async function() {
@@ -125,9 +127,7 @@ contract('CDPManager with wrapped assets', function([deployer]) {
 			const borrowFeeReceiverUsdpBalance = await this.usdp.balanceOf(this.utils.BORROW_FEE_RECEIVER_ADDRESS);
 
 			expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount.mul(new BN(2)));
-
-			let mintedUsdp = this.INITIAL_USDP_AMOUNT.mul(new BN(2));
-			expect(usdpBalance).to.be.bignumber.equal(mintedUsdp.add(usdpAmount.mul(new BN(2))).sub(usdpBorrowFee.mul(new BN(2))));
+			expect(usdpBalance).to.be.bignumber.equal(usdpAmount.mul(new BN(2)).sub(usdpBorrowFee.mul(new BN(2))));
 			expect(borrowFeeReceiverUsdpBalance).to.be.bignumber.equal(usdpBorrowFee.mul(new BN(2)));
 		})
 
@@ -148,7 +148,7 @@ contract('CDPManager with wrapped assets', function([deployer]) {
 			const usdpBalance = await this.usdp.balanceOf(deployer);
 
 			expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount);
-			expect(usdpBalance).to.be.bignumber.equal(this.INITIAL_USDP_AMOUNT.add(usdpAmount).sub(usdpBorrowFee));
+			expect(usdpBalance).to.be.bignumber.equal(usdpAmount.sub(usdpBorrowFee));
 			expect(usdpSupplyAfter).to.be.bignumber.equal(usdpSupplyBefore.sub(usdpAmount));
 		})
 	});

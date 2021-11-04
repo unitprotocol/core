@@ -1,13 +1,10 @@
+const {ether} = require("openzeppelin-test-helpers");
 module.exports = function(context, mode) {
 
 	const addUsdpAndApproveBorrowFee = async (vaultManager, approveUSDP, from) => {
-		// deployer initial usdp position (for pay borrow fee)
-		await context.usdp.setMinter(from, true);
-		await context.usdp.mint(from, context.INITIAL_USDP_AMOUNT);
-
 		if (approveUSDP === -1) {
 			// default case, user approved enough tokens
-			await context.usdp.approve(vaultManager.address, context.INITIAL_USDP_AMOUNT, {from});
+			await context.usdp.approve(vaultManager.address, ether('1000'), {from});
 		} else {
 			// approve exactly as requested
 			await context.usdp.approve(vaultManager.address, approveUSDP, {from});

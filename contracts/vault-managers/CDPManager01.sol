@@ -46,6 +46,7 @@ contract CDPManager01 is BaseCDPManager {
 
     /**
       * @notice Depositing tokens must be pre-approved to Vault address
+      * @notice Borrow fee in USDP tokens must be pre-approved to CDP manager address
       * @notice position actually considered as spawned only when debt > 0
       * @dev Deposits collateral and/or borrows USDP
       * @param asset The address of the collateral
@@ -76,10 +77,10 @@ contract CDPManager01 is BaseCDPManager {
                 vault.depositMain(asset, msg.sender, assetAmount);
             }
 
-            _chargeBorrowFee(asset, usdpAmount);
-
             // mint USDP to owner
             vault.borrow(asset, msg.sender, usdpAmount);
+
+            _chargeBorrowFee(asset, usdpAmount);
 
             // check collateralization
             _ensurePositionCollateralization(asset, msg.sender);
@@ -196,27 +197,6 @@ contract CDPManager01 is BaseCDPManager {
         return usdpAmount;
     }
 
-    // decreases debt
-    function _repay(address asset, address owner, uint usdpAmount) internal {
-        uint fee = vault.getFee(asset, owner);
-
-        if (fee > usdpAmount) {
-          fee = usdpAmount;
-        }
-
-        usdpAmount = usdpAmount - fee;
-
-        vault.chargeFee(vault.usdp(), owner, fee);
-        vault.decreaseFee(asset, owner, fee);
-
-        // burn USDP from the owner's balance
-        uint debtAfter = vault.repay(asset, owner, usdpAmount);
-        if (debtAfter == 0) {
-            // clear unused storage
-            vault.destroy(asset, owner);
-        }
-    }
-
     function _ensurePositionCollateralization(address asset, address owner) internal view {
         // collateral value of the position in USD
         uint usdValue_q112 = getCollateralUsdValue_q112(asset, owner);
@@ -262,26 +242,6 @@ contract CDPManager01 is BaseCDPManager {
         return IOracleUsd(oracleRegistry.oracleByAsset(asset)).assetToUsd(asset, vault.collaterals(asset, owner));
     }
 
-    /**
-     * @dev Determines whether a position is liquidatable
-     * @param asset The address of the collateral
-     * @param owner The owner of the position
-     * @param usdValue_q112 Q112-encoded USD value of the collateral
-     * @return boolean value, whether a position is liquidatable
-     **/
-    function _isLiquidatablePosition(
-        address asset,
-        address owner,
-        uint usdValue_q112
-    ) internal view returns (bool) {
-        uint debt = vault.getTotalDebt(asset, owner);
-
-        // position is collateralized if there is no debt
-        if (debt == 0) return false;
-
-        return debt.mul(100).mul(Q112).div(usdValue_q112) >= vaultManagerParameters.liquidationRatio(asset);
-    }
-
     function _ensureOracle(address asset) internal view {
         uint oracleType = oracleRegistry.oracleTypeByAsset(asset);
         require(oracleType != 0, "Unit Protocol: INVALID_ORACLE_TYPE");
@@ -322,25 +282,4 @@ contract CDPManager01 is BaseCDPManager {
         return debt.mul(100).mul(Q112).div(usdValue_q112);
     }
 
-
-    /**
-     * @dev Calculates liquidation price
-     * @param asset The address of the collateral
-     * @param owner The owner of the position
-     * @return Q112-encoded liquidation price
-     **/
-    function liquidationPrice_q112(
-        address asset,
-        address owner
-    ) external view returns (uint) {
-
-        uint debt = vault.getTotalDebt(asset, owner);
-        if (debt == 0) return uint(-1);
-
-        uint collateralLiqPrice = debt.mul(100).mul(Q112).div(vaultManagerParameters.liquidationRatio(asset));
-
-        require(IToken(asset).decimals() <= 18, "Unit Protocol: NOT_SUPPORTED_DECIMALS");
-
-        return collateralLiqPrice / vault.collaterals(asset, owner) / 10 ** (18 - IToken(asset).decimals());
-    }
 }

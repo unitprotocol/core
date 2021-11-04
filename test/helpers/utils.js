@@ -111,8 +111,6 @@ module.exports = (context, mode) => {
 
 	const isLP = mode.includes('PoolToken');
 
-	context.INITIAL_USDP_AMOUNT = ether('100');
-
 	const poolDeposit = async (token, collateralAmount, decimals) => {
 		collateralAmount = decimals ? String(collateralAmount * 10 ** decimals) : ether(collateralAmount.toString());
 		collateralAmount = new BN(collateralAmount).div(new BN((10 ** 6).toString()));
@@ -141,12 +139,22 @@ module.exports = (context, mode) => {
 
 	const repayAllAndWithdraw = async (main, user) => {
 		const totalDebt = await context.vault.getTotalDebt(main.address, user);
+
+		// mint usdp to cover initial borrow fee
+		await context.usdp.setMinter(context.deployer, true);
+		await context.usdp.mint(user, calcBorrowFee(totalDebt));
+
 		await context.usdp.approve(context.vault.address, totalDebt);
 		return context.vaultManager.repayAll(main.address, true);
 	};
 
 	const repayAllAndWithdrawEth = async (user) => {
 		const totalDebt = await context.vault.getTotalDebt(context.weth.address, user);
+
+		// mint usdp to cover initial borrow fee
+		await context.usdp.setMinter(context.deployer, true);
+		await context.usdp.mint(user, calcBorrowFee(totalDebt));
+
 		await context.usdp.approve(context.vault.address, totalDebt);
 		const mainAmount = await context.vault.collaterals(context.weth.address, user);
 		await context.weth.approve(context.vaultManager.address, mainAmount);
