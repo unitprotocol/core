@@ -6,12 +6,12 @@
 pragma solidity 0.7.6;
 
 import "../interfaces/IVault.sol";
-import "../interfaces/IVaultManagerParameters.sol";
 import '../interfaces/IVaultParameters.sol';
 import "../interfaces/IOracleRegistry.sol";
 import "../interfaces/ICDPRegistry.sol";
 import '../interfaces/IToken.sol';
-import "../interfaces/parameters/IVaultManagerBorrowFeeParameters.sol";
+import "../interfaces/vault-managers/parameters/IVaultManagerParameters.sol";
+import "../interfaces/vault-managers/parameters/IVaultManagerBorrowFeeParameters.sol";
 
 import "../helpers/ReentrancyGuard.sol";
 import '../helpers/TransferHelper.sol';
@@ -72,24 +72,19 @@ abstract contract BaseCDPManager is ReentrancyGuard {
             "Unit Protocol: INVALID_ARGS"
         );
         vaultManagerParameters = IVaultManagerParameters(_vaultManagerParameters);
-        IVault vault_local = IVault(IVaultParameters(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()).vault());
-        vault = vault_local;
+        IVault vaultLocal = IVault(IVaultParameters(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()).vault());
+        vault = vaultLocal;
         oracleRegistry = IOracleRegistry(_oracleRegistry);
         cdpRegistry = ICDPRegistry(_cdpRegistry);
         vaultManagerBorrowFeeParameters = IVaultManagerBorrowFeeParameters(_vaultManagerBorrowFeeParameters);
-        usdp = IERC20(vault_local.usdp());
+        usdp = IERC20(vaultLocal.usdp());
     }
 
     /**
      * @notice Charge borrow fee if needed
      */
     function _chargeBorrowFee(address asset, uint usdpAmount) internal {
-        uint32 borrowFeePercent = vaultManagerBorrowFeeParameters.getBorrowFee(asset);
-        if (borrowFeePercent == 0) {
-            return;
-        }
-
-        uint borrowFee = usdpAmount.mul(uint(borrowFeePercent)).div(uint(vaultManagerBorrowFeeParameters.BORROW_FEE_100_PERCENT()));
+        uint borrowFee = vaultManagerBorrowFeeParameters.calcBorrowFee(asset, usdpAmount);
         if (borrowFee == 0) { // very small amount case
             return;
         }

@@ -13,7 +13,7 @@ import '../oracles/KeydonixOracleAbstract.sol';
 import '../interfaces/IToken.sol';
 import '../interfaces/IVault.sol';
 import '../interfaces/ICDPRegistry.sol';
-import '../interfaces/IVaultManagerParameters.sol';
+import '../interfaces/vault-managers/parameters/IVaultManagerParameters.sol';
 import '../interfaces/IVaultParameters.sol';
 
 import '../helpers/ReentrancyGuard.sol';

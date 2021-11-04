@@ -6,26 +6,31 @@
 pragma solidity 0.7.6;
 
 import "../../VaultParameters.sol";
-import "../../interfaces/parameters/IVaultManagerBorrowFeeParameters.sol";
+import "../../interfaces/vault-managers/parameters/IVaultManagerBorrowFeeParameters.sol";
+import "../../helpers/SafeMath.sol";
 
 
 /**
  * @title VaultManagerBorrowFeeParameters
  **/
 contract VaultManagerBorrowFeeParameters is Auth, IVaultManagerBorrowFeeParameters {
+    using SafeMath for uint;
 
-    uint32 public constant override BORROW_FEE_100_PERCENT = 1e5;
+    uint public constant override BORROW_FEE_100_PERCENT = 1e5;
 
-    struct assetBorrowFeeParams {
+    struct AssetBorrowFeeParams {
         bool enabled; // is custom fee for asset enabled
         uint32 feePercent; // 3 decimals
     }
 
     // map token to borrow fee percentage;
-    mapping(address => assetBorrowFeeParams) public assetBorrowFee;
-    uint32 public baseBorrowFee;
+    mapping(address => AssetBorrowFeeParams) public assetBorrowFee;
+    uint32 public baseBorrowFeePercent;
 
     address public override feeReceiver;
+
+    event AssetBorrowFeeParamsEnabled(address asset, uint32 feePercent);
+    event AssetBorrowFeeParamsDisabled(address asset);
 
     modifier nonZeroAddress(address addr) {
         require(addr != address(0), "Unit Protocol: ZERO_ADDRESS");
@@ -37,12 +42,12 @@ contract VaultManagerBorrowFeeParameters is Auth, IVaultManagerBorrowFeeParamete
         _;
     }
 
-    constructor(address _vaultParameters, uint32 _baseBorrowFee, address _feeReceiver)
+    constructor(address _vaultParameters, uint32 _baseBorrowFeePercent, address _feeReceiver)
         Auth(_vaultParameters)
         nonZeroAddress(_feeReceiver)
-        correctFee(_baseBorrowFee)
+        correctFee(_baseBorrowFeePercent)
     {
-        baseBorrowFee = _baseBorrowFee;
+        baseBorrowFeePercent = _baseBorrowFeePercent;
         feeReceiver = _feeReceiver;
     }
 
@@ -52,22 +57,38 @@ contract VaultManagerBorrowFeeParameters is Auth, IVaultManagerBorrowFeeParamete
     }
 
     /// @inheritdoc IVaultManagerBorrowFeeParameters
-    function setBaseBorrowFee(uint32 newBaseBorrowFee) external override onlyManager correctFee(newBaseBorrowFee) {
-        baseBorrowFee = newBaseBorrowFee;
+    function setBaseBorrowFeePercent(uint32 newBaseBorrowFeePercent) external override onlyManager correctFee(newBaseBorrowFeePercent) {
+        baseBorrowFeePercent = newBaseBorrowFeePercent;
     }
 
     /// @inheritdoc IVaultManagerBorrowFeeParameters
-    function setAssetBorrowFee(address asset, bool newEnabled, uint32 newFee) external override onlyManager correctFee(newFee) {
+    function setAssetBorrowFeePercent(address asset, bool newEnabled, uint32 newFeePercent) external override onlyManager correctFee(newFeePercent) {
         assetBorrowFee[asset].enabled = newEnabled;
-        assetBorrowFee[asset].feePercent = newFee;
+        assetBorrowFee[asset].feePercent = newFeePercent;
+
+        if (newEnabled) {
+            emit AssetBorrowFeeParamsEnabled(asset, newFeePercent);
+        } else {
+            emit AssetBorrowFeeParamsDisabled(asset);
+        }
     }
 
     /// @inheritdoc IVaultManagerBorrowFeeParameters
-    function getBorrowFee(address asset) external override view returns (uint32) {
+    function getBorrowFeePercent(address asset) public override view returns (uint32) {
         if (assetBorrowFee[asset].enabled) {
             return assetBorrowFee[asset].feePercent;
         }
 
-        return baseBorrowFee;
+        return baseBorrowFeePercent;
+    }
+
+    /// @inheritdoc IVaultManagerBorrowFeeParameters
+    function calcBorrowFee(address asset, uint usdpAmount) external override view returns (uint) {
+        uint32 borrowFeePercent = getBorrowFeePercent(asset);
+        if (borrowFeePercent == 0) {
+            return 0;
+        }
+
+        return usdpAmount.mul(uint(borrowFeePercent)).div(BORROW_FEE_100_PERCENT);
     }
 }

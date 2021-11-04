@@ -11,6 +11,8 @@ task('deploy', 'Runs a core deployment')
     .addParam('foundation', 'Address of a foundation account/contract')
     .addParam('manager', 'Address of a manager account/contract')
     .addParam('wtoken', 'Address of a wrapped network token (e.g. WETH for Ethereum)')
+    .addParam('baseBorrowFeePercent', 'Base borrow fee percent (3 decimals, ie value must be 1500 for 1.5%)', 1500, types.int)
+    .addParam('borrowFeeReceiver', 'Address of borrow fee receiver')
     .addOptionalParam('deployer', 'Address of a deployer account to use (defaults to the first account)')
     .addOptionalParam('noVerify', 'Skip contracts verification on *scan block explorer', false, types.boolean)
     .setAction(async (taskArgs) => {
@@ -24,7 +26,9 @@ task('deploy', 'Runs a core deployment')
             deployer,
             foundation: taskArgs.foundation,
             manager: taskArgs.manager,
-            wtoken: taskArgs.wtoken
+            wtoken: taskArgs.wtoken,
+            baseBorrowFeePercent: taskArgs.baseBorrowFeePercent,
+            borrowFeeReceiver: taskArgs.borrowFeeReceiver
         });
 
         const deployed = await runDeployment(deployment, {deployer, verify: !taskArgs.noVerify});
