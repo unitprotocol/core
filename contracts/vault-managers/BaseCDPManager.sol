@@ -84,7 +84,7 @@ abstract contract BaseCDPManager is ReentrancyGuard {
      * @notice Charge borrow fee if needed
      */
     function _chargeBorrowFee(address asset, uint usdpAmount) internal {
-        uint borrowFee = vaultManagerBorrowFeeParameters.calcBorrowFee(asset, usdpAmount);
+        uint borrowFee = vaultManagerBorrowFeeParameters.calcBorrowFeeAmount(asset, usdpAmount);
         if (borrowFee == 0) { // very small amount case
             return;
         }

@@ -16,20 +16,20 @@ import "../../helpers/SafeMath.sol";
 contract VaultManagerBorrowFeeParameters is Auth, IVaultManagerBorrowFeeParameters {
     using SafeMath for uint;
 
-    uint public constant override BORROW_FEE_100_PERCENT = 1e5;
+    uint public constant override BASIS_POINTS_IN_1 = 1e4;
 
     struct AssetBorrowFeeParams {
         bool enabled; // is custom fee for asset enabled
-        uint32 feePercent; // 3 decimals
+        uint16 feeBasisPoints; // fee basis points, 1 basis point = 0.0001
     }
 
-    // map token to borrow fee percentage;
+    // map token to borrow fee
     mapping(address => AssetBorrowFeeParams) public assetBorrowFee;
-    uint32 public baseBorrowFeePercent;
+    uint16 public baseBorrowFeeBasisPoints;
 
     address public override feeReceiver;
 
-    event AssetBorrowFeeParamsEnabled(address asset, uint32 feePercent);
+    event AssetBorrowFeeParamsEnabled(address asset, uint16 feeBasisPoints);
     event AssetBorrowFeeParamsDisabled(address asset);
 
     modifier nonZeroAddress(address addr) {
@@ -37,17 +37,17 @@ contract VaultManagerBorrowFeeParameters is Auth, IVaultManagerBorrowFeeParamete
         _;
     }
 
-    modifier correctFee(uint32 fee) {
-        require(fee < BORROW_FEE_100_PERCENT, "Unit Protocol: INCORRECT_FEE_VALUE");
+    modifier correctFee(uint16 fee) {
+        require(fee < BASIS_POINTS_IN_1, "Unit Protocol: INCORRECT_FEE_VALUE");
         _;
     }
 
-    constructor(address _vaultParameters, uint32 _baseBorrowFeePercent, address _feeReceiver)
+    constructor(address _vaultParameters, uint16 _baseBorrowFeeBasisPoints, address _feeReceiver)
         Auth(_vaultParameters)
         nonZeroAddress(_feeReceiver)
-        correctFee(_baseBorrowFeePercent)
+        correctFee(_baseBorrowFeeBasisPoints)
     {
-        baseBorrowFeePercent = _baseBorrowFeePercent;
+        baseBorrowFeeBasisPoints = _baseBorrowFeeBasisPoints;
         feeReceiver = _feeReceiver;
     }
 
@@ -57,38 +57,38 @@ contract VaultManagerBorrowFeeParameters is Auth, IVaultManagerBorrowFeeParamete
     }
 
     /// @inheritdoc IVaultManagerBorrowFeeParameters
-    function setBaseBorrowFeePercent(uint32 newBaseBorrowFeePercent) external override onlyManager correctFee(newBaseBorrowFeePercent) {
-        baseBorrowFeePercent = newBaseBorrowFeePercent;
+    function setBaseBorrowFee(uint16 newBaseBorrowFeeBasisPoints) external override onlyManager correctFee(newBaseBorrowFeeBasisPoints) {
+        baseBorrowFeeBasisPoints = newBaseBorrowFeeBasisPoints;
     }
 
     /// @inheritdoc IVaultManagerBorrowFeeParameters
-    function setAssetBorrowFeePercent(address asset, bool newEnabled, uint32 newFeePercent) external override onlyManager correctFee(newFeePercent) {
+    function setAssetBorrowFee(address asset, bool newEnabled, uint16 newFeeBasisPoints) external override onlyManager correctFee(newFeeBasisPoints) {
         assetBorrowFee[asset].enabled = newEnabled;
-        assetBorrowFee[asset].feePercent = newFeePercent;
+        assetBorrowFee[asset].feeBasisPoints = newFeeBasisPoints;
 
         if (newEnabled) {
-            emit AssetBorrowFeeParamsEnabled(asset, newFeePercent);
+            emit AssetBorrowFeeParamsEnabled(asset, newFeeBasisPoints);
         } else {
             emit AssetBorrowFeeParamsDisabled(asset);
         }
     }
 
     /// @inheritdoc IVaultManagerBorrowFeeParameters
-    function getBorrowFeePercent(address asset) public override view returns (uint32) {
+    function getBorrowFee(address asset) public override view returns (uint16 feeBasisPoints) {
         if (assetBorrowFee[asset].enabled) {
-            return assetBorrowFee[asset].feePercent;
+            return assetBorrowFee[asset].feeBasisPoints;
         }
 
-        return baseBorrowFeePercent;
+        return baseBorrowFeeBasisPoints;
     }
 
     /// @inheritdoc IVaultManagerBorrowFeeParameters
-    function calcBorrowFee(address asset, uint usdpAmount) external override view returns (uint) {
-        uint32 borrowFeePercent = getBorrowFeePercent(asset);
-        if (borrowFeePercent == 0) {
+    function calcBorrowFeeAmount(address asset, uint usdpAmount) external override view returns (uint) {
+        uint16 borrowFeeBasisPoints = getBorrowFee(asset);
+        if (borrowFeeBasisPoints == 0) {
             return 0;
         }
 
-        return usdpAmount.mul(uint(borrowFeePercent)).div(BORROW_FEE_100_PERCENT);
+        return usdpAmount.mul(uint(borrowFeeBasisPoints)).div(BASIS_POINTS_IN_1);
     }
 }

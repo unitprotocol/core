@@ -29,7 +29,7 @@ const utils = require('./helpers/utils');
 					{
 						'name': 'big enough usdp value',
 						'usdpAmount': ether('20'),
-						'usdpBorrowFee': new BN('246800000000000000'), // see BASE_BORROW_FEE from utils.js
+						'usdpBorrowFee': new BN('246000000000000000'), // see BASE_BORROW_FEE from utils.js
 					},
 					{
 						'name': 'small usdp value, borrow fee trimmed',
