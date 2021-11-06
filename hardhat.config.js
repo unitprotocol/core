@@ -24,7 +24,8 @@ task('deploy', 'Runs a core deployment')
             deployer,
             foundation: taskArgs.foundation,
             manager: taskArgs.manager,
-            wtoken: taskArgs.wtoken
+            wtoken: taskArgs.wtoken,
+            withHelpers: true,
         });
 
         const deployed = await runDeployment(deployment, {deployer, verify: !taskArgs.noVerify});
