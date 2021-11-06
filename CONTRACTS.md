@@ -52,3 +52,4 @@
 | CyTokenOracle      | 14 | [0x40B743Ca424E3eC7b97f5AD93d2263Ae01DAE1D8](https://etherscan.io/address/0x40B743Ca424E3eC7b97f5AD93d2263Ae01DAE1D8#code)      | - | - |
 | YvTokenOracle      | 15 | [0x759EB07A8258BcF5590E9303763803DcF264652d](https://etherscan.io/address/0x759EB07A8258BcF5590E9303763803DcF264652d#code)      | - | - |
 | [UniswapV3Oracle](https://github.com/unitprotocol/uniswap-v3-oracle)      | 16 | [0xd31817a1E1578C4BECE02FbFb235d76f5716f18f](https://etherscan.io/address/0xd31817a1E1578C4BECE02FbFb235d76f5716f18f#code)  | - | - |
+| UnitMetadataOracle | 17 | [0x7721a657D98d65F9126004cD8C50875ed4F11174](https://etherscan.io/address/0x7721a657d98d65f9126004cd8c50875ed4f11174#code) | - | - |
