@@ -83,18 +83,18 @@ abstract contract BaseCDPManager is ReentrancyGuard {
     /**
      * @notice Charge borrow fee if needed
      */
-    function _chargeBorrowFee(address asset, uint usdpAmount) internal {
+    function _chargeBorrowFee(address asset, address user, uint usdpAmount) internal {
         uint borrowFee = vaultManagerBorrowFeeParameters.calcBorrowFeeAmount(asset, usdpAmount);
         if (borrowFee == 0) { // very small amount case
             return;
         }
 
         // to fail with concrete reason, not with TRANSFER_FROM_FAILED from safeTransferFrom
-        require(usdp.allowance(msg.sender, address(this)) >= borrowFee, "Unit Protocol: BORROW_FEE_NOT_APPROVED");
+        require(usdp.allowance(user, address(this)) >= borrowFee, "Unit Protocol: BORROW_FEE_NOT_APPROVED");
 
         TransferHelper.safeTransferFrom(
             address(usdp),
-            msg.sender,
+            user,
             vaultManagerBorrowFeeParameters.feeReceiver(),
             borrowFee
         );

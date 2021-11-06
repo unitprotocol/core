@@ -70,8 +70,7 @@ contract CDPManager01_Fallback is BaseCDPManager {
 
       // mint USDP to owner
       vault.borrow(asset, msg.sender, usdpAmount);
-
-      _chargeBorrowFee(asset, usdpAmount);
+      _chargeBorrowFee(asset, msg.sender, usdpAmount);
 
       // check collateralization
       _ensurePositionCollateralization(asset, msg.sender, proofData);
