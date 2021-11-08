@@ -5,6 +5,8 @@ require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
 require("hardhat-local-networks-config-plugin");
+require("@nomiclabs/hardhat-truffle5");
+require("hardhat-gas-reporter");
 
 
 task('deploy', 'Runs a core deployment')
@@ -69,12 +71,10 @@ module.exports = {
         },
     },
 
-    mocha: process.env.NO_COVERAGE ? {} : {
-        reporter: 'eth-gas-reporter',
-        reporterOptions: {
-            currency: 'USD',
-            gasPrice: 90
-        }
+    gasReporter: {
+        enabled: !process.env.NO_COVERAGE,
+        currency: 'USD',
+        gasPrice: 90
     },
 
     etherscan: {
