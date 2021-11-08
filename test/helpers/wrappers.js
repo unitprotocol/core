@@ -1,9 +1,24 @@
+const {ether} = require("openzeppelin-test-helpers");
 module.exports = function(context, mode) {
 
+	const addUsdpAndApproveBorrowFee = async (vaultManager, approveUSDP, from) => {
+		if (approveUSDP === -1) {
+			// default case, user approved enough tokens
+			await context.usdp.approve(vaultManager.address, ether('1000'), {from});
+		} else {
+			// approve exactly as requested
+			await context.usdp.approve(vaultManager.address, approveUSDP, {from});
+		}
+	}
+
 	const simpleWrapper = {
-		join: async (asset, mainAmount, usdpAmount, { noApprove, from = context.deployer } = {}) => {
-			if (!noApprove)
-				await asset.approve(context.vault.address, mainAmount, { from });
+		join: async (asset, mainAmount, usdpAmount, { noApprove, approveUSDP = -1, from = context.deployer } = {}) => {
+			if (!noApprove) {
+				await asset.approve(context.vault.address, mainAmount, {from});
+			}
+
+			await addUsdpAndApproveBorrowFee(context.vaultManager, approveUSDP, from);
+
 			return context.vaultManager.join(
 				asset.address,
 				mainAmount, // main
@@ -11,11 +26,15 @@ module.exports = function(context, mode) {
 				{ from }
 			);
 		},
-		joinEth: async (mainAmount, usdpAmount, { noApprove, from = context.deployer } = {}) => {
+		joinEth: async (mainAmount, usdpAmount, { noApprove, approveUSDP = -1, from = context.deployer } = {}) => {
 			const debt = await context.vault.debts(context.weth.address, context.deployer)
 			await context.usdp.approve(context.vault.address, debt)
-			if (!noApprove)
-				await context.weth.approve(context.vault.address, mainAmount, { from });
+			if (!noApprove) {
+				await context.weth.approve(context.vault.address, mainAmount, {from});
+			}
+
+			await addUsdpAndApproveBorrowFee(context.vaultManager, approveUSDP, from);
+
 			return context.vaultManager.join_Eth(
 				usdpAmount,	// USDP
 				{ value: mainAmount }
@@ -56,119 +75,65 @@ module.exports = function(context, mode) {
 				user,
 				{ from }
 			);
-		}
+		},
+		repayAllAndWithdraw: async (main, user) => {
+			const totalDebt = await context.vault.getTotalDebt(main.address, user);
+
+			// mint usdp to cover initial borrow fee
+			await context.usdp.mintForTests(user, context.utils.calcBorrowFee(totalDebt));
+
+			await context.usdp.approve(context.vault.address, totalDebt);
+			const mainAmount = await context.vault.collaterals(main.address, user);
+			return context.vaultManager.exit(main.address, mainAmount, context.utils.MAX_UINT);
+		},
 	}
 
+	const keydonixWrapper = {
+		join: async (main, mainAmount, usdpAmount, { noApprove, approveUSDP = -1 } = {}) => {
+			if (!noApprove) {
+				await main.approve(context.vault.address, mainAmount);
+			}
+
+			await addUsdpAndApproveBorrowFee(context.vaultManagerKeydonix, approveUSDP, context.deployer);
+
+			return context.vaultManagerKeydonix.join(
+				main.address,
+				mainAmount, // main
+				usdpAmount,	// USDP
+				['0x', '0x', '0x', '0x'], // main price proof
+			)
+		},
+		exit: async (main, mainAmount, usdpAmount) => {
+			return context.vaultManagerKeydonix.exit(
+				main.address,
+				mainAmount, // main
+				usdpAmount,	// USDP
+				['0x', '0x', '0x', '0x'], // main price proof
+			);
+		},
+		triggerLiquidation: (main, user, from = context.deployer) => {
+			return context.vaultManagerKeydonix.triggerLiquidation(
+				main.address,
+				user,
+				['0x', '0x', '0x', '0x'], // main price proof
+				{ from }
+			);
+		},
+		repayAllAndWithdraw: async (main, user) => {
+			const totalDebt = await context.vault.getTotalDebt(main.address, user);
+
+			// mint usdp to cover initial borrow fee
+			await context.usdp.mintForTests(user, context.utils.calcBorrowFee(totalDebt));
+
+			await context.usdp.approve(context.vault.address, totalDebt);
+			const mainAmount = await context.vault.collaterals(main.address, user);
+			return context.vaultManagerKeydonix.exit(main.address, mainAmount, context.utils.MAX_UINT, ['0x', '0x', '0x', '0x'],);
+		},
+	};
+
 	const wrappers = {
-		keydonixMainAsset: {
-			spawn: async (main, mainAmount, usdpAmount, { from = context.deployer, noApprove } = {}) => {
-				if (!noApprove)
-					await context.approveCollaterals(main, mainAmount, from);
-				return context.vaultManagerKeydonixMainAsset.spawn(
-					main.address,
-					mainAmount, // main
-					usdpAmount,	// USDP
-					['0x', '0x', '0x', '0x'], // main price proof
-					{ from },
-				);
-			},
-			spawnEth: async (mainAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixMainAsset.spawn_Eth(
-					usdpAmount,	// USDP
-					{ value: mainAmount }
-				);
-			},
-			join: async (main, mainAmount, usdpAmount) => {
-				await main.approve(context.vault.address, mainAmount);
-				return context.vaultManagerKeydonixMainAsset.depositAndBorrow(
-					main.address,
-					mainAmount, // main
-					usdpAmount,	// USDP
-					['0x', '0x', '0x', '0x'], // main price proof
-				)
-			},
-			exit: async (main, mainAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixMainAsset.withdrawAndRepay(
-					main.address,
-					mainAmount, // main
-					usdpAmount,	// USDP
-					['0x', '0x', '0x', '0x'], // main price proof
-				);
-			},
-			triggerLiquidation: (main, user, from = context.deployer) => {
-				return context.liquidatorKeydonixMainAsset.triggerLiquidation(
-					main.address,
-					user,
-					['0x', '0x', '0x', '0x'], // main price proof
-					{ from }
-				);
-			},
-			withdrawAndRepay: async (main, mainAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixMainAsset.withdrawAndRepay(
-					main.address,
-					mainAmount,
-					usdpAmount,
-					['0x', '0x', '0x', '0x'], // main price proof
-				);
-			},
-			withdrawAndRepayEth: async (mainAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixMainAsset.withdrawAndRepay_Eth(
-					mainAmount,
-					usdpAmount,
-				);
-			},
-		},
-		keydonixPoolToken: {
-			spawn: async (main, mainAmount, usdpAmount, { from = context.deployer, noApprove } = {}) => {
-				if (!noApprove)
-					await context.approveCollaterals(main, mainAmount, from);
-				return context.vaultManagerKeydonixPoolToken.spawn(
-					main.address,
-					mainAmount, // main
-					usdpAmount,	// USDP
-					['0x', '0x', '0x', '0x'], // underlying token price proof
-				);
-			},
-			join: async (main, mainAmount, usdpAmount) => {
-				await main.approve(context.vault.address, mainAmount);
-				return context.vaultManagerKeydonixPoolToken.depositAndBorrow(
-					main.address,
-					mainAmount, // main
-					usdpAmount,	// USDP
-					['0x', '0x', '0x', '0x'], // underlying token price proof
-				);
-			},
-			exit: async (main, mainAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixPoolToken.withdrawAndRepay(
-					main.address,
-					mainAmount, // main
-					usdpAmount,	// USDP
-					['0x', '0x', '0x', '0x'], // main price proof
-				);
-			},
-			triggerLiquidation: (main, user, from = context.deployer) => {
-				return context.liquidatorKeydonixPoolToken.triggerLiquidation(
-					main.address,
-					user,
-					['0x', '0x', '0x', '0x'], // main price proof
-					{ from }
-				);
-			},
-			withdrawAndRepay: async (main, mainAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixPoolToken.withdrawAndRepay(
-					main.address,
-					mainAmount,
-					usdpAmount,
-					['0x', '0x', '0x', '0x'], // main price proof
-				);
-			},
-			spawnEth: async (mainAmount, usdpAmount) => {
-				return context.vaultManagerKeydonixMainAsset.spawn_Eth(
-					usdpAmount,	// USDP
-					{ value: mainAmount }
-				);
-			},
-		},
+		keydonixMainAsset: keydonixWrapper,
+		keydonixPoolToken: keydonixWrapper,
 		uniswapKeep3rMainAsset: simpleWrapper,
 		uniswapKeep3rPoolToken: simpleWrapper,
 		chainlinkMainAsset: simpleWrapper,

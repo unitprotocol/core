@@ -14,61 +14,55 @@ const time = require('./helpers/time');
 ].forEach(oracleMode =>
 	contract(`CDPManager with ${oracleMode} oracle wrapper`, function([
 		deployer,
-		foundation,
 	]) {
 		// deploy & initial settings
 		beforeEach(async function() {
 			this.utils = utils(this, oracleMode);
 			this.deployer = deployer;
-			this.foundation = foundation;
 			await this.utils.deploy();
 		});
 
 		describe('Optimistic cases', function() {
-			describe('Spawn', function() {
-				it('Should spawn position', async function() {
-					const mainAmount = ether('100');
-					const usdpAmount = ether('20');
+			describe('Spawn', function () {
+				[
+					{
+						'name': 'big enough usdp value',
+						'usdpAmount': ether('20'),
+						'usdpBorrowFee': new BN('246000000000000000'), // see BASE_BORROW_FEE from utils.js
+					},
+					{
+						'name': 'small usdp value, borrow fee trimmed',
+						'usdpAmount': new BN('200'),
+						'usdpBorrowFee': new BN('2')
+					},
+					{
+						'name': 'small usdp value, borrow fee trimmed to zero ',
+						'usdpAmount': new BN('20'),
+						'usdpBorrowFee': new BN('0')
+					}
+				].forEach(function (test_params) {
+					it('Should spawn position: ' + test_params['name'], async function () {
+						const mainAmount = ether('100');
+						const usdpAmount = test_params['usdpAmount'];
+						const usdpBorrowFee = test_params['usdpBorrowFee'];
 
-					const { logs } = await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+						const {logs} = await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
-					expectEvent.inLogs(logs, 'Join', {
-						asset: this.mainCollateral.address,
-						user: deployer,
-						main: mainAmount,
-						usdp: usdpAmount,
-					});
+						expectEvent.inLogs(logs, 'Join', {
+							asset: this.mainCollateral.address,
+							owner: deployer,
+							main: mainAmount,
+							usdp: usdpAmount,
+						});
 
-					const mainAmountInPosition = await this.vault.collaterals(this.mainCollateral.address, deployer);
-					const usdpBalance = await this.usdp.balanceOf(deployer);
+						const mainAmountInPosition = await this.vault.collaterals(this.mainCollateral.address, deployer);
+						const usdpBalance = await this.usdp.balanceOf(deployer);
+						const borrowFeeReceiverUsdpBalance = await this.usdp.balanceOf(this.utils.BORROW_FEE_RECEIVER_ADDRESS);
 
-					expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount);
-					expect(usdpBalance).to.be.bignumber.equal(usdpAmount);
-				})
-
-				it('Should spawn position using ETH', async function() {
-					const mainAmount = ether('2');
-					const usdpAmount = ether('1');
-
-					const wethInVaultBefore = await this.weth.balanceOf(this.vault.address);
-
-					const { logs } = await this.utils.spawnEth(mainAmount, usdpAmount);
-
-					expectEvent.inLogs(logs, 'Join', {
-						asset: this.weth.address,
-						user: deployer,
-						main: mainAmount,
-						usdp: usdpAmount,
-					});
-
-					const wethInVaultAfter = await this.weth.balanceOf(this.vault.address);
-					expect(wethInVaultAfter.sub(wethInVaultBefore)).to.be.bignumber.equal(mainAmount);
-
-					const mainAmountInPosition = await this.vault.collaterals(this.weth.address, deployer);
-					const usdpBalance = await this.usdp.balanceOf(deployer);
-
-					expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount);
-					expect(usdpBalance).to.be.bignumber.equal(usdpAmount);
+						expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount);
+						expect(usdpBalance).to.be.bignumber.equal(usdpAmount.sub(usdpBorrowFee));
+						expect(borrowFeeReceiverUsdpBalance).to.be.bignumber.equal(usdpBorrowFee);
+					})
 				})
 			})
 
@@ -77,13 +71,13 @@ const time = require('./helpers/time');
 					const mainAmount = ether('100');
 					const usdpAmount = ether('20');
 
-					await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+					await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
 					const { logs } = await this.utils.repayAllAndWithdraw(this.mainCollateral, deployer);
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.mainCollateral.address,
-						user: deployer,
+						owner: deployer,
 						main: mainAmount,
 						usdp: usdpAmount,
 					});
@@ -94,11 +88,13 @@ const time = require('./helpers/time');
 				})
 
 				it('Should accumulate fee when stability fee above zero and make repayment', async function() {
-					await this.vaultParameters.setStabilityFee(this.mainCollateral.address, 3000); // 3% st. fee
+					const stFee = new BN(3000)
+					await this.vaultParameters.setStabilityFee(this.mainCollateral.address, stFee); // 3% st. fee
 					const mainAmount = ether('100');
+					// borrow 20
 					const usdpAmount = ether('20');
 
-					await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+					await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
 					const timeStart = await time.latest();
 
@@ -112,14 +108,15 @@ const time = require('./helpers/time');
 						expectedDebt.div(new BN(10 ** 12))
 					);
 
+					const repayment = usdpAmount.div(new BN(2))
 					// get some usdp to cover fee
 					await this.utils.updatePrice();
-					await this.utils.spawnEth(ether('2'), ether('1'), ether('2'));
+					await this.usdp.mintForTests(deployer, ether('2'));
 
 					// repay debt partially
-					await this.utils.repay(this.mainCollateral, deployer, usdpAmount.div(new BN(2)));
+					await this.utils.repay(this.mainCollateral, repayment);
 
-					let accumulatedDebtAfterRepayment = await this.vault.getTotalDebt(this.mainCollateral.address, deployer);
+					const accumulatedDebtAfterRepayment = await this.vault.getTotalDebt(this.mainCollateral.address, deployer);
 					expect(accumulatedDebtAfterRepayment.div(new BN(10 ** 12))).to.be.bignumber.equal(
 						expectedDebt.div(new BN(2)).div(new BN(10 ** 12))
 					);
@@ -131,16 +128,16 @@ const time = require('./helpers/time');
 					const mainAmount = ether('100');
 					const usdpAmount = ether('20');
 
-					await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+					await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
 					const mainToWithdraw = ether('50');
 					const usdpToWithdraw = ether('2.5');
 
-					const { logs } = await this.utils.withdrawAndRepay(this.mainCollateral, mainToWithdraw, usdpToWithdraw);
+					const { logs } = await this.utils.exit(this.mainCollateral, mainToWithdraw, usdpToWithdraw);
 
 					expectEvent.inLogs(logs, 'Exit', {
 						asset: this.mainCollateral.address,
-						user: deployer,
+						owner: deployer,
 						main: mainToWithdraw,
 						usdp: usdpToWithdraw,
 					});
@@ -151,89 +148,39 @@ const time = require('./helpers/time');
 					expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount.sub(mainToWithdraw));
 					expect(usdpInPosition).to.be.bignumber.equal(usdpAmount.sub(usdpToWithdraw));
 				})
-
-				it('Should partially repay the debt of a position and withdraw collaterals partially using ETH', async function() {
-					const mainAmount = ether('2');
-					const usdpAmount = ether('1');
-
-					await this.utils.spawnEth(mainAmount, usdpAmount);
-
-					const mainToWithdraw = ether('1');
-					const usdpToWithdraw = ether('0.5');
-
-					const wethBalanceBefore = await balance.current(this.weth.address);
-
-					const { logs } = await this.utils.withdrawAndRepayEth(mainToWithdraw, usdpToWithdraw);
-
-					expectEvent.inLogs(logs, 'Exit', {
-						asset: this.weth.address,
-						user: deployer,
-						main: mainToWithdraw,
-						usdp: usdpToWithdraw,
-					});
-
-					const mainAmountInPosition = await this.vault.collaterals(this.weth.address, deployer);
-					const usdpInPosition = await this.vault.debts(this.weth.address, deployer);
-					const wethBalanceAfter = await balance.current(this.weth.address);
-
-					expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount.sub(mainToWithdraw));
-					expect(usdpInPosition).to.be.bignumber.equal(usdpAmount.sub(usdpToWithdraw));
-					expect(wethBalanceBefore.sub(wethBalanceAfter)).to.be.bignumber.equal(mainToWithdraw);
-				})
-
-				it('Should repay the debt of a position and withdraw collaterals using ETH', async function() {
-					const mainAmount = ether('2');
-					const usdpAmount = ether('1');
-
-					await this.utils.spawnEth(mainAmount, usdpAmount);
-
-					const wethInVaultBefore = await this.weth.balanceOf(this.vault.address);
-
-					const { logs } = await this.utils.repayAllAndWithdrawEth(deployer);
-
-					expectEvent.inLogs(logs, 'Exit', {
-						asset: this.weth.address,
-						user: deployer,
-						main: mainAmount,
-						usdp: usdpAmount,
-					});
-
-					const wethInVaultAfter = await this.weth.balanceOf(this.vault.address);
-
-					const mainAmountInPosition = await this.vault.collaterals(this.weth.address, deployer);
-
-					expect(mainAmountInPosition).to.be.bignumber.equal(new BN(0));
-					expect(wethInVaultBefore.sub(wethInVaultAfter)).to.be.bignumber.equal(mainAmount);
-				})
 			})
 
 			it('Should deposit collaterals to position and mint USDP', async function () {
 				let mainAmount = ether('100');
 				let usdpAmount = ether('20');
+				const usdpBorrowFee = this.utils.calcBorrowFee(usdpAmount)
 
-				await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+				await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
 				const { logs } = await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
 				expectEvent.inLogs(logs, 'Join', {
 					asset: this.mainCollateral.address,
-					user: deployer,
+					owner: deployer,
 					main: mainAmount,
 					usdp: usdpAmount,
 				});
 
 				const mainAmountInPosition = await this.vault.collaterals(this.mainCollateral.address, deployer);
 				const usdpBalance = await this.usdp.balanceOf(deployer);
+				const borrowFeeReceiverUsdpBalance = await this.usdp.balanceOf(this.utils.BORROW_FEE_RECEIVER_ADDRESS);
 
 				expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount.mul(new BN(2)));
-				expect(usdpBalance).to.be.bignumber.equal(usdpAmount.mul(new BN(2)));
+				expect(usdpBalance).to.be.bignumber.equal(usdpAmount.mul(new BN(2)).sub(usdpBorrowFee.mul(new BN(2))));
+				expect(borrowFeeReceiverUsdpBalance).to.be.bignumber.equal(usdpBorrowFee.mul(new BN(2)));
 			})
 
 			it('Should withdraw collaterals from position and repay (burn) USDP', async function () {
 				let mainAmount = ether('100');
 				let usdpAmount = ether('20');
+				const usdpBorrowFee = this.utils.calcBorrowFee(usdpAmount).mul(new BN(2))
 
-				await this.utils.spawn(this.mainCollateral, mainAmount.mul(new BN(2)), usdpAmount.mul(new BN(2)));
+				await this.utils.join(this.mainCollateral, mainAmount.mul(new BN(2)), usdpAmount.mul(new BN(2)));
 
 				const usdpSupplyBefore = await this.usdp.totalSupply();
 
@@ -245,7 +192,7 @@ const time = require('./helpers/time');
 				const usdpBalance = await this.usdp.balanceOf(deployer);
 
 				expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount);
-				expect(usdpBalance).to.be.bignumber.equal(usdpAmount);
+				expect(usdpBalance).to.be.bignumber.equal(usdpAmount.sub(usdpBorrowFee));
 				expect(usdpSupplyAfter).to.be.bignumber.equal(usdpSupplyBefore.sub(usdpAmount));
 			})
 		});
@@ -257,7 +204,7 @@ const time = require('./helpers/time');
 					const usdpAmount = ether('0');
 
 					await this.utils.approveCollaterals(this.mainCollateral, mainAmount);
-					const tx = this.utils.spawn(
+					const tx = this.utils.join(
 						this.mainCollateral,
 						mainAmount, // main
 						usdpAmount,	// USDP
@@ -271,7 +218,7 @@ const time = require('./helpers/time');
 						const usdpAmount = ether('20');
 
 						await this.utils.approveCollaterals(this.mainCollateral, mainAmount);
-						const tx = this.utils.spawn(
+						const tx = this.utils.join(
 							this.mainCollateral,
 							mainAmount, // main
 							usdpAmount,	// USDP
@@ -283,7 +230,7 @@ const time = require('./helpers/time');
 						const mainAmount = ether('100');
 						const usdpAmount = ether('20');
 
-						const tx = this.utils.spawn(
+						const tx = this.utils.join(
 							this.mainCollateral,
 							mainAmount, // main
 							usdpAmount,	// USDP
@@ -293,20 +240,37 @@ const time = require('./helpers/time');
 						);
 						await this.utils.expectRevert(tx, "TRANSFER_FROM_FAILED");
 					})
-				})
-			})
 
-			describe('Join', function () {
-				it('Reverts non-spawned position', async function() {
-					const mainAmount = ether('100');
-					const usdpAmount = ether('20');
+					it('Reverts when borrow fee is not approved', async function() {
+						const mainAmount = ether('100');
+						const usdpAmount = ether('20');
 
-					const tx = this.utils.join(
-						this.mainCollateral,
-						mainAmount,
-						usdpAmount,
-					);
-					await this.utils.expectRevert(tx, "Unit Protocol: NOT_SPAWNED_POSITION");
+						const tx = this.utils.join(
+							this.mainCollateral,
+							mainAmount, // main
+							usdpAmount,	// USDP
+							{
+								approveUSDP: new BN(0)
+							},
+						);
+						await this.utils.expectRevert(tx, "BORROW_FEE_NOT_APPROVED");
+					})
+
+					it('Reverts when not enough borrow fee is approved', async function() {
+						const mainAmount = ether('100');
+						const usdpAmount = ether('20');
+						const usdpBorrowFee = this.utils.calcBorrowFee(usdpAmount)
+
+						const tx = this.utils.join(
+							this.mainCollateral,
+							mainAmount, // main
+							usdpAmount,	// USDP
+							{
+								approveUSDP: usdpBorrowFee.sub(new BN(1))
+							},
+						);
+						await this.utils.expectRevert(tx, "BORROW_FEE_NOT_APPROVED");
+					})
 				})
 			})
 
@@ -315,7 +279,7 @@ const time = require('./helpers/time');
 					const mainAmount = ether('100');
 					const usdpAmount = ether('20');
 
-					await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+					await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
 					const tx = this.utils.exit(this.mainCollateral, 0, 0, 0);
 					await this.utils.expectRevert(tx, "Unit Protocol: USELESS_TX");
@@ -325,7 +289,7 @@ const time = require('./helpers/time');
 					const mainAmount = ether('100');
 					const usdpAmount = ether('20');
 
-					await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+					await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
 					const tx = this.utils.exit(this.mainCollateral, mainAmount, 0, 0);
 					await this.utils.expectRevert(tx, "Unit Protocol: UNDERCOLLATERALIZED");
