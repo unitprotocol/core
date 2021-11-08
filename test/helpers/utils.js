@@ -215,7 +215,9 @@ module.exports = (context, mode) => {
 				deployer: context.deployer,
 				foundation: context.foundation.address,
 				manager: context.deployer,
-				wtoken: context.weth.address
+				wtoken: context.weth.address,
+				baseBorrowFeePercent: 123,  // BASE_BORROW_FEE, their fckn BNs are incompatible
+				borrowFeeReceiver: BORROW_FEE_RECEIVER_ADDRESS,
 			});
 			const hre = await _loadHRE();
 			const deployed = await runDeployment(deployment, {hre, deployer: context.deployer});

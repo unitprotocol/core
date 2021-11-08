@@ -30,7 +30,8 @@ task('deploy', 'Runs a core deployment')
             manager: taskArgs.manager,
             wtoken: taskArgs.wtoken,
             baseBorrowFeePercent: taskArgs.baseBorrowFeePercent,
-            borrowFeeReceiver: taskArgs.borrowFeeReceiver
+            borrowFeeReceiver: taskArgs.borrowFeeReceiver,
+            withHelpers: true,
         });
 
         const deployed = await runDeployment(deployment, {deployer, verify: !taskArgs.noVerify});
