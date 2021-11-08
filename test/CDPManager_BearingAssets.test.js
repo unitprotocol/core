@@ -19,24 +19,45 @@ contract('CDPManager with bearing assets', function([deployer]) {
 	});
 
 	describe('Optimistic cases', function() {
-		it('Should spawn a position', async function() {
-			const mainAmount = ether('100');
-			const usdpAmount = ether('20');
+		[
+			{
+				'name': 'big enough usdp value',
+				'usdpAmount': ether('20'),
+				'usdpBorrowFee': new BN('246000000000000000'), // see BASE_BORROW_FEE from utils.js
+			},
+			{
+				'name': 'small usdp value, borrow fee trimmed',
+				'usdpAmount': new BN('200'),
+				'usdpBorrowFee': new BN('2')
+			},
+			{
+				'name': 'small usdp value, borrow fee trimmed to zero ',
+				'usdpAmount': new BN('20'),
+				'usdpBorrowFee': new BN('0')
+			}
+		].forEach(function (test_params) {
+			it('Should spawn a position: ' + test_params['name'], async function () {
+				const mainAmount = ether('100');
+				const usdpAmount = test_params['usdpAmount'];
+				const usdpBorrowFee = test_params['usdpBorrowFee'];
 
-			const { logs } = await this.utils.join(this.bearingAsset, mainAmount, usdpAmount);
+				const {logs} = await this.utils.join(this.bearingAsset, mainAmount, usdpAmount, {approveUSDP: usdpBorrowFee});
 
-			expectEvent.inLogs(logs, 'Join', {
-				asset: this.bearingAsset.address,
-				owner: deployer,
-				main: mainAmount,
-				usdp: usdpAmount,
-			});
+				expectEvent.inLogs(logs, 'Join', {
+					asset: this.bearingAsset.address,
+					owner: deployer,
+					main: mainAmount,
+					usdp: usdpAmount,
+				});
 
-			const assetAmountInPosition = await this.vault.collaterals(this.bearingAsset.address, deployer);
-			const usdpBalance = await this.usdp.balanceOf(deployer);
+				const assetAmountInPosition = await this.vault.collaterals(this.bearingAsset.address, deployer);
+				const usdpBalance = await this.usdp.balanceOf(deployer);
+				const borrowFeeReceiverUsdpBalance = await this.usdp.balanceOf(this.utils.BORROW_FEE_RECEIVER_ADDRESS);
 
-			expect(assetAmountInPosition).to.be.bignumber.equal(mainAmount);
-			expect(usdpBalance).to.be.bignumber.equal(usdpAmount);
+				expect(assetAmountInPosition).to.be.bignumber.equal(mainAmount);
+				expect(usdpBalance).to.be.bignumber.equal(usdpAmount.sub(usdpBorrowFee));
+				expect(borrowFeeReceiverUsdpBalance).to.be.bignumber.equal(usdpBorrowFee);
+			})
 		})
 
 		describe('Repay & withdraw', function() {
@@ -56,8 +77,10 @@ contract('CDPManager with bearing assets', function([deployer]) {
 				});
 
 				const mainAmountInPosition = await this.vault.collaterals(this.bearingAsset.address, deployer);
+				const usdpBalance = await this.usdp.balanceOf(deployer);
 
 				expect(mainAmountInPosition).to.be.bignumber.equal(new BN(0));
+				expect(usdpBalance).to.be.bignumber.equal(new BN(0));
 			})
 
 			it('Should partially repay the debt of a position and withdraw the part of the collateral', async function() {
@@ -90,10 +113,11 @@ contract('CDPManager with bearing assets', function([deployer]) {
 		it('Should deposit collaterals to position and mint USDP', async function() {
 			let mainAmount = ether('100');
 			let usdpAmount = ether('20');
+			const usdpBorrowFee = this.utils.calcBorrowFee(usdpAmount)
 
-			await this.utils.join(this.bearingAsset, mainAmount, usdpAmount);
+			await this.utils.join(this.bearingAsset, mainAmount, usdpAmount, {approveUSDP: usdpBorrowFee});
 
-			const { logs } = await this.utils.join(this.bearingAsset, mainAmount, usdpAmount);
+			const { logs } = await this.utils.join(this.bearingAsset, mainAmount, usdpAmount, {approveUSDP: usdpBorrowFee});
 
 			expectEvent.inLogs(logs, 'Join', {
 				asset: this.bearingAsset.address,
@@ -104,14 +128,17 @@ contract('CDPManager with bearing assets', function([deployer]) {
 
 			const mainAmountInPosition = await this.vault.collaterals(this.bearingAsset.address, deployer);
 			const usdpBalance = await this.usdp.balanceOf(deployer);
+			const borrowFeeReceiverUsdpBalance = await this.usdp.balanceOf(this.utils.BORROW_FEE_RECEIVER_ADDRESS);
 
 			expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount.mul(new BN(2)));
-			expect(usdpBalance).to.be.bignumber.equal(usdpAmount.mul(new BN(2)));
+			expect(usdpBalance).to.be.bignumber.equal(usdpAmount.mul(new BN(2)).sub(usdpBorrowFee.mul(new BN(2))));
+			expect(borrowFeeReceiverUsdpBalance).to.be.bignumber.equal(usdpBorrowFee.mul(new BN(2)));
 		})
 
 		it('Should withdraw collateral from a position and repay (burn) USDP', async function() {
 			let mainAmount = ether('100');
 			let usdpAmount = ether('20');
+			const usdpBorrowFee = this.utils.calcBorrowFee(usdpAmount).mul(new BN(2))
 
 			await this.utils.join(this.bearingAsset, mainAmount.mul(new BN(2)), usdpAmount.mul(new BN(2)));
 
@@ -125,7 +152,7 @@ contract('CDPManager with bearing assets', function([deployer]) {
 			const usdpBalance = await this.usdp.balanceOf(deployer);
 
 			expect(mainAmountInPosition).to.be.bignumber.equal(mainAmount);
-			expect(usdpBalance).to.be.bignumber.equal(usdpAmount);
+			expect(usdpBalance).to.be.bignumber.equal(usdpAmount.sub(usdpBorrowFee));
 			expect(usdpSupplyAfter).to.be.bignumber.equal(usdpSupplyBefore.sub(usdpAmount));
 		})
 	});
@@ -173,6 +200,37 @@ contract('CDPManager with bearing assets', function([deployer]) {
 						},
 					);
 					await this.utils.expectRevert(tx, "TRANSFER_FROM_FAILED");
+				})
+
+				it('Reverts when borrow fee is not approved', async function() {
+					const mainAmount = ether('100');
+					const usdpAmount = ether('20');
+
+					const tx = this.utils.join(
+						this.bearingAsset,
+						mainAmount, // main
+						usdpAmount,	// USDP
+						{
+							approveUSDP: new BN(0)
+						},
+					);
+					await this.utils.expectRevert(tx, "BORROW_FEE_NOT_APPROVED");
+				})
+
+				it('Reverts when not enough borrow fee is approved', async function() {
+					const mainAmount = ether('100');
+					const usdpAmount = ether('20');
+					const usdpBorrowFee = this.utils.calcBorrowFee(usdpAmount)
+
+					const tx = this.utils.join(
+						this.bearingAsset,
+						mainAmount, // main
+						usdpAmount,	// USDP
+						{
+							approveUSDP: usdpBorrowFee.sub(new BN(1))
+						},
+					);
+					await this.utils.expectRevert(tx, "BORROW_FEE_NOT_APPROVED");
 				})
 			})
 		})

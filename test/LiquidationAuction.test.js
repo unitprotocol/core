@@ -95,7 +95,7 @@ contract('LiquidationAuction', function([
 
 		expect(mainAmountInPositionAfterLiquidation).to.be.bignumber.equal(new BN('0'));
 		expect(usdpDebt).to.be.bignumber.equal(new BN('0'));
-		expect(usdpLiquidatorBalance).to.be.bignumber.equal(initialLiquidatorUsdpBalance.sub(repayment));
+		expect(usdpLiquidatorBalance).to.be.bignumber.equal(initialLiquidatorUsdpBalance.sub(this.utils.calcBorrowFee(initialLiquidatorUsdpBalance)).sub(repayment));
 		expect(collateralLiquidatorBalance).to.be.bignumber.equal(collateralToBuyer);
 		expect(collateralOwnerBalanceAfter.sub(collateralOwnerBalanceBefore)).to.be.bignumber.equal(collateralToOwner);
 	})

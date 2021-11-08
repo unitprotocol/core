@@ -23,7 +23,7 @@ contract KeydonixOraclePoolToken_Mock is ChainlinkedKeydonixOraclePoolTokenAbstr
     }
 
     // override with mock; only for tests
-    function assetToUsd(address asset, uint amount, ProofDataStruct memory proofData) public override view returns (uint) {
+    function assetToUsd(address asset, uint amount, ProofDataStruct memory /* proofData */) public override view returns (uint) {
 
         IUniswapV2PairFull pair = IUniswapV2PairFull(asset);
 
