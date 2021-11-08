@@ -116,7 +116,7 @@ contract CDPViewer {
         if (owner == address(0)) return r;
         r.cdp.stabilityFee = uint32(vault.stabilityFee(asset, owner));
         r.cdp.liquidationFee = uint16(vault.liquidationFee(asset, owner));
-        r.cdp.debt = uint128(vault.debts(asset, owner));
+        r.cdp.debt = uint128(vault.getTotalDebt(asset, owner));
         r.cdp.collateral = uint128(vault.collaterals(asset, owner));
         r.cdp.lastUpdate = uint32(vault.lastUpdate(asset, owner));
         r.cdp.oracleType = uint16(vault.oracleType(asset, owner));
