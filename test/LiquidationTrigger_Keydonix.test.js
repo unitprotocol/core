@@ -27,7 +27,7 @@ contract('LiquidationTriggerKeydonixMainAsset', function([
 		 * collateral value = 60 * 2 = 120$
 		 * utilization percent = 70 / 120 = 58.3%
 		 */
-		await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+		await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
 		/*
 		 * Main collateral/WETH pool params before swap:

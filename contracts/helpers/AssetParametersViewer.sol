@@ -8,7 +8,7 @@ pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "../interfaces/IVaultParameters.sol";
-import "../interfaces/IVaultManagerParameters.sol";
+import "../interfaces/vault-managers/parameters/IVaultManagerParameters.sol";
 
 
 /**

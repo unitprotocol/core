@@ -5,12 +5,16 @@ require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
 require("hardhat-local-networks-config-plugin");
+require("@nomiclabs/hardhat-truffle5");
+require("hardhat-gas-reporter");
 
 
 task('deploy', 'Runs a core deployment')
     .addParam('foundation', 'Address of a foundation account/contract')
     .addParam('manager', 'Address of a manager account/contract')
     .addParam('wtoken', 'Address of a wrapped network token (e.g. WETH for Ethereum)')
+    .addParam('baseBorrowFeePercent', 'Base borrow fee basis points (1pb=0.01%=0.0001, ie value must be 150 for 1.5%)', 150, types.int)
+    .addParam('borrowFeeReceiver', 'Address of borrow fee receiver')
     .addOptionalParam('deployer', 'Address of a deployer account to use (defaults to the first account)')
     .addOptionalParam('noVerify', 'Skip contracts verification on *scan block explorer', false, types.boolean)
     .setAction(async (taskArgs) => {
@@ -25,6 +29,8 @@ task('deploy', 'Runs a core deployment')
             foundation: taskArgs.foundation,
             manager: taskArgs.manager,
             wtoken: taskArgs.wtoken,
+            baseBorrowFeePercent: taskArgs.baseBorrowFeePercent,
+            borrowFeeReceiver: taskArgs.borrowFeeReceiver,
             withHelpers: true,
         });
 
@@ -70,12 +76,10 @@ module.exports = {
         },
     },
 
-    mocha: process.env.NO_COVERAGE ? {} : {
-        reporter: 'eth-gas-reporter',
-        reporterOptions: {
-            currency: 'USD',
-            gasPrice: 90
-        }
+    gasReporter: {
+        enabled: !process.env.NO_COVERAGE,
+        currency: 'USD',
+        gasPrice: 90
     },
 
     etherscan: {

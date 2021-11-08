@@ -8,7 +8,7 @@ pragma abicoder v2;
 
 
 import "./VaultParameters.sol";
-import "./interfaces/IVaultManagerParameters.sol";
+import "./interfaces/vault-managers/parameters/IVaultManagerParameters.sol";
 import "./interfaces/IBearingAssetOracle.sol";
 import "./interfaces/IOracleRegistry.sol";
 import "./interfaces/ICollateralRegistry.sol";

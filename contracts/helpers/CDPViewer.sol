@@ -9,7 +9,7 @@ pragma experimental ABIEncoderV2;
 
 import "../interfaces/IVault.sol";
 import "../interfaces/IVaultParameters.sol";
-import "../interfaces/IVaultManagerParameters.sol";
+import "../interfaces/vault-managers/parameters/IVaultManagerParameters.sol";
 import "../interfaces/IOracleRegistry.sol";
 import "./IUniswapV2PairFull.sol";
 import "./ERC20Like.sol";
