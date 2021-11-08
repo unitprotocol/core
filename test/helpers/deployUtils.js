@@ -50,6 +50,37 @@ function calculateAddressAtNonce(sender, nonce, web3Inst = web3) {
 
 // --- Hardhat deployment script helpers --------------------------------------
 
+async function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function verifyContract(contract, constructorArguments, contract_name) {
+    let verify_attempt = 0;
+    while (verify_attempt < 10) {
+        verify_attempt++;
+        l("Start contract verify attempt #" + verify_attempt);
+        try {
+            await hre.run("verify:verify", {
+                address: contract.address,
+                constructorArguments: constructorArguments,
+                // FIXME hackish workaround for the contracts with the same bytecode
+                contract: contract_name == 'UnitProxy' ? 'contracts/helpers/UnitProxy.sol:UnitProxy' : undefined,
+            });
+            break;
+        } catch (e) {
+            if (e.message.indexOf("Try waiting for a minute before verifying your contract") !== -1) {
+                l("Waiting for updating etherscan index");
+                await sleep(10000);  // etherscan often has delays fo updating indexes
+            } else if (e.message.indexOf("Reason: Already Verified") !== -1) {
+                l("Contract already verified (by similar bytecode)");
+                break;
+            } else {
+                throw e;
+            }
+        }
+    }
+}
+
 async function _deploymentStep(name, args, options) {
     const {scope, signer, hre, verify, proxy} = options;
     const ethers = hre.ethers;
@@ -100,38 +131,13 @@ async function _deploymentStep(name, args, options) {
     if (name in scope)
         throw new Error(`${name} is already deployed`);
 
-    const sleep = async function _sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
     const deployContract = async (name, args) => {
-        l("Start deploying contract " + name);
         const factory = await ethers.getContractFactory(name, signer);
         const contract = await factory.deploy(...args);
         await contract.deployed();
 
         if (verify) {
-            let verify_attempt = 0;
-            while (verify_attempt < 10) {
-                verify_attempt++;
-                l("Start contract verify attempt #" + verify_attempt);
-                try {
-                    await hre.run("verify:verify", {
-                        address: contract.address,
-                        constructorArguments: args,
-                        // FIXME hackish workaround for the contracts with the same bytecode
-                        contract: name == 'UnitProxy' ? 'contracts/helpers/UnitProxy.sol:UnitProxy' : undefined,
-                    });
-                    break;
-                } catch (e) {
-                    if (e.message.indexOf("Try waiting for a minute before verifying your contract") !== -1) {
-                        l("Waiting for updating etherscan index");
-                        await sleep(10000);  // etherscan often has delays fo updating indexes
-                    } else {
-                        throw e;
-                    }
-                }
-            }
+            await verifyContract(contract, args, name);
         }
 
         return contract.address;
