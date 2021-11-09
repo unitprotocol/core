@@ -5,6 +5,7 @@
 coverage
 coverage.json
 /package-lock.json
+/config/networks.json
 
 **/artifacts/
 /DEPLOYED/

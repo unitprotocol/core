@@ -1,0 +1,40 @@
+{
+  "networks": {
+    "fantom-testnet": {
+      "url": "https://rpc.testnet.fantom.network/",
+      "accounts": [
+        "0x private key of deployer"
+      ],
+      "timeout": 180000
+    },
+    "ethereum-kovan": {
+      "url": "https://eth-kovan.alchemyapi.io/v2/project_key",
+      "chainId": 42,
+      "accounts": [
+        "0x private key of deployer"
+      ],
+      "timeout": 180000
+    },
+    "ethereum-kovan-infura": {
+      "url": "https://kovan.infura.io/v3/project_key",
+      "accounts": [
+        "0x private key of deployer"
+      ],
+      "timeout": 180000
+    },
+    "ethereum-rinkeby": {
+      "url": "https://eth-rinkeby.alchemyapi.io/v2/project_key",
+      "accounts": [
+        "0x private key of deployer"
+      ],
+      "timeout": 180000
+    },
+    "ethereum-rinkeby-infura": {
+      "url": "https://rinkeby.infura.io/v3/project_key",
+      "accounts": [
+        "0x private key of deployer"
+      ],
+      "timeout": 180000
+    }
+  }
+}
