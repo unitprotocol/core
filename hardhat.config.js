@@ -17,7 +17,6 @@ task('deploy', 'Runs a core deployment')
     .addParam('borrowFeeReceiver', 'Address of borrow fee receiver')
     .addOptionalParam('deployer', 'Address of a deployer account to use (defaults to the first account)')
     .addOptionalParam('noVerify', 'Skip contracts verification on *scan block explorer', false, types.boolean)
-    .addOptionalParam('withHelpers', 'With helpers', true, types.boolean)
     .setAction(async (taskArgs) => {
         await hre.run("compile");
 

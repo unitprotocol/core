@@ -101,15 +101,21 @@ contract CDPManager01_Fallback is BaseCDPManager {
     if (assetAmount == 0) {
       _repay(asset, msg.sender, usdpAmount);
     } else {
-      // withdraw collateral to the owner address
-      vault.withdrawMain(asset, msg.sender, assetAmount);
+      if (debt == usdpAmount) {
+        vault.withdrawMain(asset, msg.sender, assetAmount);
+        if (usdpAmount != 0) {
+          _repay(asset, msg.sender, usdpAmount);
+        }
+      } else {
+        // withdraw collateral to the owner address
+        vault.withdrawMain(asset, msg.sender, assetAmount);
 
-      if (usdpAmount != 0) {
-        _repay(asset, msg.sender, usdpAmount);
-      }
+        if (usdpAmount != 0) {
+          _repay(asset, msg.sender, usdpAmount);
+        }
 
-      if (usdpAmount != debt) {
         vault.update(asset, msg.sender);
+
         _ensurePositionCollateralization(asset, msg.sender, proofData);
       }
     }
