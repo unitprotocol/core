@@ -8,6 +8,7 @@ const { expect } = require('chai');
 
 const VaultParameters = artifacts.require('VaultParameters');
 const VaultManagerParameters = artifacts.require('VaultManagerParameters');
+const VaultManagerBorrowFeeParameters = artifacts.require('VaultManagerBorrowFeeParameters');
 const AssetParametersViewer = artifacts.require('AssetParametersViewer');
 
 contract('Parameters', function([
@@ -21,6 +22,7 @@ contract('Parameters', function([
 		this.utils = utils(this, 'keydonixMainAsset');
 		this.vaultParameters = await VaultParameters.new(secondAccount, deployer);
 		this.vaultManagerParameters = await VaultManagerParameters.new(this.vaultParameters.address);
+		this.vaultManagerBorrowFeeParameters = await VaultManagerBorrowFeeParameters.new(this.vaultParameters.address, new BN('150'), fourthAccount);
 		await this.vaultParameters.setManager(this.vaultManagerParameters.address, true);
 	});
 
@@ -131,7 +133,7 @@ contract('Parameters', function([
 		})
 
 		it('Should view parameters', async function () {
-		    const viewer = await AssetParametersViewer.new(this.vaultManagerParameters.address);
+		    const viewer = await AssetParametersViewer.new(this.vaultManagerParameters.address, this.vaultManagerBorrowFeeParameters.address);
 
 			await this.vaultManagerParameters.setCollateral(
 				thirdAccount,
@@ -174,6 +176,7 @@ contract('Parameters', function([
             expect(asset1.oracles).to.deep.equal(['1', '5']);
             expect(asset1.minColPercent).to.be.bignumber.equal(new BN('3'));
             expect(asset1.maxColPercent).to.be.bignumber.equal(new BN('5'));
+						expect(asset1.borrowFee).to.be.bignumber.equal(new BN('150'));
 
             expect(asset2.asset).to.be.equal(fourthAccount);
             expect(asset2.stabilityFee).to.be.bignumber.equal(new BN('1500'));
@@ -207,7 +210,7 @@ contract('Parameters', function([
 		})
 
 		it('Should view parameters without oracles search', async function () {
-		    const viewer = await AssetParametersViewer.new(this.vaultManagerParameters.address);
+		    const viewer = await AssetParametersViewer.new(this.vaultManagerParameters.address, this.vaultManagerBorrowFeeParameters.address);
 
 			await this.vaultManagerParameters.setCollateral(
 				thirdAccount,
