@@ -10,6 +10,7 @@ pragma experimental ABIEncoderV2;
 import "../interfaces/IVault.sol";
 import "../interfaces/IVaultParameters.sol";
 import "../interfaces/vault-managers/parameters/IVaultManagerParameters.sol";
+import "../interfaces/vault-managers/parameters/IVaultManagerBorrowFeeParameters.sol";
 import "../interfaces/IOracleRegistry.sol";
 import "./IUniswapV2PairFull.sol";
 import "./ERC20Like.sol";
@@ -23,6 +24,7 @@ contract CDPViewer {
     IVault public immutable vault;
     IVaultParameters public immutable vaultParameters;
     IVaultManagerParameters public immutable vaultManagerParameters;
+    IVaultManagerBorrowFeeParameters public immutable vaultManagerBorrowFeeParameters;
     IOracleRegistry public immutable oracleRegistry;
 
     struct CDP {
@@ -76,6 +78,9 @@ contract CDPViewer {
         // Oracle types enabled for this asset
         uint16 oracleType;
 
+        // Percentage with 2 decimals (basis points)
+        uint16 borrowFee;
+
         CDP cdp;
     }
 
@@ -86,13 +91,14 @@ contract CDPViewer {
     }
 
 
-    constructor(address _vaultManagerParameters, address _oracleRegistry) {
+    constructor(address _vaultManagerParameters, address _oracleRegistry, address _vaultManagerBorrowFeeParameters) {
          IVaultManagerParameters vmp = IVaultManagerParameters(_vaultManagerParameters);
          vaultManagerParameters = vmp;
          IVaultParameters vp = IVaultParameters(vmp.vaultParameters());
          vaultParameters = vp;
          vault = IVault(vp.vault());
          oracleRegistry = IOracleRegistry(_oracleRegistry);
+         vaultManagerBorrowFeeParameters = IVaultManagerBorrowFeeParameters(_vaultManagerBorrowFeeParameters);
     }
 
     /**
@@ -115,6 +121,8 @@ contract CDPViewer {
         r.tokenDebtLimit = uint128(vaultParameters.tokenDebtLimit(asset));
         r.tokenDebt = uint128(vault.tokenDebts(asset));
         r.oracleType = uint16(oracleRegistry.oracleTypeByAsset(asset));
+
+        r.borrowFee = vaultManagerBorrowFeeParameters.getBorrowFee(asset);
 
         if (owner == address(0)) return r;
         r.cdp.stabilityFee = uint32(vault.stabilityFee(asset, owner));

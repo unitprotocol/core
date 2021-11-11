@@ -9,6 +9,7 @@ pragma experimental ABIEncoderV2;
 
 import "../interfaces/IVaultParameters.sol";
 import "../interfaces/vault-managers/parameters/IVaultManagerParameters.sol";
+import "../interfaces/vault-managers/parameters/IVaultManagerBorrowFeeParameters.sol";
 
 
 /**
@@ -22,6 +23,7 @@ contract AssetParametersViewer {
     IVaultParameters public immutable vaultParameters;
 
     IVaultManagerParameters public immutable vaultManagerParameters;
+    IVaultManagerBorrowFeeParameters public immutable vaultManagerBorrowFeeParameters;
 
     struct AssetParameters {
         // asset address
@@ -56,13 +58,17 @@ contract AssetParametersViewer {
 
         // Percentage with 0 decimals
         uint maxColPercent;
+
+        // Percentage with 2 decimals (basis points)
+        uint borrowFee;
     }
 
 
-    constructor(address _vaultManagerParameters) {
+    constructor(address _vaultManagerParameters, address _vaultManagerBorrowFeeParameters) {
         IVaultManagerParameters vmp = IVaultManagerParameters(_vaultManagerParameters);
         vaultManagerParameters = vmp;
         vaultParameters = IVaultParameters(vmp.vaultParameters());
+        vaultManagerBorrowFeeParameters = IVaultManagerBorrowFeeParameters(_vaultManagerBorrowFeeParameters);
     }
 
     /**
@@ -88,6 +94,8 @@ contract AssetParametersViewer {
 
         r.minColPercent = vaultManagerParameters.minColPercent(asset);
         r.maxColPercent = vaultManagerParameters.maxColPercent(asset);
+
+        r.borrowFee = vaultManagerBorrowFeeParameters.getBorrowFee(asset);
 
         // Memory arrays can't be reallocated so we'll overprovision
         uint[] memory foundOracleTypes = new uint[](maxOracleTypesToSearch);
