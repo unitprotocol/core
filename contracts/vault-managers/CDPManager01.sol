@@ -5,12 +5,14 @@
 */
 pragma solidity 0.7.6;
 
+import './BaseCDPManager.sol';
+
 import '../interfaces/IOracleRegistry.sol';
 import '../interfaces/IOracleUsd.sol';
 import '../interfaces/IWETH.sol';
 import '../interfaces/IVault.sol';
 import '../interfaces/ICDPRegistry.sol';
-import '../interfaces/IVaultManagerParameters.sol';
+import '../interfaces/vault-managers/parameters/IVaultManagerParameters.sol';
 import '../interfaces/IVaultParameters.sol';
 import '../interfaces/IToken.sol';
 
@@ -20,55 +22,21 @@ import '../helpers/SafeMath.sol';
 /**
  * @title CDPManager01
  **/
-contract CDPManager01 is ReentrancyGuard {
+contract CDPManager01 is BaseCDPManager {
     using SafeMath for uint;
 
-    IVault public immutable vault;
-    IVaultManagerParameters public immutable vaultManagerParameters;
-    IOracleRegistry public immutable oracleRegistry;
-    ICDPRegistry public immutable cdpRegistry;
     address payable public immutable WETH;
-
-    uint public constant Q112 = 2 ** 112;
-    uint public constant DENOMINATOR_1E5 = 1e5;
-
-    /**
-     * @dev Trigger when joins are happened
-    **/
-    event Join(address indexed asset, address indexed owner, uint main, uint usdp);
-
-    /**
-     * @dev Trigger when exits are happened
-    **/
-    event Exit(address indexed asset, address indexed owner, uint main, uint usdp);
-
-    /**
-     * @dev Trigger when liquidations are initiated
-    **/
-    event LiquidationTriggered(address indexed asset, address indexed owner);
-
-    modifier checkpoint(address asset, address owner) {
-        _;
-        cdpRegistry.checkpoint(asset, owner);
-    }
 
     /**
      * @param _vaultManagerParameters The address of the contract with Vault manager parameters
      * @param _oracleRegistry The address of the oracle registry
      * @param _cdpRegistry The address of the CDP registry
+     * @param _vaultManagerBorrowFeeParameters The address of the vault manager borrow fee parameters
      **/
-    constructor(address _vaultManagerParameters, address _oracleRegistry, address _cdpRegistry) {
-        require(
-            _vaultManagerParameters != address(0) &&
-            _oracleRegistry != address(0) &&
-            _cdpRegistry != address(0),
-                "Unit Protocol: INVALID_ARGS"
-        );
-        vaultManagerParameters = IVaultManagerParameters(_vaultManagerParameters);
-        vault = IVault(IVaultParameters(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()).vault());
-        oracleRegistry = IOracleRegistry(_oracleRegistry);
+    constructor(address _vaultManagerParameters, address _oracleRegistry, address _cdpRegistry, address _vaultManagerBorrowFeeParameters)
+        BaseCDPManager(_vaultManagerParameters, _oracleRegistry, _cdpRegistry, _vaultManagerBorrowFeeParameters)
+    {
         WETH = IVault(IVaultParameters(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()).vault()).weth();
-        cdpRegistry = ICDPRegistry(_cdpRegistry);
     }
 
     // only accept ETH via fallback from the WETH contract
@@ -78,6 +46,7 @@ contract CDPManager01 is ReentrancyGuard {
 
     /**
       * @notice Depositing tokens must be pre-approved to Vault address
+      * @notice Borrow fee in USDP tokens must be pre-approved to CDP manager address
       * @notice position actually considered as spawned only when debt > 0
       * @dev Deposits collateral and/or borrows USDP
       * @param asset The address of the collateral
@@ -110,6 +79,7 @@ contract CDPManager01 is ReentrancyGuard {
 
             // mint USDP to owner
             vault.borrow(asset, msg.sender, usdpAmount);
+            _chargeBorrowFee(asset, msg.sender, usdpAmount);
 
             // check collateralization
             _ensurePositionCollateralization(asset, msg.sender);
@@ -226,27 +196,6 @@ contract CDPManager01 is ReentrancyGuard {
         return usdpAmount;
     }
 
-    // decreases debt
-    function _repay(address asset, address owner, uint usdpAmount) internal {
-        uint fee = vault.getFee(asset, owner);
-
-        if (fee > usdpAmount) {
-          fee = usdpAmount;
-        }
-
-        usdpAmount = usdpAmount - fee;
-
-        vault.chargeFee(vault.usdp(), owner, fee);
-        vault.decreaseFee(asset, owner, fee);
-
-        // burn USDP from the owner's balance
-        uint debtAfter = vault.repay(asset, owner, usdpAmount);
-        if (debtAfter == 0) {
-            // clear unused storage
-            vault.destroy(asset, owner);
-        }
-    }
-
     function _ensurePositionCollateralization(address asset, address owner) internal view {
         // collateral value of the position in USD
         uint usdValue_q112 = getCollateralUsdValue_q112(asset, owner);
@@ -292,26 +241,6 @@ contract CDPManager01 is ReentrancyGuard {
         return IOracleUsd(oracleRegistry.oracleByAsset(asset)).assetToUsd(asset, vault.collaterals(asset, owner));
     }
 
-    /**
-     * @dev Determines whether a position is liquidatable
-     * @param asset The address of the collateral
-     * @param owner The owner of the position
-     * @param usdValue_q112 Q112-encoded USD value of the collateral
-     * @return boolean value, whether a position is liquidatable
-     **/
-    function _isLiquidatablePosition(
-        address asset,
-        address owner,
-        uint usdValue_q112
-    ) internal view returns (bool) {
-        uint debt = vault.getTotalDebt(asset, owner);
-
-        // position is collateralized if there is no debt
-        if (debt == 0) return false;
-
-        return debt.mul(100).mul(Q112).div(usdValue_q112) >= vaultManagerParameters.liquidationRatio(asset);
-    }
-
     function _ensureOracle(address asset) internal view {
         uint oracleType = oracleRegistry.oracleTypeByAsset(asset);
         require(oracleType != 0, "Unit Protocol: INVALID_ORACLE_TYPE");
@@ -352,25 +281,4 @@ contract CDPManager01 is ReentrancyGuard {
         return debt.mul(100).mul(Q112).div(usdValue_q112);
     }
 
-
-    /**
-     * @dev Calculates liquidation price
-     * @param asset The address of the collateral
-     * @param owner The owner of the position
-     * @return Q112-encoded liquidation price
-     **/
-    function liquidationPrice_q112(
-        address asset,
-        address owner
-    ) external view returns (uint) {
-
-        uint debt = vault.getTotalDebt(asset, owner);
-        if (debt == 0) return uint(-1);
-
-        uint collateralLiqPrice = debt.mul(100).mul(Q112).div(vaultManagerParameters.liquidationRatio(asset));
-
-        require(IToken(asset).decimals() <= 18, "Unit Protocol: NOT_SUPPORTED_DECIMALS");
-
-        return collateralLiqPrice / vault.collaterals(asset, owner) / 10 ** (18 - IToken(asset).decimals());
-    }
 }
