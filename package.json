@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "main": "index.js",
   "author": "@bcngod",
-  "license": "Business Source License 1.1",
+  "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "test": "truffle test",
     "test:curve": "truffle test test/CDPManager_WrappedAssets.test.js test/LiquidationTrigger_WrappedAssets.test.js test/LiquidationAuction.test.js",
