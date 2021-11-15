@@ -7,13 +7,11 @@ const utils = require('./helpers/utils');
 contract('LiquidationTriggerKeep3rPoolToken', function([
  positionOwner,
  liquidator,
- foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'sushiswapKeep3rPoolToken');
 		this.deployer = positionOwner;
-		this.foundation = foundation;
 		await this.utils.deploy();
 	});
 
@@ -28,7 +26,7 @@ contract('LiquidationTriggerKeep3rPoolToken', function([
 		 * collateral value = 44.72 * 2 = 134.16$
 		 * utilization percent = 78 / 134.16 = ~58%
 		 */
-		await this.utils.spawn(this.poolToken, mainAmount, usdpAmount);
+		await this.utils.join(this.poolToken, mainAmount, usdpAmount);
 
 		// fill liquidator usdp balance
 		await this.usdp.transfer(liquidator, usdpAmount);
@@ -83,7 +81,7 @@ contract('LiquidationTriggerKeep3rPoolToken', function([
 		const mainAmount = new BN('3');
 		const usdpAmount = new BN('78');
 
-		await this.utils.spawn(this.poolToken, mainAmount, usdpAmount);
+		await this.utils.join(this.poolToken, mainAmount, usdpAmount);
 
 		const tx = this.utils.triggerLiquidation(this.poolToken, positionOwner, liquidator);
 		await this.utils.expectRevert(tx, "Unit Protocol: SAFE_POSITION");

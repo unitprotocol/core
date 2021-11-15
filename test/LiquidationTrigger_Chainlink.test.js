@@ -10,13 +10,11 @@ const utils = require('./helpers/utils');
 contract('LiquidationTriggerChainlinkMainAsset', function([
 	positionOwner,
 	liquidator,
-	foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'chainlinkMainAsset');
 		this.deployer = positionOwner;
-		this.foundation = foundation;
 		await this.utils.deploy();
 	});
 
@@ -29,7 +27,7 @@ contract('LiquidationTriggerChainlinkMainAsset', function([
 		 * collateral value = 60 * 2 = 120$
 		 * utilization percent = 70 / 120 = 58.3%
 		 */
-		await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+		await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
 		const newPriceOfMainInUsd = 1.301e8
 		await this.mainUsd.setPrice(newPriceOfMainInUsd);
@@ -68,7 +66,7 @@ contract('LiquidationTriggerChainlinkMainAsset', function([
 		 * collateral value = 60 * 2 = 120$
 		 * utilization percent = 70 / 120 = 58.3%
 		 */
-		await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+		await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
 		const tx = this.utils.triggerLiquidation(this.mainCollateral, positionOwner, liquidator);
 		await this.utils.expectRevert(tx, "Unit Protocol: SAFE_POSITION");

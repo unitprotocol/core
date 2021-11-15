@@ -10,13 +10,11 @@ const utils = require('./helpers/utils');
 contract('LiquidationTriggerKeydonixMainAsset', function([
 	positionOwner,
 	liquidator,
-	foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'keydonixMainAsset');
 		this.deployer = positionOwner;
-		this.foundation = foundation;
 		await this.utils.deploy();
 	});
 
@@ -29,7 +27,7 @@ contract('LiquidationTriggerKeydonixMainAsset', function([
 		 * collateral value = 60 * 2 = 120$
 		 * utilization percent = 70 / 120 = 58.3%
 		 */
-		await this.utils.spawn(this.mainCollateral, mainAmount, usdpAmount);
+		await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
 		/*
 		 * Main collateral/WETH pool params before swap:

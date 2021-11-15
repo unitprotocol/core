@@ -7,13 +7,11 @@ const utils = require('./helpers/utils');
 contract('LiquidationTriggerKeydonixPoolToken', function([
 	positionOwner,
 	liquidator,
-	foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'keydonixPoolToken');
 		this.deployer = positionOwner;
-		this.foundation = foundation;
 		await this.utils.deploy();
 	});
 
@@ -29,7 +27,7 @@ contract('LiquidationTriggerKeydonixPoolToken', function([
 			 * collateral value = 44.72 * 2 + 5 = 139.16$
 			 * utilization percent = 78 / 139.16 = ~56%
 			 */
-			await this.utils.spawn(this.poolToken, mainAmount, usdpAmount);
+			await this.utils.join(this.poolToken, mainAmount, usdpAmount);
 
 			// fill liquidator usdp balance
 			await this.usdp.transfer(liquidator, usdpAmount);

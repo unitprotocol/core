@@ -10,13 +10,11 @@ const utils = require('./helpers/utils');
 contract('LiquidationAuction', function([
 	positionOwner,
 	liquidator,
-	foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'curveLP');
 		this.deployer = positionOwner;
-		this.foundation = foundation;
 		await this.utils.deploy();
 	});
 
@@ -97,7 +95,7 @@ contract('LiquidationAuction', function([
 
 		expect(mainAmountInPositionAfterLiquidation).to.be.bignumber.equal(new BN('0'));
 		expect(usdpDebt).to.be.bignumber.equal(new BN('0'));
-		expect(usdpLiquidatorBalance).to.be.bignumber.equal(initialLiquidatorUsdpBalance.sub(repayment));
+		expect(usdpLiquidatorBalance).to.be.bignumber.equal(initialLiquidatorUsdpBalance.sub(this.utils.calcBorrowFee(initialLiquidatorUsdpBalance)).sub(repayment));
 		expect(collateralLiquidatorBalance).to.be.bignumber.equal(collateralToBuyer);
 		expect(collateralOwnerBalanceAfter.sub(collateralOwnerBalanceBefore)).to.be.bignumber.equal(collateralToOwner);
 	})

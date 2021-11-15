@@ -8,7 +8,7 @@ pragma solidity 0.7.6;
 import '../interfaces/IOracleRegistry.sol';
 import '../interfaces/IVault.sol';
 import '../interfaces/ICDPRegistry.sol';
-import '../interfaces/IVaultManagerParameters.sol';
+import '../interfaces/vault-managers/parameters/IVaultManagerParameters.sol';
 import '../interfaces/IVaultParameters.sol';
 import '../interfaces/IWrappedToUnderlyingOracle.sol';
 import '../interfaces/IForceTransferAssetStore.sol';

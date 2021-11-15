@@ -10,13 +10,11 @@ const utils = require('./helpers/utils')
 contract('LiquidationTriggerSimple', function([
 	positionOwner,
 	liquidator,
-	foundation,
 ]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'bearingAssetSimple')
 		this.deployer = positionOwner
-		this.foundation = foundation;
 		await this.utils.deploy()
 
 		// make 1 bearing asset equal to 2 main tokens
