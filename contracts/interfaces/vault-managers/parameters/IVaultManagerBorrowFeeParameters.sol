@@ -7,6 +7,11 @@ pragma solidity ^0.7.6;
 
 interface IVaultManagerBorrowFeeParameters {
 
+    event AssetBorrowFeeParamsEnabled(address indexed asset, uint16 feeBasisPoints);
+    event AssetBorrowFeeParamsDisabled(address indexed asset);
+    event FeeReceiverChanged(address indexed newFeeReceiver);
+    event BaseBorrowFeeChanged(uint16 newBaseBorrowFeeBasisPoints);
+
     /**
      * @notice 1 = 100% = 10000 basis points
      **/

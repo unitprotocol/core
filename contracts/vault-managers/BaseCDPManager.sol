@@ -72,7 +72,7 @@ abstract contract BaseCDPManager is ReentrancyGuard {
             "Unit Protocol: INVALID_ARGS"
         );
         vaultManagerParameters = IVaultManagerParameters(_vaultManagerParameters);
-        IVault vaultLocal = IVault(IVaultParameters(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()).vault());
+        IVault vaultLocal = IVault(IVaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
         vault = vaultLocal;
         oracleRegistry = IOracleRegistry(_oracleRegistry);
         cdpRegistry = ICDPRegistry(_cdpRegistry);

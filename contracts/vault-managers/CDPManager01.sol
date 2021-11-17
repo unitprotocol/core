@@ -36,7 +36,7 @@ contract CDPManager01 is BaseCDPManager {
     constructor(address _vaultManagerParameters, address _oracleRegistry, address _cdpRegistry, address _vaultManagerBorrowFeeParameters)
         BaseCDPManager(_vaultManagerParameters, _oracleRegistry, _cdpRegistry, _vaultManagerBorrowFeeParameters)
     {
-        WETH = IVault(IVaultParameters(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()).vault()).weth();
+        WETH = IVault(IVaultManagerParameters(_vaultManagerParameters).vaultParameters().vault()).weth();
     }
 
     // only accept ETH via fallback from the WETH contract

@@ -30,7 +30,7 @@ contract ParametersBatchUpdater is Auth {
         address _vaultManagerParameters,
         address _oracleRegistry,
         address _collateralRegistry
-    ) Auth(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()) {
+    ) Auth(address(IVaultManagerParameters(_vaultManagerParameters).vaultParameters())) {
         require(
             _vaultManagerParameters != address(0) &&
             _oracleRegistry != address(0) &&

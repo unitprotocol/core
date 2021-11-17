@@ -29,11 +29,6 @@ contract VaultManagerBorrowFeeParameters is Auth, IVaultManagerBorrowFeeParamete
 
     address public override feeReceiver;
 
-    event AssetBorrowFeeParamsEnabled(address indexed asset, uint16 feeBasisPoints);
-    event AssetBorrowFeeParamsDisabled(address indexed asset);
-    event FeeReceiverChanged(address indexed newFeeReceiver);
-    event BaseBorrowFeeChanged(uint16 newBaseBorrowFeeBasisPoints);
-
     modifier nonZeroAddress(address addr) {
         require(addr != address(0), "Unit Protocol: ZERO_ADDRESS");
         _;

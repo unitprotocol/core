@@ -13,6 +13,10 @@ interface IOracleRegistry {
         address oracleAddress;
     }
 
+    event AssetOracle(address indexed asset, uint indexed oracleType);
+    event OracleType(uint indexed oracleType, address indexed oracle);
+    event KeydonixOracleTypes();
+
     function WETH (  ) external view returns ( address );
     function getKeydonixOracleTypes (  ) external view returns ( uint256[] memory );
     function getOracles (  ) external view returns ( Oracle[] memory foundOracles );
@@ -29,5 +33,4 @@ interface IOracleRegistry {
     function unsetOracle ( uint256 oracleType ) external;
     function unsetOracleForAsset ( address asset ) external;
     function unsetOracleForAssets ( address[] memory assets ) external;
-    function vaultParameters (  ) external view returns ( address );
 }

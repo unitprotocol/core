@@ -5,30 +5,26 @@
 */
 pragma solidity 0.7.6;
 
+import "../../interfaces/vault-managers/parameters/IVaultManagerParameters.sol";
 import "../../VaultParameters.sol";
 
 
 /**
  * @title VaultManagerParameters
  **/
-contract VaultManagerParameters is Auth {
+contract VaultManagerParameters is IVaultManagerParameters, Auth {
 
     // map token to initial collateralization ratio; 0 decimals
-    mapping(address => uint) public initialCollateralRatio;
+    mapping(address => uint) public override initialCollateralRatio;
 
     // map token to liquidation ratio; 0 decimals
-    mapping(address => uint) public liquidationRatio;
+    mapping(address => uint) public override liquidationRatio;
 
     // map token to liquidation discount; 3 decimals
-    mapping(address => uint) public liquidationDiscount;
+    mapping(address => uint) public override liquidationDiscount;
 
     // map token to devaluation period in blocks
-    mapping(address => uint) public devaluationPeriod;
-
-    event InitialCollateralRatioChanged(address indexed asset, uint newValue);
-    event LiquidationRatioChanged(address indexed asset, uint newValue);
-    event LiquidationDiscountChanged(address indexed asset, uint newValue);
-    event DevaluationPeriodChanged(address indexed asset, uint newValue);
+    mapping(address => uint) public override devaluationPeriod;
 
     constructor(address _vaultParameters) Auth(_vaultParameters) {}
 
@@ -55,7 +51,7 @@ contract VaultManagerParameters is Auth {
         uint devaluationPeriodValue,
         uint usdpLimit,
         uint[] calldata oracles
-    ) external onlyManager {
+    ) external override onlyManager {
         vaultParameters.setCollateral(asset, stabilityFeeValue, liquidationFeeValue, usdpLimit, oracles);
         setInitialCollateralRatio(asset, initialCollateralRatioValue);
         setLiquidationRatio(asset, liquidationRatioValue);
@@ -69,7 +65,7 @@ contract VaultManagerParameters is Auth {
      * @param asset The address of the main collateral token
      * @param newValue The collateralization ratio (0 decimals)
      **/
-    function setInitialCollateralRatio(address asset, uint newValue) public onlyManager {
+    function setInitialCollateralRatio(address asset, uint newValue) public override onlyManager {
         require(newValue != 0 && newValue <= 100, "Unit Protocol: INCORRECT_COLLATERALIZATION_VALUE");
         initialCollateralRatio[asset] = newValue;
 
@@ -82,7 +78,7 @@ contract VaultManagerParameters is Auth {
      * @param asset The address of the main collateral token
      * @param newValue The liquidation ratio (0 decimals)
      **/
-    function setLiquidationRatio(address asset, uint newValue) public onlyManager {
+    function setLiquidationRatio(address asset, uint newValue) public override onlyManager {
         require(newValue != 0 && newValue >= initialCollateralRatio[asset], "Unit Protocol: INCORRECT_COLLATERALIZATION_VALUE");
         liquidationRatio[asset] = newValue;
 
@@ -95,7 +91,7 @@ contract VaultManagerParameters is Auth {
      * @param asset The address of the main collateral token
      * @param newValue The liquidation discount (3 decimals)
      **/
-    function setLiquidationDiscount(address asset, uint newValue) public onlyManager {
+    function setLiquidationDiscount(address asset, uint newValue) public override onlyManager {
         require(newValue < 1e5, "Unit Protocol: INCORRECT_DISCOUNT_VALUE");
         liquidationDiscount[asset] = newValue;
 
@@ -108,7 +104,7 @@ contract VaultManagerParameters is Auth {
      * @param asset The address of the main collateral token
      * @param newValue The devaluation period in blocks
      **/
-    function setDevaluationPeriod(address asset, uint newValue) public onlyManager {
+    function setDevaluationPeriod(address asset, uint newValue) public override onlyManager {
         require(newValue != 0, "Unit Protocol: INCORRECT_DEVALUATION_VALUE");
         devaluationPeriod[asset] = newValue;
 

@@ -8,23 +8,16 @@ pragma experimental ABIEncoderV2;
 
 import "./interfaces/IVault.sol";
 import "./interfaces/ICollateralRegistry.sol";
+import "./interfaces/ICDPRegistry.sol";
 
 
-contract CDPRegistry {
-
-    struct CDP {
-        address asset;
-        address owner;
-    }
+contract CDPRegistry is ICDPRegistry {
 
     mapping (address => address[]) cdpList;
     mapping (address => mapping (address => uint)) cdpIndex;
 
-    IVault public immutable vault;
-    ICollateralRegistry public immutable cr;
-
-    event Added(address indexed asset, address indexed owner);
-    event Removed(address indexed asset, address indexed owner);
+    IVault public immutable override vault;
+    ICollateralRegistry public immutable override cr;
 
     constructor (address _vault, address _collateralRegistry) {
         require(_vault != address(0) && _collateralRegistry != address(0), "Unit Protocol: ZERO_ADDRESS");
@@ -32,7 +25,7 @@ contract CDPRegistry {
         cr = ICollateralRegistry(_collateralRegistry);
     }
 
-    function checkpoint(address asset, address owner) public {
+    function checkpoint(address asset, address owner) public override {
         require(asset != address(0) && owner != address(0), "Unit Protocol: ZERO_ADDRESS");
 
         bool listed = isListed(asset, owner);
@@ -45,24 +38,24 @@ contract CDPRegistry {
         }
     }
 
-    function batchCheckpointForAsset(address asset, address[] calldata owners) external {
+    function batchCheckpointForAsset(address asset, address[] calldata owners) external override {
         for (uint i = 0; i < owners.length; i++) {
             checkpoint(asset, owners[i]);
         }
     }
 
-    function batchCheckpoint(address[] calldata assets, address[] calldata owners) external {
+    function batchCheckpoint(address[] calldata assets, address[] calldata owners) external override {
         require(assets.length == owners.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
         for (uint i = 0; i < owners.length; i++) {
             checkpoint(assets[i], owners[i]);
         }
     }
 
-    function isAlive(address asset, address owner) public view returns (bool) {
+    function isAlive(address asset, address owner) public override view returns (bool) {
         return vault.debts(asset, owner) != 0;
     }
 
-    function isListed(address asset, address owner) public view returns (bool) {
+    function isListed(address asset, address owner) public override view returns (bool) {
         if (cdpList[asset].length == 0) { return false; }
         return cdpIndex[asset][owner] != 0 || cdpList[asset][0] == owner;
     }
@@ -92,7 +85,7 @@ contract CDPRegistry {
         emit Added(asset, owner);
     }
 
-    function getCdpsByCollateral(address asset) external view returns (CDP[] memory cdps) {
+    function getCdpsByCollateral(address asset) external override view returns (CDP[] memory cdps) {
         address[] memory owners = cdpList[asset];
         cdps = new CDP[](owners.length);
         for (uint i = 0; i < owners.length; i++) {
@@ -100,7 +93,7 @@ contract CDPRegistry {
         }
     }
 
-    function getCdpsByOwner(address owner) external view returns (CDP[] memory r) {
+    function getCdpsByOwner(address owner) external override view returns (CDP[] memory r) {
         address[] memory assets = cr.collaterals();
         CDP[] memory cdps = new CDP[](assets.length);
         uint actualCdpsCount;
@@ -119,7 +112,7 @@ contract CDPRegistry {
 
     }
 
-    function getAllCdps() external view returns (CDP[] memory r) {
+    function getAllCdps() external override view returns (CDP[] memory r) {
         uint totalCdpCount = getCdpsCount();
         
         uint cdpCount;
@@ -135,14 +128,14 @@ contract CDPRegistry {
         }
     }
 
-    function getCdpsCount() public view returns (uint totalCdpCount) {
+    function getCdpsCount() public override view returns (uint totalCdpCount) {
         address[] memory assets = cr.collaterals();
         for (uint i = 0; i < assets.length; i++) {
             totalCdpCount += cdpList[assets[i]].length;
         }
     }
 
-    function getCdpsCountForCollateral(address asset) public view returns (uint) {
+    function getCdpsCountForCollateral(address asset) public override view returns (uint) {
         return cdpList[asset].length;
     }
 }

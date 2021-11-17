@@ -10,14 +10,15 @@ import "../helpers/ERC20Like.sol";
 import "../VaultParameters.sol";
 import "../interfaces/IOracleRegistry.sol";
 import "../interfaces/IOracleEth.sol";
+import "../interfaces/IBearingAssetOracle.sol";
 
 /**
  * @title BearingAssetOracle
  * @dev Wrapper to quote bearing assets like xSUSHI
  **/
-contract BearingAssetOracle is IOracleUsd, Auth  {
+contract BearingAssetOracle is IBearingAssetOracle, Auth  {
 
-    IOracleRegistry public immutable oracleRegistry;
+    IOracleRegistry public immutable override oracleRegistry;
 
     mapping (address => address) underlyings;
 
@@ -28,7 +29,7 @@ contract BearingAssetOracle is IOracleUsd, Auth  {
         oracleRegistry = IOracleRegistry(_oracleRegistry);
     }
 
-    function setUnderlying(address bearing, address underlying) external onlyManager {
+    function setUnderlying(address bearing, address underlying) external override onlyManager {
         underlyings[bearing] = underlying;
         emit NewUnderlying(bearing, underlying);
     }
@@ -42,7 +43,7 @@ contract BearingAssetOracle is IOracleUsd, Auth  {
         return _oracleForUnderlying.assetToUsd(underlying, underlyingAmount);
     }
 
-    function bearingToUnderlying(address bearing, uint amount) public view returns (address, uint) {
+    function bearingToUnderlying(address bearing, uint amount) public override view returns (address, uint) {
         address _underlying = underlyings[bearing];
         require(_underlying != address(0), "Unit Protocol: UNDEFINED_UNDERLYING");
         uint _reserve = ERC20Like(_underlying).balanceOf(address(bearing));

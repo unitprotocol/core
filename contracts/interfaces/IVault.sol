@@ -6,18 +6,17 @@
 pragma solidity ^0.7.6;
 
 interface IVault {
+    event OracleTypeChanged(address indexed asset, address indexed user, uint newOracleType);
+
     function DENOMINATOR_1E2 (  ) external view returns ( uint256 );
     function DENOMINATOR_1E5 (  ) external view returns ( uint256 );
     function borrow ( address asset, address user, uint256 amount ) external returns ( uint256 );
     function changeOracleType ( address asset, address user, uint256 newOracleType ) external;
     function chargeFee ( address asset, address user, uint256 amount ) external;
     function decreaseFee ( address asset, address user, uint amount ) external;
-    function col (  ) external view returns ( address );
-    function colToken ( address, address ) external view returns ( uint256 );
     function collaterals ( address, address ) external view returns ( uint256 );
     function debts ( address, address ) external view returns ( uint256 );
     function getFee ( address, address ) external view returns ( uint256 );
-    function depositCol ( address asset, address user, uint256 amount ) external;
     function depositEth ( address user ) external payable;
     function depositMain ( address asset, address user, uint256 amount ) external;
     function destroy ( address asset, address user ) external;
@@ -35,9 +34,7 @@ interface IVault {
     function triggerLiquidation ( address asset, address positionOwner, uint256 initialPrice ) external;
     function update ( address asset, address user ) external;
     function usdp (  ) external view returns ( address );
-    function vaultParameters (  ) external view returns ( address );
     function weth (  ) external view returns ( address payable );
-    function withdrawCol ( address asset, address user, uint256 amount ) external;
-    function withdrawEth ( address user, uint256 amount ) external;
+    function withdrawEth ( address payable user, uint256 amount ) external;
     function withdrawMain ( address asset, address user, uint256 amount ) external;
 }

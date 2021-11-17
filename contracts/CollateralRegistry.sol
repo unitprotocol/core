@@ -8,19 +8,17 @@ pragma experimental ABIEncoderV2;
 
 
 import "./VaultParameters.sol";
+import "./interfaces/ICollateralRegistry.sol";
 
 
 /**
  * @title CollateralRegistry
  **/
-contract CollateralRegistry is Auth {
+contract CollateralRegistry is ICollateralRegistry, Auth {
 
-    event CollateralAdded(address indexed asset);
-    event CollateralRemoved(address indexed asset);
+    mapping(address => uint) public override collateralId;
 
-    mapping(address => uint) public collateralId;
-
-    address[] public collateralList;
+    address[] public override collateralList;
     
     constructor(address _vaultParameters, address[] memory assets) Auth(_vaultParameters) {
         for (uint i = 0; i < assets.length; i++) {
@@ -31,7 +29,7 @@ contract CollateralRegistry is Auth {
         }
     }
 
-    function addCollateral(address asset) public onlyManager {
+    function addCollateral(address asset) public override onlyManager {
         require(asset != address(0), "Unit Protocol: ZERO_ADDRESS");
 
         require(!isCollateral(asset), "Unit Protocol: ALREADY_EXIST");
@@ -42,7 +40,7 @@ contract CollateralRegistry is Auth {
         emit CollateralAdded(asset);
     }
 
-    function removeCollateral(address asset) public onlyManager {
+    function removeCollateral(address asset) public override onlyManager {
         require(asset != address(0), "Unit Protocol: ZERO_ADDRESS");
 
         require(isCollateral(asset), "Unit Protocol: DOES_NOT_EXIST");
@@ -64,16 +62,16 @@ contract CollateralRegistry is Auth {
         emit CollateralRemoved(asset);
     }
 
-    function isCollateral(address asset) public view returns(bool) {
+    function isCollateral(address asset) public override view returns(bool) {
         if (collateralList.length == 0) { return false; }
         return collateralId[asset] != 0 || collateralList[0] == asset;
     }
 
-    function collaterals() external view returns (address[] memory) {
+    function collaterals() external override view returns (address[] memory) {
         return collateralList;
     }
 
-    function collateralsCount() external view returns (uint) {
+    function collateralsCount() external override view returns (uint) {
         return collateralList.length;
     }
 }

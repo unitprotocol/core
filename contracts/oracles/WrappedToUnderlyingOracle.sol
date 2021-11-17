@@ -10,16 +10,17 @@ import "../VaultParameters.sol";
 import "../interfaces/IOracleUsd.sol";
 import "../interfaces/IOracleEth.sol";
 import "../interfaces/IOracleRegistry.sol";
+import "../interfaces/IWrappedToUnderlyingOracle.sol";
 
 /**
  * @title WrappedToUnderlyingOracle
  * @dev Oracle to quote wrapped tokens to underlying
  **/
-contract WrappedToUnderlyingOracle is IOracleUsd, Auth {
+contract WrappedToUnderlyingOracle is IOracleUsd, IWrappedToUnderlyingOracle, Auth {
 
     IOracleRegistry public immutable oracleRegistry;
 
-    mapping (address => address) public assetToUnderlying;
+    mapping (address => address) public override assetToUnderlying;
 
     event NewUnderlying(address indexed wrapped, address indexed underlying);
 

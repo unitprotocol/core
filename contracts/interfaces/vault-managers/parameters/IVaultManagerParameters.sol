@@ -5,7 +5,14 @@
 */
 pragma solidity ^0.7.6;
 
-interface IVaultManagerParameters {
+import "../../IWithVaultParameters.sol";
+
+interface IVaultManagerParameters is IWithVaultParameters {
+    event InitialCollateralRatioChanged(address indexed asset, uint newValue);
+    event LiquidationRatioChanged(address indexed asset, uint newValue);
+    event LiquidationDiscountChanged(address indexed asset, uint newValue);
+    event DevaluationPeriodChanged(address indexed asset, uint newValue);
+
     function devaluationPeriod ( address ) external view returns ( uint256 );
     function initialCollateralRatio ( address ) external view returns ( uint256 );
     function liquidationDiscount ( address ) external view returns ( uint256 );
@@ -25,5 +32,4 @@ interface IVaultManagerParameters {
     function setInitialCollateralRatio ( address asset, uint256 newValue ) external;
     function setLiquidationDiscount ( address asset, uint256 newValue ) external;
     function setLiquidationRatio ( address asset, uint256 newValue ) external;
-    function vaultParameters (  ) external view returns ( address );
 }
