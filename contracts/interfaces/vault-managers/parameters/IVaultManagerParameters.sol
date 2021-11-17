@@ -10,9 +10,6 @@ interface IVaultManagerParameters {
     function initialCollateralRatio ( address ) external view returns ( uint256 );
     function liquidationDiscount ( address ) external view returns ( uint256 );
     function liquidationRatio ( address ) external view returns ( uint256 );
-    function maxColPercent ( address ) external view returns ( uint256 );
-    function minColPercent ( address ) external view returns ( uint256 );
-    function setColPartRange ( address asset, uint256 min, uint256 max ) external;
     function setCollateral (
         address asset,
         uint256 stabilityFeeValue,
@@ -22,9 +19,7 @@ interface IVaultManagerParameters {
         uint256 liquidationDiscountValue,
         uint256 devaluationPeriodValue,
         uint256 usdpLimit,
-        uint256[] calldata oracles,
-        uint256 minColP,
-        uint256 maxColP
+        uint256[] calldata oracles
     ) external;
     function setDevaluationPeriod ( address asset, uint256 newValue ) external;
     function setInitialCollateralRatio ( address asset, uint256 newValue ) external;

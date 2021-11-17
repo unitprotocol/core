@@ -53,12 +53,6 @@ contract AssetParametersViewer {
         // Oracle types enabled for this asset
         uint[] oracles;
 
-        // Percentage with 0 decimals
-        uint minColPercent;
-
-        // Percentage with 0 decimals
-        uint maxColPercent;
-
         // Percentage with 2 decimals (basis points)
         uint borrowFee;
     }
@@ -91,9 +85,6 @@ contract AssetParametersViewer {
         r.devaluationPeriod = vaultManagerParameters.devaluationPeriod(asset);
 
         r.tokenDebtLimit = vaultParameters.tokenDebtLimit(asset);
-
-        r.minColPercent = vaultManagerParameters.minColPercent(asset);
-        r.maxColPercent = vaultManagerParameters.maxColPercent(asset);
 
         r.borrowFee = vaultManagerBorrowFeeParameters.getBorrowFee(asset);
 

@@ -70,6 +70,17 @@ contract VaultParameters is Auth {
     // The foundation address
     address public foundation;
 
+    event ManagerAdded(address indexed who);
+    event ManagerRemoved(address indexed who);
+    event FoundationChanged(address indexed newFoundation);
+    event VaultAccessGranted(address indexed who);
+    event VaultAccessRevoked(address indexed who);
+    event StabilityFeeChanged(address indexed asset, uint newValue);
+    event LiquidationFeeChanged(address indexed asset, uint newValue);
+    event OracleTypeEnabled(address indexed asset, uint _type);
+    event OracleTypeDisabled(address indexed asset, uint _type);
+    event TokenDebtLimitChanged(address indexed asset, uint limit);
+
     /**
      * The address for an Ethereum contract is deterministically computed from the address of its creator (sender)
      * and how many transactions the creator has sent (nonce). The sender and nonce are RLP encoded and then
@@ -93,6 +104,12 @@ contract VaultParameters is Auth {
      **/
     function setManager(address who, bool permit) external onlyManager {
         isManager[who] = permit;
+
+        if (permit) {
+            emit ManagerAdded(who);
+        } else {
+            emit ManagerRemoved(who);
+        }
     }
 
     /**
@@ -103,6 +120,8 @@ contract VaultParameters is Auth {
     function setFoundation(address newFoundation) external onlyManager {
         require(newFoundation != address(0), "Unit Protocol: ZERO_ADDRESS");
         foundation = newFoundation;
+
+        emit FoundationChanged(newFoundation);
     }
 
     /**
@@ -137,6 +156,12 @@ contract VaultParameters is Auth {
      **/
     function setVaultAccess(address who, bool permit) external onlyManager {
         canModifyVault[who] = permit;
+
+        if (permit) {
+            emit VaultAccessGranted(who);
+        } else {
+            emit VaultAccessRevoked(who);
+        }
     }
 
     /**
@@ -147,6 +172,8 @@ contract VaultParameters is Auth {
      **/
     function setStabilityFee(address asset, uint newValue) public onlyManager {
         stabilityFee[asset] = newValue;
+
+        emit StabilityFeeChanged(asset, newValue);
     }
 
     /**
@@ -158,6 +185,8 @@ contract VaultParameters is Auth {
     function setLiquidationFee(address asset, uint newValue) public onlyManager {
         require(newValue <= 100, "Unit Protocol: VALUE_OUT_OF_RANGE");
         liquidationFee[asset] = newValue;
+
+        emit LiquidationFeeChanged(asset, newValue);
     }
 
     /**
@@ -169,6 +198,12 @@ contract VaultParameters is Auth {
      **/
     function setOracleType(uint _type, address asset, bool enabled) public onlyManager {
         isOracleTypeEnabled[_type][asset] = enabled;
+
+        if (enabled) {
+            emit OracleTypeEnabled(asset, _type);
+        } else {
+            emit OracleTypeDisabled(asset, _type);
+        }
     }
 
     /**
@@ -179,5 +214,7 @@ contract VaultParameters is Auth {
      **/
     function setTokenDebtLimit(address asset, uint limit) public onlyManager {
         tokenDebtLimit[asset] = limit;
+
+        emit TokenDebtLimitChanged(asset, limit);
     }
 }

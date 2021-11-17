@@ -73,6 +73,8 @@ contract Vault is Auth {
         _;
     }
 
+    event OracleTypeChanged(address indexed asset, address indexed user, uint newOracleType);
+
     /**
      * @param _parameters The address of the system parameters
      * @param _usdp USDP token address
@@ -346,6 +348,7 @@ contract Vault is Auth {
      **/
     function changeOracleType(address asset, address user, uint newOracleType) external onlyManager {
         oracleType[asset][user] = newOracleType;
+        emit OracleTypeChanged(asset, user, newOracleType);
     }
 
     /**

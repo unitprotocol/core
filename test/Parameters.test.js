@@ -1,5 +1,6 @@
 const {
 		constants : { ZERO_ADDRESS },
+		expectEvent,
 		ether
 } = require('openzeppelin-test-helpers');
 const utils  = require('./helpers/utils');
@@ -28,11 +29,25 @@ contract('Parameters', function([
 
 	describe('Optimistic cases', function() {
 		it('Should set another account as manager', async function () {
-			await this.vaultParameters.setManager(thirdAccount, true);
+			let receipt = await this.vaultParameters.setManager(thirdAccount, true);
+			expectEvent(receipt, 'ManagerAdded', {who: thirdAccount});
 
-			const isManager = await this.vaultParameters.isManager(thirdAccount);
-
+			let isManager = await this.vaultParameters.isManager(thirdAccount);
 			expect(isManager).to.equal(true);
+
+			receipt = await this.vaultParameters.setManager(thirdAccount, false);
+			expectEvent(receipt, 'ManagerRemoved', {who: thirdAccount});
+
+			isManager = await this.vaultParameters.isManager(thirdAccount);
+			expect(isManager).to.equal(false);
+		})
+
+		it('Should set foundation', async function () {
+			let receipt = await this.vaultParameters.setFoundation(thirdAccount);
+			expectEvent(receipt, 'FoundationChanged', {newFoundation: thirdAccount});
+
+			let foundation = await this.vaultParameters.foundation();
+			expect(foundation).to.equal(thirdAccount);
 		})
 
 		it('Should set token as collateral with specified parameters', async function () {
@@ -47,8 +62,6 @@ contract('Parameters', function([
 				1000,
 				expectedTokenDebtLimit,
 				[1], // enabled oracles
-				3,
-				5,
 			);
 
 			const tokenDebtLimit = await this.vaultParameters.tokenDebtLimit(thirdAccount);
@@ -58,7 +71,8 @@ contract('Parameters', function([
 
 		it('Should set initial collateral ratio', async function () {
 			const expectedInitialCollateralRatio = new BN('67');
-			await this.vaultManagerParameters.setInitialCollateralRatio(thirdAccount, expectedInitialCollateralRatio);
+			let receipt = await this.vaultManagerParameters.setInitialCollateralRatio(thirdAccount, expectedInitialCollateralRatio);
+			expectEvent(receipt, 'InitialCollateralRatioChanged', {asset: thirdAccount, newValue: expectedInitialCollateralRatio});
 
 			const initialCollateralRatio = await this.vaultManagerParameters.initialCollateralRatio(thirdAccount);
 
@@ -67,24 +81,52 @@ contract('Parameters', function([
 
 		it('Should set liquidation ratio', async function () {
 			const expectedLiquidationRatio = new BN('68');
-			await this.vaultManagerParameters.setLiquidationRatio(thirdAccount, expectedLiquidationRatio);
+			let receipt = await this.vaultManagerParameters.setLiquidationRatio(thirdAccount, expectedLiquidationRatio);
+			expectEvent(receipt, 'LiquidationRatioChanged', {asset: thirdAccount, newValue: expectedLiquidationRatio});
 
 			const liquidationRatio = await this.vaultManagerParameters.liquidationRatio(thirdAccount);
 
 			expect(liquidationRatio).to.be.bignumber.equal(expectedLiquidationRatio);
 		})
 
+		it('Should set liquidation discount', async function () {
+			const expectedLiquidationDiscount = new BN('68');
+			let receipt = await this.vaultManagerParameters.setLiquidationDiscount(thirdAccount, expectedLiquidationDiscount);
+			expectEvent(receipt, 'LiquidationDiscountChanged', {asset: thirdAccount, newValue: expectedLiquidationDiscount});
+
+			const liquidationDiscount = await this.vaultManagerParameters.liquidationDiscount(thirdAccount);
+
+			expect(liquidationDiscount).to.be.bignumber.equal(expectedLiquidationDiscount);
+		})
+
+		it('Should set Devaluation Period', async function () {
+			const expectedDevaluationPeriod = new BN('1000');
+			let receipt = await this.vaultManagerParameters.setDevaluationPeriod(thirdAccount, expectedDevaluationPeriod);
+			expectEvent(receipt, 'DevaluationPeriodChanged', {asset: thirdAccount, newValue: expectedDevaluationPeriod});
+
+			const devaluationPeriod = await this.vaultManagerParameters.devaluationPeriod(thirdAccount);
+
+			expect(devaluationPeriod).to.be.bignumber.equal(expectedDevaluationPeriod);
+		})
+
 		it('Should set vault access', async function () {
-			await this.vaultParameters.setVaultAccess(thirdAccount, true);
+			let receipt = await this.vaultParameters.setVaultAccess(thirdAccount, true);
+			expectEvent(receipt, 'VaultAccessGranted', {who: thirdAccount});
 
-			const hasVaultAccess = await this.vaultParameters.canModifyVault(thirdAccount);
-
+			let hasVaultAccess = await this.vaultParameters.canModifyVault(thirdAccount);
 			expect(hasVaultAccess).to.equal(true);
+
+			receipt = await this.vaultParameters.setVaultAccess(thirdAccount, false);
+			expectEvent(receipt, 'VaultAccessRevoked', {who: thirdAccount});
+
+			hasVaultAccess = await this.vaultParameters.canModifyVault(thirdAccount);
+			expect(hasVaultAccess).to.equal(false);
 		})
 
 		it('Should set stability fee', async function () {
 			const expectedStabilityFee = new BN('2000');
-			await this.vaultParameters.setStabilityFee(thirdAccount, expectedStabilityFee);
+			let receipt = await this.vaultParameters.setStabilityFee(thirdAccount, expectedStabilityFee);
+			expectEvent(receipt, 'StabilityFeeChanged', {asset: thirdAccount, newValue: expectedStabilityFee});
 
 			const stabilityFee = await this.vaultParameters.stabilityFee(thirdAccount);
 
@@ -93,39 +135,33 @@ contract('Parameters', function([
 
 		it('Should set liquidation fee', async function () {
 			const expectedLiquidationFee = new BN('1');
-			await this.vaultParameters.setLiquidationFee(thirdAccount, expectedLiquidationFee);
+			let receipt = await this.vaultParameters.setLiquidationFee(thirdAccount, expectedLiquidationFee);
+			expectEvent(receipt, 'LiquidationFeeChanged', {asset: thirdAccount, newValue: expectedLiquidationFee});
 
 			const liquidationFee = await this.vaultParameters.liquidationFee(thirdAccount);
 
 			expect(liquidationFee).to.be.bignumber.equal(expectedLiquidationFee);
 		})
 
-		it('Should set set COL token part percentage range', async function () {
-			const expectedMinColPartRange = new BN('2');
-			const expectedMaxColPartRange = new BN('10');
-			const asset = thirdAccount;
-
-			await this.vaultManagerParameters.setColPartRange(asset, expectedMinColPartRange, expectedMaxColPartRange);
-
-			const minColPercentage = await this.vaultManagerParameters.minColPercent(asset);
-			const maxColPercentage = await this.vaultManagerParameters.maxColPercent(asset);
-
-			expect(minColPercentage).to.be.bignumber.equal(expectedMinColPartRange);
-			expect(maxColPercentage).to.be.bignumber.equal(expectedMaxColPartRange);
-		})
-
 		it('Should set oracle type enabled', async function () {
 			const asset = thirdAccount;
-			await this.vaultParameters.setOracleType(0, asset, true);
+			let receipt = await this.vaultParameters.setOracleType(0, asset, true);
+			expectEvent(receipt, 'OracleTypeEnabled', {asset: asset});
 
-			const isOracleTypeEnabled = await this.vaultParameters.isOracleTypeEnabled(0, asset);
-
+			let isOracleTypeEnabled = await this.vaultParameters.isOracleTypeEnabled(0, asset);
 			expect(isOracleTypeEnabled).to.equal(true);
+
+			receipt = await this.vaultParameters.setOracleType(0, asset, false);
+			expectEvent(receipt, 'OracleTypeDisabled', {asset: asset});
+
+			isOracleTypeEnabled = await this.vaultParameters.isOracleTypeEnabled(0, asset);
+			expect(isOracleTypeEnabled).to.equal(false);
 		})
 
 		it('Should set token debt limit', async function () {
 			const expectedTokenDebtLimit = new BN('123456');
-			await this.vaultParameters.setTokenDebtLimit(thirdAccount, expectedTokenDebtLimit);
+			let receipt = await this.vaultParameters.setTokenDebtLimit(thirdAccount, expectedTokenDebtLimit);
+			expectEvent(receipt, 'TokenDebtLimitChanged', {asset: thirdAccount, limit: expectedTokenDebtLimit});
 
 			const tokenDebtLimit = await this.vaultParameters.tokenDebtLimit(thirdAccount);
 
@@ -145,8 +181,6 @@ contract('Parameters', function([
 				3600,
 				ether('1000000'),
 				[1, 5], // enabled oracles
-				3,
-				5,
 			);
 
 			await this.vaultManagerParameters.setCollateral(
@@ -159,8 +193,6 @@ contract('Parameters', function([
 				36000,
 				ether('10000'),
 				[7, 5, 28], // enabled oracles
-				0,
-				0,
 			);
 
             const [asset1, asset2] = await viewer.getMultiAssetParameters.call([thirdAccount, fourthAccount], 50);
@@ -174,8 +206,6 @@ contract('Parameters', function([
             expect(asset1.devaluationPeriod).to.be.bignumber.equal(new BN('3600'));
             expect(asset1.tokenDebtLimit).to.be.bignumber.equal(ether('1000000'));
             expect(asset1.oracles).to.deep.equal(['1', '5']);
-            expect(asset1.minColPercent).to.be.bignumber.equal(new BN('3'));
-            expect(asset1.maxColPercent).to.be.bignumber.equal(new BN('5'));
 						expect(asset1.borrowFee).to.be.bignumber.equal(new BN('150'));
 
             expect(asset2.asset).to.be.equal(fourthAccount);
@@ -187,8 +217,6 @@ contract('Parameters', function([
             expect(asset2.devaluationPeriod).to.be.bignumber.equal(new BN('36000'));
             expect(asset2.tokenDebtLimit).to.be.bignumber.equal(ether('10000'));
             expect(asset2.oracles).to.deep.equal(['5', '7', '28']);
-            expect(asset2.minColPercent).to.be.bignumber.equal(new BN('0'));
-            expect(asset2.maxColPercent).to.be.bignumber.equal(new BN('0'));
 
 			const asset1copy = await viewer.getAssetParameters.call(thirdAccount, 50);
 
@@ -201,8 +229,6 @@ contract('Parameters', function([
             expect(asset1copy.devaluationPeriod).to.be.bignumber.equal(new BN('3600'));
             expect(asset1copy.tokenDebtLimit).to.be.bignumber.equal(ether('1000000'));
             expect(asset1copy.oracles).to.deep.equal(['1', '5']);
-            expect(asset1copy.minColPercent).to.be.bignumber.equal(new BN('3'));
-            expect(asset1copy.maxColPercent).to.be.bignumber.equal(new BN('5'));
 
             const nonexistent = await viewer.getAssetParameters.call(deployer, 50);
             expect(nonexistent.asset).to.be.equal(deployer);
@@ -222,8 +248,6 @@ contract('Parameters', function([
 				3600,
 				ether('1000000'),
 				[1, 5], // enabled oracles
-				3,
-				5,
 			);
 
 			await this.vaultManagerParameters.setCollateral(
@@ -236,8 +260,6 @@ contract('Parameters', function([
 				36000,
 				ether('10000'),
 				[7, 5, 28], // enabled oracles
-				0,
-				0,
 			);
 
             const [asset1, asset2] = await viewer.getMultiAssetParameters.call([thirdAccount, fourthAccount], 0);
@@ -278,8 +300,6 @@ contract('Parameters', function([
 			1000,
 			ether('100000'),
 			[1], // enabled oracles
-			3,
-			5
 		])
 		it('Should throw on unauthorized access to vaultParameters', async function() {
 			await this.vaultParameters.setManager(this.vaultManagerParameters.address, false);
@@ -293,8 +313,6 @@ contract('Parameters', function([
 				1000,
 				ether('100000'),
 				[1], // enabled oracles
-				3,
-				5
 			);
 			await this.utils.expectRevert(tx, 'Unit Protocol: AUTH_FAILED');
 		});
@@ -311,9 +329,6 @@ contract('Parameters', function([
 
 		describeUnauthorized('vaultManagerParameters', 'setDevaluationPeriod', [thirdAccount, 1])
 		describeIncorrectValue('vaultManagerParameters', 'setDevaluationPeriod', [thirdAccount, 0], 'INCORRECT_DEVALUATION_VALUE')
-
-		describeUnauthorized('vaultManagerParameters', 'setColPartRange', [thirdAccount, 1, 3])
-		describeIncorrectValue('vaultManagerParameters', 'setColPartRange', [thirdAccount, 101, 8], 'WRONG_RANGE')
 
 		describeUnauthorized('vaultParameters', 'setManager', [thirdAccount, true])
 
