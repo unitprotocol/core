@@ -6,10 +6,11 @@
 pragma solidity 0.7.6;
 
 import "./helpers/SafeMath.sol";
-import "./VaultParameters.sol";
+import "./Auth.sol";
 import "./helpers/TransferHelper.sol";
 import "./USDP.sol";
 import "./interfaces/IWETH.sol";
+import "./interfaces/IVault.sol";
 
 
 /**
@@ -19,48 +20,47 @@ import "./interfaces/IWETH.sol";
  * @notice Only Vault can manage supply of USDP token
  * @notice Vault will not be changed/upgraded after initial deployment for the current stablecoin version
  **/
-contract Vault is Auth {
+contract Vault is IVault, Auth {
     using SafeMath for uint;
 
     // WETH token address
-    address payable public immutable weth;
+    address payable public immutable override weth;
 
-    uint public constant DENOMINATOR_1E5 = 1e5;
-
-    uint public constant DENOMINATOR_1E2 = 1e2;
+    uint public constant override DENOMINATOR_1E5 = 1e5;
+    uint public constant override DENOMINATOR_1E2 = 1e2;
 
     // USDP token address
-    address public immutable usdp;
+    address public immutable override usdp;
 
     // collaterals whitelist
-    mapping(address => mapping(address => uint)) public collaterals;
+    mapping(address => mapping(address => uint)) public override collaterals;
 
     // user debts
-    mapping(address => mapping(address => uint)) public debts;
+    mapping(address => mapping(address => uint)) public override debts;
 
     // block number of liquidation trigger
-    mapping(address => mapping(address => uint)) public liquidationBlock;
+    mapping(address => mapping(address => uint)) public override liquidationBlock;
 
     // initial price of collateral
-    mapping(address => mapping(address => uint)) public liquidationPrice;
+    mapping(address => mapping(address => uint)) public override liquidationPrice;
 
     // debts of tokens
-    mapping(address => uint) public tokenDebts;
+    mapping(address => uint) public override tokenDebts;
 
     // stability fee pinned to each position
-    mapping(address => mapping(address => uint)) public stabilityFee;
+    mapping(address => mapping(address => uint)) public override stabilityFee;
 
     // accumulated stability fee pinned to each position
     mapping(address => mapping(address => uint)) public accumulatedStabilityFee;
 
     // liquidation fee pinned to each position, 0 decimals
-    mapping(address => mapping(address => uint)) public liquidationFee;
+    mapping(address => mapping(address => uint)) public override liquidationFee;
 
     // type of using oracle pinned for each position
-    mapping(address => mapping(address => uint)) public oracleType;
+    mapping(address => mapping(address => uint)) public override oracleType;
 
     // timestamp of the last update
-    mapping(address => mapping(address => uint)) public lastUpdate;
+    mapping(address => mapping(address => uint)) public override lastUpdate;
 
     modifier notLiquidating(address asset, address user) {
         require(liquidationBlock[asset][user] == 0, "Unit Protocol: LIQUIDATING_POSITION");
@@ -93,7 +93,7 @@ contract Vault is Auth {
      * @param asset The address of the main collateral token
      * @param user The owner of a position
      **/
-    function update(address asset, address user) public hasVaultAccess notLiquidating(asset, user) checkpointFee(asset, user) {
+    function update(address asset, address user) public override hasVaultAccess notLiquidating(asset, user) checkpointFee(asset, user) {
         stabilityFee[asset][user] = vaultParameters.stabilityFee(asset);
         liquidationFee[asset][user] = vaultParameters.liquidationFee(asset);
     }
@@ -104,7 +104,7 @@ contract Vault is Auth {
      * @param user The address of a position's owner
      * @param _oracleType The type of an oracle
      **/
-    function spawn(address asset, address user, uint _oracleType) external hasVaultAccess notLiquidating(asset, user) {
+    function spawn(address asset, address user, uint _oracleType) external override hasVaultAccess notLiquidating(asset, user) {
         oracleType[asset][user] = _oracleType;
         delete liquidationBlock[asset][user];
     }
@@ -114,7 +114,7 @@ contract Vault is Auth {
      * @param asset The address of the main collateral token
      * @param user The address of a position's owner
      **/
-    function destroy(address asset, address user) public hasVaultAccess notLiquidating(asset, user) {
+    function destroy(address asset, address user) public override hasVaultAccess notLiquidating(asset, user) {
         delete stabilityFee[asset][user];
         delete accumulatedStabilityFee[asset][user];
         delete oracleType[asset][user];
@@ -129,7 +129,7 @@ contract Vault is Auth {
      * @param user The address of a position's owner
      * @param amount The amount of tokens to deposit
      **/
-    function depositMain(address asset, address user, uint amount) external hasVaultAccess notLiquidating(asset, user) {
+    function depositMain(address asset, address user, uint amount) external override hasVaultAccess notLiquidating(asset, user) {
         collaterals[asset][user] = collaterals[asset][user].add(amount);
         TransferHelper.safeTransferFrom(asset, user, address(this), amount);
     }
@@ -138,7 +138,7 @@ contract Vault is Auth {
      * @dev Converts ETH to WETH and adds main collateral to a position
      * @param user The address of a position's owner
      **/
-    function depositEth(address user) external payable notLiquidating(weth, user) {
+    function depositEth(address user) external override payable notLiquidating(weth, user) {
         IWETH(weth).deposit{value: msg.value}();
         collaterals[weth][user] = collaterals[weth][user].add(msg.value);
     }
@@ -149,7 +149,7 @@ contract Vault is Auth {
      * @param user The address of a position's owner
      * @param amount The amount of tokens to withdraw
      **/
-    function withdrawMain(address asset, address user, uint amount) external hasVaultAccess notLiquidating(asset, user) {
+    function withdrawMain(address asset, address user, uint amount) external override hasVaultAccess notLiquidating(asset, user) {
         collaterals[asset][user] = collaterals[asset][user].sub(amount);
         TransferHelper.safeTransfer(asset, user, amount);
     }
@@ -159,7 +159,7 @@ contract Vault is Auth {
      * @param user The address of a position's owner
      * @param amount The amount of ETH to withdraw
      **/
-    function withdrawEth(address payable user, uint amount) external hasVaultAccess notLiquidating(weth, user) {
+    function withdrawEth(address payable user, uint amount) external override hasVaultAccess notLiquidating(weth, user) {
         collaterals[weth][user] = collaterals[weth][user].sub(amount);
         IWETH(weth).withdraw(amount);
         TransferHelper.safeTransferETH(user, amount);
@@ -177,6 +177,7 @@ contract Vault is Auth {
         uint amount
     )
     external
+    override
     hasVaultAccess
     notLiquidating(asset, user)
     returns(uint)
@@ -207,6 +208,7 @@ contract Vault is Auth {
         uint amount
     )
     external
+    override
     hasVaultAccess
     notLiquidating(asset, user)
     checkpointFee(asset, user)
@@ -226,7 +228,7 @@ contract Vault is Auth {
      * @param user The address to transfer funds from
      * @param amount The amount of asset to transfer
      **/
-    function chargeFee(address asset, address user, uint amount) external hasVaultAccess notLiquidating(asset, user) {
+    function chargeFee(address asset, address user, uint amount) external override hasVaultAccess notLiquidating(asset, user) {
         if (amount != 0) {
             TransferHelper.safeTransferFrom(asset, user, vaultParameters.foundation(), amount);
         }
@@ -244,6 +246,7 @@ contract Vault is Auth {
       uint amount
     )
     external
+    override
     hasVaultAccess
     notLiquidating(asset, user)
     checkpointFee(asset, user)
@@ -263,6 +266,7 @@ contract Vault is Auth {
         uint initialPrice
     )
     external
+    override
     hasVaultAccess
     notLiquidating(asset, positionOwner)
     checkpointFee(asset, positionOwner)
@@ -294,6 +298,7 @@ contract Vault is Auth {
         address liquidator
     )
         external
+        override
         hasVaultAccess
     {
         require(liquidationBlock[asset][positionOwner] != 0, "Unit Protocol: NOT_TRIGGERED_LIQUIDATION");
@@ -344,8 +349,9 @@ contract Vault is Auth {
      * @param user The address of a position's owner
      * @param newOracleType The new type of an oracle
      **/
-    function changeOracleType(address asset, address user, uint newOracleType) external onlyManager {
+    function changeOracleType(address asset, address user, uint newOracleType) external override onlyManager {
         oracleType[asset][user] = newOracleType;
+        emit OracleTypeChanged(asset, user, newOracleType);
     }
 
     /**
@@ -354,7 +360,7 @@ contract Vault is Auth {
      * @param user The address of a position's owner
      * @return user debt of a position plus accumulated fee
      **/
-    function getTotalDebt(address asset, address user) public view returns (uint) {
+    function getTotalDebt(address asset, address user) public override view returns (uint) {
         return debts[asset][user].add(getFee(asset, user));
     }
 
@@ -364,7 +370,7 @@ contract Vault is Auth {
      * @param user The address of a position's owner
      * @return user accumulated fee
      **/
-    function getFee(address asset, address user) public view returns (uint) {
+    function getFee(address asset, address user) public override view returns (uint) {
         if (liquidationBlock[asset][user] != 0) return accumulatedStabilityFee[asset][user];
         return accumulatedStabilityFee[asset][user].add(calculateFee(asset, user, debts[asset][user]));
     }

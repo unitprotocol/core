@@ -571,8 +571,6 @@ module.exports = (context, mode) => {
 			'1000', // devaluation period in blocks
 			ether('100000'), // debt limit
 			[mainAssetOracleType], // enabled oracles
-			0,
-			0,
 		);
 
 		if (keydonix || uniswapKeep3r || sushiswapKeep3r || chainlink) {
@@ -586,8 +584,6 @@ module.exports = (context, mode) => {
 				'1000', // devaluation period in blocks
 				ether('100000'), // debt limit
 				[5], // enabled oracles
-				0,
-				0,
 			);
 		}
 
@@ -602,8 +598,6 @@ module.exports = (context, mode) => {
 				'1000', // devaluation period in blocks
 				ether('100000'), // debt limit
 				[poolTokenOracleType], // enabled oracles
-				0,
-				0,
 			);
 		}
 	};

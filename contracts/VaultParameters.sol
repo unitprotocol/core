@@ -5,70 +5,37 @@
 */
 pragma solidity 0.7.6;
 
-
-
-/**
- * @title Auth
- * @dev Manages USDP's system access
- **/
-contract Auth {
-
-    // address of the the contract with vault parameters
-    VaultParameters public immutable vaultParameters;
-
-    constructor(address _parameters) {
-        vaultParameters = VaultParameters(_parameters);
-    }
-
-    // ensures tx's sender is a manager
-    modifier onlyManager() {
-        require(vaultParameters.isManager(msg.sender), "Unit Protocol: AUTH_FAILED");
-        _;
-    }
-
-    // ensures tx's sender is able to modify the Vault
-    modifier hasVaultAccess() {
-        require(vaultParameters.canModifyVault(msg.sender), "Unit Protocol: AUTH_FAILED");
-        _;
-    }
-
-    // ensures tx's sender is the Vault
-    modifier onlyVault() {
-        require(msg.sender == vaultParameters.vault(), "Unit Protocol: AUTH_FAILED");
-        _;
-    }
-}
-
-
+import "./interfaces/IVaultParameters.sol";
+import "./Auth.sol";
 
 /**
  * @title VaultParameters
  **/
-contract VaultParameters is Auth {
+contract VaultParameters is IVaultParameters, Auth   {
 
     // map token to stability fee percentage; 3 decimals
-    mapping(address => uint) public stabilityFee;
+    mapping(address => uint) public override stabilityFee;
 
     // map token to liquidation fee percentage, 0 decimals
-    mapping(address => uint) public liquidationFee;
+    mapping(address => uint) public override liquidationFee;
 
     // map token to USDP mint limit
-    mapping(address => uint) public tokenDebtLimit;
+    mapping(address => uint) public override tokenDebtLimit;
 
     // permissions to modify the Vault
-    mapping(address => bool) public canModifyVault;
+    mapping(address => bool) public override canModifyVault;
 
     // managers
-    mapping(address => bool) public isManager;
+    mapping(address => bool) public override isManager;
 
     // enabled oracle types
-    mapping(uint => mapping (address => bool)) public isOracleTypeEnabled;
+    mapping(uint => mapping (address => bool)) public override isOracleTypeEnabled;
 
     // address of the Vault
-    address payable public immutable vault;
+    address payable public immutable override vault;
 
     // The foundation address
-    address public foundation;
+    address public override foundation;
 
     /**
      * The address for an Ethereum contract is deterministically computed from the address of its creator (sender)
@@ -91,8 +58,14 @@ contract VaultParameters is Auth {
      * @param who The target address
      * @param permit The permission flag
      **/
-    function setManager(address who, bool permit) external onlyManager {
+    function setManager(address who, bool permit) external override onlyManager {
         isManager[who] = permit;
+
+        if (permit) {
+            emit ManagerAdded(who);
+        } else {
+            emit ManagerRemoved(who);
+        }
     }
 
     /**
@@ -100,9 +73,11 @@ contract VaultParameters is Auth {
      * @dev Sets the foundation address
      * @param newFoundation The new foundation address
      **/
-    function setFoundation(address newFoundation) external onlyManager {
+    function setFoundation(address newFoundation) external override onlyManager {
         require(newFoundation != address(0), "Unit Protocol: ZERO_ADDRESS");
         foundation = newFoundation;
+
+        emit FoundationChanged(newFoundation);
     }
 
     /**
@@ -120,7 +95,7 @@ contract VaultParameters is Auth {
         uint liquidationFeeValue,
         uint usdpLimit,
         uint[] calldata oracles
-    ) external onlyManager {
+    ) external override onlyManager {
         setStabilityFee(asset, stabilityFeeValue);
         setLiquidationFee(asset, liquidationFeeValue);
         setTokenDebtLimit(asset, usdpLimit);
@@ -135,8 +110,14 @@ contract VaultParameters is Auth {
      * @param who The target address
      * @param permit The permission flag
      **/
-    function setVaultAccess(address who, bool permit) external onlyManager {
+    function setVaultAccess(address who, bool permit) external override onlyManager {
         canModifyVault[who] = permit;
+
+        if (permit) {
+            emit VaultAccessGranted(who);
+        } else {
+            emit VaultAccessRevoked(who);
+        }
     }
 
     /**
@@ -145,8 +126,10 @@ contract VaultParameters is Auth {
      * @param asset The address of the main collateral token
      * @param newValue The stability fee percentage (3 decimals)
      **/
-    function setStabilityFee(address asset, uint newValue) public onlyManager {
+    function setStabilityFee(address asset, uint newValue) public override onlyManager {
         stabilityFee[asset] = newValue;
+
+        emit StabilityFeeChanged(asset, newValue);
     }
 
     /**
@@ -155,9 +138,11 @@ contract VaultParameters is Auth {
      * @param asset The address of the main collateral token
      * @param newValue The liquidation fee percentage (0 decimals)
      **/
-    function setLiquidationFee(address asset, uint newValue) public onlyManager {
+    function setLiquidationFee(address asset, uint newValue) public override onlyManager {
         require(newValue <= 100, "Unit Protocol: VALUE_OUT_OF_RANGE");
         liquidationFee[asset] = newValue;
+
+        emit LiquidationFeeChanged(asset, newValue);
     }
 
     /**
@@ -167,8 +152,14 @@ contract VaultParameters is Auth {
      * @param asset The address of the main collateral token
      * @param enabled The control flag
      **/
-    function setOracleType(uint _type, address asset, bool enabled) public onlyManager {
+    function setOracleType(uint _type, address asset, bool enabled) public override onlyManager {
         isOracleTypeEnabled[_type][asset] = enabled;
+
+        if (enabled) {
+            emit OracleTypeEnabled(asset, _type);
+        } else {
+            emit OracleTypeDisabled(asset, _type);
+        }
     }
 
     /**
@@ -177,7 +168,9 @@ contract VaultParameters is Auth {
      * @param asset The address of the main collateral token
      * @param limit The limit number
      **/
-    function setTokenDebtLimit(address asset, uint limit) public onlyManager {
+    function setTokenDebtLimit(address asset, uint limit) public override onlyManager {
         tokenDebtLimit[asset] = limit;
+
+        emit TokenDebtLimitChanged(asset, limit);
     }
 }

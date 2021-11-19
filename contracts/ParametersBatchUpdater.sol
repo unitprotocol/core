@@ -7,7 +7,7 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 
-import "./VaultParameters.sol";
+import "./Auth.sol";
 import "./interfaces/vault-managers/parameters/IVaultManagerParameters.sol";
 import "./interfaces/IBearingAssetOracle.sol";
 import "./interfaces/IOracleRegistry.sol";
@@ -30,7 +30,7 @@ contract ParametersBatchUpdater is Auth {
         address _vaultManagerParameters,
         address _oracleRegistry,
         address _collateralRegistry
-    ) Auth(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()) {
+    ) Auth(address(IVaultManagerParameters(_vaultManagerParameters).vaultParameters())) {
         require(
             _vaultManagerParameters != address(0) &&
             _oracleRegistry != address(0) &&
@@ -203,9 +203,7 @@ contract ParametersBatchUpdater is Auth {
                 liquidationDiscountValue,
                 devaluationPeriodValue,
                 usdpLimit,
-                oracles,
-                0,
-                0
+                oracles
             );
 
             collateralRegistry.addCollateral(assets[i]);

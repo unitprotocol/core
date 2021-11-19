@@ -6,6 +6,17 @@
 pragma solidity ^0.7.6;
 
 interface IVaultParameters {
+    event ManagerAdded(address indexed who);
+    event ManagerRemoved(address indexed who);
+    event FoundationChanged(address indexed newFoundation);
+    event VaultAccessGranted(address indexed who);
+    event VaultAccessRevoked(address indexed who);
+    event StabilityFeeChanged(address indexed asset, uint newValue);
+    event LiquidationFeeChanged(address indexed asset, uint newValue);
+    event OracleTypeEnabled(address indexed asset, uint _type);
+    event OracleTypeDisabled(address indexed asset, uint _type);
+    event TokenDebtLimitChanged(address indexed asset, uint limit);
+
     function canModifyVault ( address ) external view returns ( bool );
     function foundation (  ) external view returns ( address );
     function isManager ( address ) external view returns ( bool );
@@ -21,6 +32,5 @@ interface IVaultParameters {
     function setVaultAccess ( address who, bool permit ) external;
     function stabilityFee ( address ) external view returns ( uint256 );
     function tokenDebtLimit ( address ) external view returns ( uint256 );
-    function vault (  ) external view returns ( address );
-    function vaultParameters (  ) external view returns ( address );
+    function vault (  ) external view returns ( address payable );
 }

@@ -45,23 +45,25 @@ contract('VaultManagerBorrowFeeParameters', function([
 			const usdpAmount = (300000);
 
 			// base borrow fee changed
-			await this.vaultManagerBorrowFeeParameters.setBaseBorrowFee(baseBorrowFee, {from: deployer});
+			let receipt = await this.vaultManagerBorrowFeeParameters.setBaseBorrowFee(baseBorrowFee, {from: deployer});
+			expectEvent(receipt, 'BaseBorrowFeeChanged', {newBaseBorrowFeeBasisPoints: baseBorrowFee});
 			expect(await this.vaultManagerBorrowFeeParameters.getBorrowFee(ASSET1)).to.be.bignumber.equal(baseBorrowFee);
 			expect(await this.vaultManagerBorrowFeeParameters.getBorrowFee(ASSET2)).to.be.bignumber.equal(baseBorrowFee);
 			expect(await this.vaultManagerBorrowFeeParameters.calcBorrowFeeAmount(ASSET1, usdpAmount)).to.be.bignumber.equal(new BN(30));
 			expect(await this.vaultManagerBorrowFeeParameters.calcBorrowFeeAmount(ASSET2, usdpAmount)).to.be.bignumber.equal(new BN(30));
 
 			// fee receiver changed
-			await this.vaultManagerBorrowFeeParameters.setFeeReceiver(thirdAccount, {from: deployer});
+			receipt = await this.vaultManagerBorrowFeeParameters.setFeeReceiver(thirdAccount, {from: deployer});
+			expectEvent(receipt, 'FeeReceiverChanged', {newFeeReceiver: thirdAccount});
 			expect(await this.vaultManagerBorrowFeeParameters.feeReceiver()).to.be.equal(thirdAccount);
 
 			// set custom borrow fee for asset 1
-			const { logs: logs1 } = await this.vaultManagerBorrowFeeParameters.setAssetBorrowFee(ASSET1, true, assetBorrowFee, {from: deployer});
+			receipt = await this.vaultManagerBorrowFeeParameters.setAssetBorrowFee(ASSET1, true, assetBorrowFee, {from: deployer});
 			expect(await this.vaultManagerBorrowFeeParameters.getBorrowFee(ASSET1)).to.be.bignumber.equal(assetBorrowFee);
 			expect(await this.vaultManagerBorrowFeeParameters.getBorrowFee(ASSET2)).to.be.bignumber.equal(baseBorrowFee);
 			expect(await this.vaultManagerBorrowFeeParameters.calcBorrowFeeAmount(ASSET1, usdpAmount)).to.be.bignumber.equal(new BN(60000));
 			expect(await this.vaultManagerBorrowFeeParameters.calcBorrowFeeAmount(ASSET2, usdpAmount)).to.be.bignumber.equal(new BN(30));
-			expectEvent.inLogs(logs1, 'AssetBorrowFeeParamsEnabled', {
+			expectEvent(receipt, 'AssetBorrowFeeParamsEnabled', {
 				asset: ASSET1,
 				feeBasisPoints: assetBorrowFee,
 			});
@@ -74,12 +76,12 @@ contract('VaultManagerBorrowFeeParameters', function([
 			expect(await this.vaultManagerBorrowFeeParameters.calcBorrowFeeAmount(ASSET2, usdpAmount)).to.be.bignumber.equal(new BN(60));
 
 			// disabled asset 1 custom borrow fee
-			let { logs: logs2 } = await this.vaultManagerBorrowFeeParameters.setAssetBorrowFee(ASSET1, false, assetBorrowFee, {from: deployer});
+			receipt = await this.vaultManagerBorrowFeeParameters.setAssetBorrowFee(ASSET1, false, assetBorrowFee, {from: deployer});
 			expect(await this.vaultManagerBorrowFeeParameters.getBorrowFee(ASSET1)).to.be.bignumber.equal(baseBorrowFee2);
 			expect(await this.vaultManagerBorrowFeeParameters.getBorrowFee(ASSET2)).to.be.bignumber.equal(baseBorrowFee2);
 			expect(await this.vaultManagerBorrowFeeParameters.calcBorrowFeeAmount(ASSET1, usdpAmount)).to.be.bignumber.equal(new BN(60));
 			expect(await this.vaultManagerBorrowFeeParameters.calcBorrowFeeAmount(ASSET2, usdpAmount)).to.be.bignumber.equal(new BN(60));
-			expectEvent.inLogs(logs2, 'AssetBorrowFeeParamsDisabled', {
+			expectEvent(receipt, 'AssetBorrowFeeParamsDisabled', {
 				asset: ASSET1,
 			});
 

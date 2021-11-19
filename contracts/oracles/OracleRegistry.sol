@@ -7,33 +7,25 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 import "../VaultParameters.sol";
+import "../interfaces/IOracleRegistry.sol";
 
-contract OracleRegistry is Auth {
+contract OracleRegistry is IOracleRegistry, Auth {
     
-    struct Oracle {
-        uint oracleType;
-        address oracleAddress;
-    }
+    uint public override maxOracleType;
 
-    uint public maxOracleType;
-
-    address public immutable WETH;
+    address public immutable override WETH;
 
     // map asset to oracle type ID
-    mapping(address => uint) public oracleTypeByAsset;
+    mapping(address => uint) public override oracleTypeByAsset;
 
     // map oracle type ID to oracle address
-    mapping(uint => address) public oracleByType;
+    mapping(uint => address) public override oracleByType;
 
     // map oracle address to oracle type ID
-    mapping(address => uint) public oracleTypeByOracle;
+    mapping(address => uint) public override oracleTypeByOracle;
 
     // list of keydonix oracleType IDs
-    uint[] public keydonixOracleTypes;
-
-    event AssetOracle(address indexed asset, uint indexed oracleType);
-    event OracleType(uint indexed oracleType, address indexed oracle);
-    event KeydonixOracleTypes();
+    uint[] public override keydonixOracleTypes;
 
     modifier validAddress(address asset) {
         require(asset != address(0), "Unit Protocol: ZERO_ADDRESS");
@@ -53,7 +45,7 @@ contract OracleRegistry is Auth {
         WETH = _weth;
     }
 
-    function setKeydonixOracleTypes(uint[] calldata _keydonixOracleTypes) public onlyManager {
+    function setKeydonixOracleTypes(uint[] calldata _keydonixOracleTypes) public override onlyManager {
         for (uint i = 0; i < _keydonixOracleTypes.length; i++) {
             require(_keydonixOracleTypes[i] != 0, "Unit Protocol: INVALID_TYPE");
             require(oracleByType[_keydonixOracleTypes[i]] != address(0), "Unit Protocol: INVALID_ORACLE");
@@ -65,6 +57,7 @@ contract OracleRegistry is Auth {
     }
 
     function setOracle(uint oracleType, address oracle) public
+        override
         onlyManager
         validType(oracleType)
         validAddress(oracle)
@@ -89,7 +82,7 @@ contract OracleRegistry is Auth {
         emit OracleType(oracleType, oracle);
     }
 
-    function unsetOracle(uint oracleType) public onlyManager validType(oracleType) validAddress(oracleByType[oracleType]) {
+    function unsetOracle(uint oracleType) public override onlyManager validType(oracleType) validAddress(oracleByType[oracleType]) {
         address oracle = oracleByType[oracleType];
         delete oracleByType[oracleType];
         delete oracleTypeByOracle[oracle];
@@ -98,6 +91,7 @@ contract OracleRegistry is Auth {
     }
 
     function setOracleTypeForAsset(address asset, uint oracleType) public
+        override
         onlyManager
         validAddress(asset)
         validType(oracleType)
@@ -107,13 +101,14 @@ contract OracleRegistry is Auth {
         emit AssetOracle(asset, oracleType);
     }
 
-    function setOracleTypeForAssets(address[] calldata assets, uint oracleType) public {
+    function setOracleTypeForAssets(address[] calldata assets, uint oracleType) public override {
         for (uint i = 0; i < assets.length; i++) {
             setOracleTypeForAsset(assets[i], oracleType);
         }
     }
 
     function unsetOracleForAsset(address asset) public
+        override
         onlyManager
         validAddress(asset)
         validType(oracleTypeByAsset[asset])
@@ -122,13 +117,13 @@ contract OracleRegistry is Auth {
         emit AssetOracle(asset, 0);
     }
 
-    function unsetOracleForAssets(address[] calldata assets) public {
+    function unsetOracleForAssets(address[] calldata assets) public override {
         for (uint i = 0; i < assets.length; i++) {
             unsetOracleForAsset(assets[i]);
         }
     }
 
-    function getOracles() external view returns (Oracle[] memory foundOracles) {
+    function getOracles() external override view returns (Oracle[] memory foundOracles) {
 
         Oracle[] memory allOracles = new Oracle[](maxOracleType);
 
@@ -147,11 +142,11 @@ contract OracleRegistry is Auth {
         }
     }
 
-    function getKeydonixOracleTypes() external view returns (uint[] memory) {
+    function getKeydonixOracleTypes() external override view returns (uint[] memory) {
         return keydonixOracleTypes;
     }
 
-    function oracleByAsset(address asset) external view returns (address) {
+    function oracleByAsset(address asset) external override view returns (address) {
         uint oracleType = oracleTypeByAsset[asset];
         if (oracleType == 0) {
             return address(0);

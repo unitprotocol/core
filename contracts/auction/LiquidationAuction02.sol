@@ -54,7 +54,7 @@ contract LiquidationAuction02 is ReentrancyGuard {
                 "Unit Protocol: INVALID_ARGS"
         );
         vaultManagerParameters = IVaultManagerParameters(_vaultManagerParameters);
-        vault = IVault(IVaultParameters(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()).vault());
+        vault = IVault(IVaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
         cdpRegistry = ICDPRegistry(_cdpRegistry);
         forceTransferAssetStore = IForceTransferAssetStore(_forceTransferAssetStore);
         notifyFoundation = _notifyFoundation;

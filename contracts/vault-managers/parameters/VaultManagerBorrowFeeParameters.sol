@@ -29,9 +29,6 @@ contract VaultManagerBorrowFeeParameters is Auth, IVaultManagerBorrowFeeParamete
 
     address public override feeReceiver;
 
-    event AssetBorrowFeeParamsEnabled(address asset, uint16 feeBasisPoints);
-    event AssetBorrowFeeParamsDisabled(address asset);
-
     modifier nonZeroAddress(address addr) {
         require(addr != address(0), "Unit Protocol: ZERO_ADDRESS");
         _;
@@ -54,11 +51,15 @@ contract VaultManagerBorrowFeeParameters is Auth, IVaultManagerBorrowFeeParamete
     /// @inheritdoc IVaultManagerBorrowFeeParameters
     function setFeeReceiver(address newFeeReceiver) external override onlyManager nonZeroAddress(newFeeReceiver) {
         feeReceiver = newFeeReceiver;
+
+        emit FeeReceiverChanged(newFeeReceiver);
     }
 
     /// @inheritdoc IVaultManagerBorrowFeeParameters
     function setBaseBorrowFee(uint16 newBaseBorrowFeeBasisPoints) external override onlyManager correctFee(newBaseBorrowFeeBasisPoints) {
         baseBorrowFeeBasisPoints = newBaseBorrowFeeBasisPoints;
+
+        emit BaseBorrowFeeChanged(newBaseBorrowFeeBasisPoints);
     }
 
     /// @inheritdoc IVaultManagerBorrowFeeParameters

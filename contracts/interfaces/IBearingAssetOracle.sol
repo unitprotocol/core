@@ -5,10 +5,11 @@
 */
 pragma solidity ^0.7.6;
 
-interface IBearingAssetOracle {
-    function assetToUsd ( address bearing, uint256 amount ) external view returns ( uint256 );
+import "./IOracleUsd.sol";
+import "./IOracleRegistry.sol";
+
+interface IBearingAssetOracle is IOracleUsd {
     function bearingToUnderlying ( address bearing, uint256 amount ) external view returns ( address, uint256 );
-    function oracleRegistry (  ) external view returns ( address );
+    function oracleRegistry (  ) external view returns ( IOracleRegistry );
     function setUnderlying ( address bearing, address underlying ) external;
-    function vaultParameters (  ) external view returns ( address );
 }
