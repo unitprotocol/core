@@ -7,7 +7,7 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 
-import "./VaultParameters.sol";
+import "./Auth.sol";
 import "./interfaces/vault-managers/parameters/IVaultManagerParameters.sol";
 import "./interfaces/IBearingAssetOracle.sol";
 import "./interfaces/IOracleRegistry.sol";

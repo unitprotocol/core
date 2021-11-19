@@ -6,7 +6,7 @@
 pragma solidity 0.7.6;
 
 import "./helpers/SafeMath.sol";
-import "./VaultParameters.sol";
+import "./Auth.sol";
 import "./helpers/TransferHelper.sol";
 import "./USDP.sol";
 import "./interfaces/IWETH.sol";

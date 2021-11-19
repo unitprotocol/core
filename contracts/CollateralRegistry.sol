@@ -7,7 +7,7 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 
-import "./VaultParameters.sol";
+import "./Auth.sol";
 import "./interfaces/ICollateralRegistry.sol";
 
 
