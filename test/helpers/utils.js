@@ -32,6 +32,7 @@ const CDPManagerFallback = artifacts.require('CDPManager01_Fallback');
 const LiquidationAuction = artifacts.require('LiquidationAuction02');
 const CDPRegistry = artifacts.require('CDPRegistry');
 const ForceTransferAssetStore = artifacts.require('ForceTransferAssetStore');
+const ForceMovePositionAssetStore = artifacts.require('ForceMovePositionAssetStore');
 const CollateralRegistry = artifacts.require('CollateralRegistry');
 const CyTokenOracle = artifacts.require('CyTokenOracle');
 const YvTokenOracle = artifacts.require('YvTokenOracle');
@@ -203,6 +204,7 @@ module.exports = (context, mode) => {
 			context.vault = await Vault.at(deployed.Vault);
 			context.oracleRegistry = await OracleRegistry.at(deployed.OracleRegistry);
 			context.forceTransferAssetStore = await ForceTransferAssetStore.at(deployed.ForceTransferAssetStore);
+			context.forceMovePositionAssetStore = await ForceMovePositionAssetStore.at(deployed.ForceMovePositionAssetStore);
 			context.chainlinkOracleMainAsset = await ChainlinkOracleMainAsset.at(deployed.ChainlinkedOracleMainAsset);
 
 			// This web3 doesn't care about cache invalidation and non-trivial workflows, so we'll do it the hard way.
@@ -219,6 +221,7 @@ module.exports = (context, mode) => {
 			context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address, context.weth.address)
 
 			context.forceTransferAssetStore = await ForceTransferAssetStore.new(context.vaultParameters.address, []);
+			context.forceMovePositionAssetStore = await ForceMovePositionAssetStore.new(context.vaultParameters.address, []);
 		}
 
 		let mainAssetOracleType, poolTokenOracleType
@@ -497,7 +500,8 @@ module.exports = (context, mode) => {
 			context.liquidationAuction = await LiquidationAuction.new(
 				context.vaultManagerParameters.address,
 				context.cdpRegistry.address,
-				context.forceTransferAssetStore.address
+				context.forceTransferAssetStore.address,
+				context.forceMovePositionAssetStore.address,
 			);
 		}
 

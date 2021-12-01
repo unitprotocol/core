@@ -81,8 +81,8 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, UnitERC20, ReentrancyGuard 
     }
 
     function init() public {
-        require(msg.sender == _deployer);
-        require(!_isInitialised);
+        require(msg.sender == _deployer, "Unit Protocol Wrapped Assets: AUTH_FAILED");
+        require(!_isInitialised, "Unit Protocol Wrapped Assets: ALREADY_INITIALIZED");
 
         ISushiSwapLpToken sslpToken = ISushiSwapLpToken(address(getUnderlyingToken()));
         string memory token0Symbol = IERC20WithOptional(address(sslpToken.token0())).symbol();
@@ -113,10 +113,12 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, UnitERC20, ReentrancyGuard 
     }
 
     /**
-     * @notice Get tokens from user, send them to TopDog, sent to user wrapped tokens to deposit them in CDPManager
-     * @dev only CDPManager could call this method
+     * @notice Get tokens from user, send them to TopDog, sent to user wrapped tokens
+     * @dev only user or CDPManager could call this method
      */
-    function deposit(address _userAddr, uint256 _amount) public override nonReentrant updatePool hasVaultAccess {
+    function deposit(address _userAddr, uint256 _amount) public override nonReentrant updatePool {
+        require(msg.sender == _userAddr || vaultParameters.canModifyVault(msg.sender), "Unit Protocol Wrapped Assets: AUTH_FAILED");
+
         UserInfo storage user = userInfo[_userAddr];
         _sendPendingRewardInternal(_userAddr, user.amount);
 
@@ -140,11 +142,13 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, UnitERC20, ReentrancyGuard 
 
     /**
      * @notice Unwrap tokens, withdraw from TopDog and send them to user
-     * @dev only CDPManager could call this method
+     * @dev only user or CDPManager could call this method
      */
-    function withdraw(address _userAddr, uint256 _amount) public override nonReentrant updatePool hasVaultAccess {
+    function withdraw(address _userAddr, uint256 _amount) public override nonReentrant updatePool {
+        require(msg.sender == _userAddr || vaultParameters.canModifyVault(msg.sender), "Unit Protocol Wrapped Assets: AUTH_FAILED");
+
         UserInfo storage user = userInfo[_userAddr];
-        require(user.amount >= _amount, "withdraw: not good");
+        require(user.amount >= _amount, "Unit Protocol Wrapped Assets: INSUFFICIENT_AMOUNT");
         _sendPendingRewardInternal(_userAddr, user.amount);
 
         if (_amount > 0) {
@@ -168,6 +172,33 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, UnitERC20, ReentrancyGuard 
             lastKnownBonesBalance = 0;
         }
         emit Withdraw(_userAddr, _amount);
+    }
+
+    /**
+     * @notice Manually move position (or its part) to another user (for example in case of liquidation)
+     * @dev Important! no tokens transferred since in case of liquidation tokens are in vault
+     * @dev only CDPManager could call this method
+     */
+    function movePosition(address _userAddrFrom, address _userAddrTo, uint256 _amount) public override nonReentrant updatePool hasVaultAccess {
+        if (_userAddrFrom == _userAddrTo) {
+            _claimRewardInternal(_userAddrFrom);
+            return;
+        }
+
+        UserInfo storage userFrom = userInfo[_userAddrFrom];
+        require(userFrom.amount >= _amount, "Unit Protocol Wrapped Assets: INSUFFICIENT_AMOUNT");
+        _sendPendingRewardInternal(_userAddrFrom, userFrom.amount);
+
+        UserInfo storage userTo = userInfo[_userAddrTo];
+        _sendPendingRewardInternal(_userAddrTo, userTo.amount);
+
+        userFrom.amount = userFrom.amount.sub(_amount);
+        userTo.amount = userTo.amount.add(_amount);
+
+        userFrom.rewardDebt = userFrom.amount.mul(accBonePerShare).div(MULTIPLIER);
+        userTo.rewardDebt = userTo.amount.mul(accBonePerShare).div(MULTIPLIER);
+
+        emit PositionMoved(_userAddrFrom, _userAddrTo, _amount);
     }
 
     /**
@@ -197,9 +228,13 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, UnitERC20, ReentrancyGuard 
      * @notice Claim pending reward for user. User must manually claim reward from BoneLockers before call of this method
      * @notice Use claimRewardFromBoneLockers claim reward from BoneLockers
      */
-    function claimReward() public override nonReentrant updatePool {
-        UserInfo storage user = userInfo[msg.sender];
-        _sendPendingRewardInternal(msg.sender, user.amount);
+    function claimReward(address _userAddr) public override nonReentrant updatePool {
+        _claimRewardInternal(_userAddr);
+    }
+
+    function _claimRewardInternal(address _userAddr) internal {
+        UserInfo storage user = userInfo[_userAddr];
+        _sendPendingRewardInternal(_userAddr, user.amount);
         user.rewardDebt = user.amount.mul(accBonePerShare).div(MULTIPLIER);
     }
 
@@ -211,8 +246,8 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, UnitERC20, ReentrancyGuard 
     function getClaimableRewardAmountFromBoneLockers(uint256 _firstBoneLockerIndex, uint256 _lastBoneLockerIndex)
     public view returns (uint256[] memory rewards)
     {
-        require(_firstBoneLockerIndex <= _lastBoneLockerIndex);
-        require(_lastBoneLockerIndex < knownBoneLockersArr.length);
+        require(_firstBoneLockerIndex <= _lastBoneLockerIndex, "Unit Protocol Wrapped Assets: INVALID_BOUNDS");
+        require(_lastBoneLockerIndex < knownBoneLockersArr.length, "Unit Protocol Wrapped Assets: INVALID_RIGHT_BOUND");
 
         rewards = new uint256[](_lastBoneLockerIndex - _firstBoneLockerIndex + 1);
 
@@ -229,8 +264,8 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, UnitERC20, ReentrancyGuard 
      * @param _maxBoneLockerRewardsAtOneClaim max amount of rewards items to claim from each BoneLocker, see getBoneLockerRewardsCount
      */
     function claimRewardFromBoneLockers(uint256 _firstBoneLockerIndex, uint256 _lastBoneLockerIndex, uint256 _maxBoneLockerRewardsAtOneClaim) public nonReentrant {
-        require(_firstBoneLockerIndex <= _lastBoneLockerIndex);
-        require(_lastBoneLockerIndex < knownBoneLockersArr.length);
+        require(_firstBoneLockerIndex <= _lastBoneLockerIndex, "Unit Protocol Wrapped Assets: INVALID_BOUNDS");
+        require(_lastBoneLockerIndex < knownBoneLockersArr.length, "Unit Protocol Wrapped Assets: INVALID_RIGHT_BOUND");
 
         for (uint256 i = _firstBoneLockerIndex; i <= _lastBoneLockerIndex; ++i) {
             (uint256 left, uint256 right) = knownBoneLockersArr[i].getLeftRightCounters(address(this));
@@ -250,8 +285,8 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, UnitERC20, ReentrancyGuard 
     function getBoneLockerRewardsCount(uint256 _firstBoneLockerIndex, uint256 _lastBoneLockerIndex)
     public view returns (uint256[] memory rewards)
     {
-        require(_firstBoneLockerIndex <= _lastBoneLockerIndex);
-        require(_lastBoneLockerIndex < knownBoneLockersArr.length);
+        require(_firstBoneLockerIndex <= _lastBoneLockerIndex, "Unit Protocol Wrapped Assets: INVALID_BOUNDS");
+        require(_lastBoneLockerIndex < knownBoneLockersArr.length, "Unit Protocol Wrapped Assets: INVALID_RIGHT_BOUND");
 
         rewards = new uint256[](_lastBoneLockerIndex - _firstBoneLockerIndex + 1);
 
@@ -338,5 +373,12 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, UnitERC20, ReentrancyGuard 
         (IERC20 _sslpToken,,,) = _topDog.poolInfo(_topDogPoolId);
 
         return address(_sslpToken);
+    }
+
+    /**
+     * @dev No direct transfers between users allowed since we store positions info in userInfo.
+     */
+    function _transfer(address sender, address recipient, uint256 amount) internal override onlyVault {
+        super._transfer(sender, recipient, amount);
     }
 }

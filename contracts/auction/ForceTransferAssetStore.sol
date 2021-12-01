@@ -6,7 +6,7 @@
 pragma solidity 0.7.6;
 
 import "../VaultParameters.sol";
-import "../interfaces/IForceTransferAssetStore.sol";
+import "../interfaces/auction/IForceTransferAssetStore.sol";
 
 
 /**

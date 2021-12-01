@@ -43,9 +43,11 @@ async function prepareCoreContracts(context, _case) {
     context.vault = await attachContract("Vault", deployedAddresses.Vault);
     context.oracleRegistry = await attachContract("OracleRegistry", deployedAddresses.OracleRegistry);
     context.forceTransferAssetStore = await attachContract("ForceTransferAssetStore", deployedAddresses.ForceTransferAssetStore);
+    context.forceMovePositionAssetStore = await attachContract("ForceMovePositionAssetStore", deployedAddresses.ForceMovePositionAssetStore);
     context.chainlinkOracleMainAsset = await attachContract("ChainlinkedOracleMainAsset", deployedAddresses.ChainlinkedOracleMainAsset);
     context.wrappedToUnderlyingOracle = await attachContract("WrappedToUnderlyingOracle", deployedAddresses.WrappedToUnderlyingOracle);
     context.vaultManagerParameters = await attachContract("VaultManagerParameters", deployedAddresses.VaultManagerParameters);
+    context.liquidationAuction = await attachContract("LiquidationAuction02", deployedAddresses.LiquidationAuction02);
 
     context.cdpManager = await attachContract("CDPManager01", deployedAddresses.CDPManager01); // todo keydonix
 
@@ -101,7 +103,7 @@ async function prepareWrappedSSLP(context) {
         '67', // initial collateralization
         '68', // liquidation ratio
         '0', // liquidation discount (3 decimals)
-        '1000', // devaluation period in blocks
+        '100', // devaluation period in blocks
         ether('100000'), // debt limit
         [context.collateralOracleType], // enabled oracles
         0,
