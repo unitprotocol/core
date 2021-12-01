@@ -15,6 +15,7 @@ import '../interfaces/ICDPRegistry.sol';
 import '../interfaces/vault-managers/parameters/IVaultManagerParameters.sol';
 import '../interfaces/IVaultParameters.sol';
 import '../interfaces/IToken.sol';
+import "../interfaces/wrapped-assets/IWrappedAsset.sol";
 
 import '../helpers/ReentrancyGuard.sol';
 import '../helpers/SafeMath.sol';
@@ -105,6 +106,24 @@ contract CDPManager01 is BaseCDPManager {
     }
 
     /**
+      * @notice Deposit asset, stake it if supported, mint wrapped asset and lock it, borrow USDP
+      * @notice User must:
+      * @notice  - preapprove token to wrappedAsset: to deposit asset to wrapped asset for wrapping
+      * @notice  - preapprove wrapped token to vault: to deposit wrapped asset to vault
+      * @notice  - preapprove USDP to CDPManager: to charge borrow (issuance) fee
+      * @param wrappedAsset Address of wrapped asset
+      * @param assetAmount The amount of the collateral to deposit
+      * @param usdpAmount The amount of USDP token to borrow
+      **/
+    function wrapAndJoin(IWrappedAsset wrappedAsset, uint assetAmount, uint usdpAmount) external {
+        if (assetAmount != 0) {
+            wrappedAsset.deposit(msg.sender, assetAmount);
+        }
+
+        join(address(wrappedAsset), assetAmount, usdpAmount);
+    }
+
+    /**
       * @notice Tx sender must have a sufficient USDP balance to pay the debt
       * @dev Withdraws collateral and repays specified amount of debt
       * @param asset The address of the collateral
@@ -188,6 +207,31 @@ contract CDPManager01 is BaseCDPManager {
     function exit_Eth_targetRepayment(uint ethAmount, uint repayment) external returns (uint) {
         uint usdpAmount = _calcPrincipal(WETH, msg.sender, repayment);
         return exit_Eth(ethAmount, usdpAmount);
+    }
+
+    /**
+      * @notice Withdraws wrapped asset and unwrap it, repays specified amount of debt
+      * @param wrappedAsset Address of wrapped asset
+      * @param assetAmount The amount of the collateral to withdrae
+      * @param usdpAmount The amount of USDP token to repay
+      **/
+    function unwrapAndExit(IWrappedAsset wrappedAsset, uint assetAmount, uint usdpAmount) public returns (uint) {
+        usdpAmount = exit(address(wrappedAsset), assetAmount, usdpAmount);
+        wrappedAsset.withdraw(msg.sender, assetAmount);
+
+        return usdpAmount;
+    }
+
+    /**
+      * @notice Withdraws wrapped asset and unwrap it, repays specified amount of debt
+      * @notice Repayment is the sum of the principal and interest
+      * @param wrappedAsset Address of wrapped asset
+      * @param assetAmount The amount of the collateral to withdrae
+      * @param repayment The amount of USDP token to repay
+      **/
+    function unwrapAndExitTargetRepayment(IWrappedAsset wrappedAsset, uint assetAmount, uint repayment) public returns (uint) {
+        uint usdpAmount = _calcPrincipal(address(wrappedAsset), msg.sender, repayment);
+        return unwrapAndExit(wrappedAsset, assetAmount, usdpAmount);
     }
 
     function _ensurePositionCollateralization(address asset, address owner) internal view {

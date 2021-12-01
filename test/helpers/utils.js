@@ -41,7 +41,7 @@ const StETHStableSwapOracle = artifacts.require('StETHStableSwapOracle');
 const StETHCurvePool = artifacts.require('StETHCurvePool');
 
 const { ether } = require('openzeppelin-test-helpers');
-const { calculateAddressAtNonce, deployContractBytecode, runDeployment } = require('./deployUtils');
+const { calculateAddressAtNonce, deployContractBytecode, runDeployment, loadHRE } = require('./deployUtils');
 const { createDeployment } = require('../../lib/deployments/core');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
@@ -52,19 +52,6 @@ const MAX_UINT = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 const BASE_BORROW_FEE = new BN(123); // 123 basis points = 1.23% = 0.0123
 const BASIS_POINTS_IN_1 = new BN('10000'); // 1 = 100.00% = 10000 basis points
 const BORROW_FEE_RECEIVER_ADDRESS = '0x0000000000000000000000000000000123456789';
-
-let _hre;
-const _loadHRE = async function() {
-	if (_hre === undefined) {
-		if (!process.env.HARDHAT_NETWORK)
-			process.env.HARDHAT_NETWORK = 'localhost';
-		_hre = require("hardhat");
-
-		await _hre.run("compile");
-	}
-
-	return _hre;
-}
 
 
 async function expectRevert(promise, expectedError) {
@@ -207,7 +194,7 @@ module.exports = (context, mode) => {
 				borrowFeeReceiver: BORROW_FEE_RECEIVER_ADDRESS,
 			  testEnvironment: true,
 			});
-			const hre = await _loadHRE();
+			const hre = await loadHRE();
 			const deployed = await runDeployment(deployment, {hre, deployer: context.deployer});
 			context.deployed = deployed;
 
