@@ -18,10 +18,16 @@ contract BoneLocker_Mock is IBoneLocker, Ownable {
     address emergencyAddress;
     bool emergencyFlag = false;
 
+    struct LockInfo{
+        uint256 _amount;
+        uint256 _timestamp;
+        bool _isDev;
+    }
 
     uint256 public override lockingPeriod;
     uint256 public devLockingPeriod;
 
+    mapping (address => LockInfo[]) public override lockInfoByUser;
     mapping (address => uint256) public latestCounterByUser;
     mapping (address => uint256) public unclaimedTokensByUser;
 

@@ -56,6 +56,14 @@ contract TopDog_Mock is ITopDog, Ownable, ReentrancyGuard {
         //   4. User's `rewardDebt` gets updated.
     }
 
+    // Info of each pool.
+    struct PoolInfo {
+        IERC20 lpToken;           // Address of LP token contract.
+        uint256 allocPoint;       // How many allocation points assigned to this pool. BONEs to distribute per block.
+        uint256 lastRewardBlock;  // Last block number that BONEs distribution occurs.
+        uint256 accBonePerShare; // Accumulated BONEs per share, times 1e12. See below.
+    }
+
     // The BONE TOKEN!
     IBoneToken public override bone;
     // The Bone Token Locker contract
@@ -81,6 +89,8 @@ contract TopDog_Mock is ITopDog, Ownable, ReentrancyGuard {
     // The migrator contract. It has a lot of power. Can only be set through governance (owner).
     IMigratorShib public migrator;
 
+    // Info of each pool.
+    PoolInfo[] public override poolInfo;
     // Info of each user that stakes LP tokens.
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;
     // Total allocation points. Must be the sum of all allocation points in all pools.
@@ -156,10 +166,10 @@ contract TopDog_Mock is ITopDog, Ownable, ReentrancyGuard {
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
         poolExistence[_lpToken] = true;
         poolInfo.push(PoolInfo({
-        lpToken: _lpToken,
-        allocPoint: _allocPoint,
-        lastRewardBlock: lastRewardBlock,
-        accBonePerShare: 0
+            lpToken: _lpToken,
+            allocPoint: _allocPoint,
+            lastRewardBlock: lastRewardBlock,
+            accBonePerShare: 0
         }));
     }
 
@@ -298,12 +308,12 @@ contract TopDog_Mock is ITopDog, Ownable, ReentrancyGuard {
         updatePool(_pid);
         uint256 pending = user.amount.mul(pool.accBonePerShare).div(1e12).sub(user.rewardDebt);
         if(pending > 0) {
-            uint256 sendAmount = pending.mul(rewardMintPercent).div(100);
-            safeBoneTransfer(msg.sender, sendAmount);
-            if(rewardMintPercent != 100) {
-                safeBoneTransfer(address(boneLocker), pending.sub(sendAmount)); // Rest amount sent to Bone token contract
-                boneLocker.lock(msg.sender, pending.sub(sendAmount), false); //function called for token time-lock
-            }
+                uint256 sendAmount = pending.mul(rewardMintPercent).div(100);
+                safeBoneTransfer(msg.sender, sendAmount);
+                if(rewardMintPercent != 100) {
+                    safeBoneTransfer(address(boneLocker), pending.sub(sendAmount)); // Rest amount sent to Bone token contract
+                    boneLocker.lock(msg.sender, pending.sub(sendAmount), false); //function called for token time-lock
+                }
         }
         if(_amount > 0) {
             user.amount = user.amount.sub(_amount);

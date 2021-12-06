@@ -13,23 +13,15 @@ import "./IBoneToken.sol";
 /**
  * See https://etherscan.io/address/0x94235659cf8b805b2c658f9ea2d6d6ddbb17c8d7#code
  */
-abstract contract ITopDog  {
+interface ITopDog  {
 
-    // Info of each pool.
-    struct PoolInfo {
-        IERC20 lpToken;           // Address of LP token contract.
-        uint256 allocPoint;       // How many allocation points assigned to this pool. BONEs to distribute per block.
-        uint256 lastRewardBlock;  // Last block number that BONEs distribution occurs.
-        uint256 accBonePerShare; // Accumulated BONEs per share, times 1e12. See below.
-    }
+    function bone() external view returns (IBoneToken);
+    function boneLocker() external view returns (IBoneLocker);
+    function poolInfo(uint256) external view returns (IERC20, uint256, uint256, uint256);
+    function poolLength() external view returns (uint256);
 
-    function bone() external virtual view returns (IBoneToken);
-    function boneLocker() external virtual view returns (IBoneLocker);
-    PoolInfo[] public poolInfo;
-    function poolLength() external virtual view returns (uint256);
-
-    function rewardMintPercent() external virtual view returns (uint256);
-    function pendingBone(uint256 _pid, address _user) external virtual view returns (uint256);
-    function deposit(uint256 _pid, uint256 _amount) external virtual;
-    function withdraw(uint256 _pid, uint256 _amount) external virtual;
+    function rewardMintPercent() external view returns (uint256);
+    function pendingBone(uint256 _pid, address _user) external view returns (uint256);
+    function deposit(uint256 _pid, uint256 _amount) external;
+    function withdraw(uint256 _pid, uint256 _amount) external;
 }
