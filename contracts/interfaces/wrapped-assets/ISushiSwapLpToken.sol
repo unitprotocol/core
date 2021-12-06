@@ -5,9 +5,9 @@
 */
 pragma solidity 0.7.6;
 
-import "../IERC20WithOptional.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface ISushiSwapLpToken is IERC20WithOptional {
+interface ISushiSwapLpToken is IERC20 /* IERC20WithOptional */ {
     function token0() external view returns (address);
     function token1() external view returns (address);
 }

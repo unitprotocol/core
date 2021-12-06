@@ -64,8 +64,8 @@ async function prepareWrappedSSLP(context) {
     context.tokenC = await deployContract("EmptyToken", 'TokenC descr', 'tokenC', 12, ether('100'), context.deployer.address);
     context.tokenD = await deployContract("EmptyToken", 'TokenD descr', 'tokenD', 14, ether('100'), context.deployer.address);
 
-    context.sslpToken0 = await deployContract("SushiSwapLpToken_Mock", context.tokenA.address, context.tokenB.address, 'SushiSwap LP0', 'SSLP0');
-    context.sslpToken1 = await deployContract("SushiSwapLpToken_Mock", context.tokenC.address, context.tokenD.address, 'SushiSwap LP1', 'SSLP1');
+    context.sslpToken0 = await deployContract("SushiSwapLpToken_Mock", context.tokenA.address, context.tokenB.address, 'SushiSwap LP0', 'SSLP0', 18);
+    context.sslpToken1 = await deployContract("SushiSwapLpToken_Mock", context.tokenC.address, context.tokenD.address, 'SushiSwap LP1', 'SSLP1', 17);
 
     context.boneToken = await deployContract("BoneToken_Mock");
     context.boneLocker1 = await deployContract("BoneLocker_Mock", context.boneToken.address, "0x0000000000000000000000000000000000001234", 1, 3);

@@ -11,7 +11,7 @@ import "./VaultParameters.sol";
 /**
  * @title Auth2
  * @dev Manages USDP's system access
- * @dev copy of Auth from VaultParameters.sol but with immutable vaultParameters for using in upgradable contracts
+ * @dev copy of Auth from VaultParameters.sol but with immutable vaultParameters for saving gas
  **/
 contract Auth2 {
 

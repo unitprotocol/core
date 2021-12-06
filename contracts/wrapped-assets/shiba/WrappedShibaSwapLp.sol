@@ -6,19 +6,20 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "../../helpers/ReentrancyGuard.sol";
 import "../../helpers/TransferHelper.sol";
 import "../../Auth2.sol";
+import "../../interfaces/IERC20WithOptional.sol";
 import "../../interfaces/wrapped-assets/IWrappedAsset.sol";
 import "../../interfaces/wrapped-assets/ITopDog.sol";
 import "../../interfaces/wrapped-assets/ISushiSwapLpToken.sol";
-import "../../helpers/UnitERC20.sol";
 
 /**
  * @title ShibaSwapWrappedLp
  **/
-contract WrappedShibaSwapLp is IWrappedAsset, Auth2, UnitERC20, ReentrancyGuard {
+contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     using SafeMath for uint256;
 
     uint256 public constant MULTIPLIER = 1e12;
@@ -36,9 +37,6 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, UnitERC20, ReentrancyGuard 
 
     // Info of each user that stakes LP tokens.
     mapping(address => UserInfo) public userInfo;
-
-    address private immutable _deployer;
-    bool private _isInitialised;
 
     // Info of each user.
     struct UserInfo {
@@ -71,45 +69,32 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, UnitERC20, ReentrancyGuard 
         uint256 _topDogPoolId
     )
     Auth2(_vaultParameters)
-    UnitERC20(IERC20WithOptional(getSsLpToken(_topDog, _topDogPoolId)).decimals())
+    ERC20(
+        string(
+            abi.encodePacked(
+                "Wrapped by Unit ",
+                getSsLpTokenName(_topDog, _topDogPoolId),
+                " ",
+                getSsLpTokenToken0Symbol(_topDog, _topDogPoolId),
+                "-",
+                getSsLpTokenToken1Symbol(_topDog, _topDogPoolId)
+            )
+        ),
+        string(
+            abi.encodePacked(
+                "wu",
+                getSsLpTokenSymbol(_topDog, _topDogPoolId),
+                getSsLpTokenToken0Symbol(_topDog, _topDogPoolId),
+                getSsLpTokenToken1Symbol(_topDog, _topDogPoolId)
+            )
+        )
+    )
     {
         boneToken = _boneToken;
         topDog = _topDog;
         topDogPoolId = _topDogPoolId;
 
-        _deployer = msg.sender;
-    }
-
-    function init() public {
-        require(msg.sender == _deployer, "Unit Protocol Wrapped Assets: AUTH_FAILED");
-        require(!_isInitialised, "Unit Protocol Wrapped Assets: ALREADY_INITIALIZED");
-
-        ISushiSwapLpToken sslpToken = ISushiSwapLpToken(address(getUnderlyingToken()));
-        string memory token0Symbol = IERC20WithOptional(address(sslpToken.token0())).symbol();
-        string memory token1Symbol = IERC20WithOptional(address(sslpToken.token1())).symbol();
-
-        UnitERC20._initNameAndSymbol(
-            string(
-                abi.encodePacked(
-                    "Wrapped by Unit ",
-                    sslpToken.name(),
-                    " ",
-                    token0Symbol,
-                    "-",
-                    token1Symbol
-                )
-            ),
-            string(
-                abi.encodePacked(
-                    "wu",
-                    sslpToken.symbol(),
-                    token0Symbol,
-                    token1Symbol
-                )
-            )
-        );
-
-        _isInitialised = true;
+        _setupDecimals(IERC20WithOptional(getSsLpToken(_topDog, _topDogPoolId)).decimals());
     }
 
     /**
@@ -358,7 +343,9 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, UnitERC20, ReentrancyGuard 
         lastKnownBonesBalance = boneToken.balanceOf(address(this));
     }
 
-    // Safe bone transfer function, just in case if rounding error causes pool to not have enough BONEs.
+    /**
+     * @dev Safe bone transfer function, just in case if rounding error causes pool to not have enough BONEs.
+     */
     function _safeBoneTransfer(address _to, uint256 _amount) internal {
         uint256 boneBal = boneToken.balanceOf(address(this));
         if (_amount > boneBal) {
@@ -368,11 +355,41 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, UnitERC20, ReentrancyGuard 
         }
     }
 
-    // get token for using in constructor
+    /**
+     * @dev Get sslp token for using in constructor
+     */
     function getSsLpToken(ITopDog _topDog, uint256 _topDogPoolId) private view returns (address) {
         (IERC20 _sslpToken,,,) = _topDog.poolInfo(_topDogPoolId);
 
         return address(_sslpToken);
+    }
+
+    /**
+     * @dev Get symbol of sslp token for using in constructor
+     */
+    function getSsLpTokenSymbol(ITopDog _topDog, uint256 _topDogPoolId) private view returns (string memory) {
+        return IERC20WithOptional(getSsLpToken(_topDog, _topDogPoolId)).symbol();
+    }
+
+    /**
+     * @dev Get name of sslp token for using in constructor
+     */
+    function getSsLpTokenName(ITopDog _topDog, uint256 _topDogPoolId) private view returns (string memory) {
+        return IERC20WithOptional(getSsLpToken(_topDog, _topDogPoolId)).name();
+    }
+
+    /**
+     * @dev Get token0 symbol of sslp token for using in constructor
+     */
+    function getSsLpTokenToken0Symbol(ITopDog _topDog, uint256 _topDogPoolId) private view returns (string memory) {
+        return IERC20WithOptional(address(ISushiSwapLpToken(getSsLpToken(_topDog, _topDogPoolId)).token0())).symbol();
+    }
+
+    /**
+     * @dev Get token1 symbol of sslp token for using in constructor
+     */
+    function getSsLpTokenToken1Symbol(ITopDog _topDog, uint256 _topDogPoolId) private view returns (string memory) {
+        return IERC20WithOptional(address(ISushiSwapLpToken(getSsLpToken(_topDog, _topDogPoolId)).token1())).symbol();
     }
 
     /**

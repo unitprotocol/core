@@ -5,9 +5,9 @@
 */
 pragma solidity 0.7.6;
 
-import "../IERC20WithOptional.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IWrappedAsset is IERC20WithOptional {
+interface IWrappedAsset is IERC20 /* IERC20WithOptional */ {
 
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
