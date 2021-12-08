@@ -42,8 +42,7 @@ async function prepareCoreContracts(context, _case) {
     context.vaultParameters = await attachContract("VaultParameters", deployedAddresses.VaultParameters);
     context.vault = await attachContract("Vault", deployedAddresses.Vault);
     context.oracleRegistry = await attachContract("OracleRegistry", deployedAddresses.OracleRegistry);
-    context.forceTransferAssetStore = await attachContract("ForceTransferAssetStore", deployedAddresses.ForceTransferAssetStore);
-    context.forceMovePositionAssetStore = await attachContract("ForceMovePositionAssetStore", deployedAddresses.ForceMovePositionAssetStore);
+    context.assetsBooleanParameters = await attachContract("AssetsBooleanParameters", deployedAddresses.AssetsBooleanParameters);
     context.chainlinkOracleMainAsset = await attachContract("ChainlinkedOracleMainAsset", deployedAddresses.ChainlinkedOracleMainAsset);
     context.wrappedToUnderlyingOracle = await attachContract("WrappedToUnderlyingOracle", deployedAddresses.WrappedToUnderlyingOracle);
     context.vaultManagerParameters = await attachContract("VaultManagerParameters", deployedAddresses.VaultManagerParameters);

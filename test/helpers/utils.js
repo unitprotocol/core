@@ -31,8 +31,7 @@ const CDPManager = artifacts.require('CDPManager01');
 const CDPManagerFallback = artifacts.require('CDPManager01_Fallback');
 const LiquidationAuction = artifacts.require('LiquidationAuction02');
 const CDPRegistry = artifacts.require('CDPRegistry');
-const ForceTransferAssetStore = artifacts.require('ForceTransferAssetStore');
-const ForceMovePositionAssetStore = artifacts.require('ForceMovePositionAssetStore');
+const AssetsBooleanParameters = artifacts.require('AssetsBooleanParameters');
 const CollateralRegistry = artifacts.require('CollateralRegistry');
 const CyTokenOracle = artifacts.require('CyTokenOracle');
 const YvTokenOracle = artifacts.require('YvTokenOracle');
@@ -47,6 +46,7 @@ const { createDeployment } = require('../../lib/deployments/core');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
 const getWrapper = require('./wrappers');
+const {PARAM_FORCE_TRANSFER_ASSET_TO_OWNER_ON_LIQUIDATION} = require("../../lib/constants");
 
 const MAX_UINT = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
 
@@ -203,8 +203,7 @@ module.exports = (context, mode) => {
 			context.vaultParameters = await VaultParameters.at(deployed.VaultParameters);
 			context.vault = await Vault.at(deployed.Vault);
 			context.oracleRegistry = await OracleRegistry.at(deployed.OracleRegistry);
-			context.forceTransferAssetStore = await ForceTransferAssetStore.at(deployed.ForceTransferAssetStore);
-			context.forceMovePositionAssetStore = await ForceMovePositionAssetStore.at(deployed.ForceMovePositionAssetStore);
+			context.assetsBooleanParameters = await AssetsBooleanParameters.at(deployed.AssetsBooleanParameters);
 			context.chainlinkOracleMainAsset = await ChainlinkOracleMainAsset.at(deployed.ChainlinkedOracleMainAsset);
 
 			// This web3 doesn't care about cache invalidation and non-trivial workflows, so we'll do it the hard way.
@@ -220,8 +219,7 @@ module.exports = (context, mode) => {
 
 			context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address, context.weth.address)
 
-			context.forceTransferAssetStore = await ForceTransferAssetStore.new(context.vaultParameters.address, []);
-			context.forceMovePositionAssetStore = await ForceMovePositionAssetStore.new(context.vaultParameters.address, []);
+			context.assetsBooleanParameters = await AssetsBooleanParameters.new(context.vaultParameters.address, [], []);
 		}
 
 		let mainAssetOracleType, poolTokenOracleType
@@ -380,7 +378,7 @@ module.exports = (context, mode) => {
 
 			context.wrappedAsset = await DummyToken.new("Wrapper Curve LP", "WCLP", 18, ether('100000000000'))
 
-			await context.forceTransferAssetStore.add(context.wrappedAsset.address);
+			await context.assetsBooleanParameters.set(context.wrappedAsset.address, PARAM_FORCE_TRANSFER_ASSET_TO_OWNER_ON_LIQUIDATION, true);
 
 			await context.wrappedToUnderlyingOracle.setUnderlying(context.wrappedAsset.address, context.mainCollateral.address)
 
@@ -500,8 +498,7 @@ module.exports = (context, mode) => {
 			context.liquidationAuction = await LiquidationAuction.new(
 				context.vaultManagerParameters.address,
 				context.cdpRegistry.address,
-				context.forceTransferAssetStore.address,
-				context.forceMovePositionAssetStore.address,
+				context.assetsBooleanParameters.address
 			);
 		}
 
