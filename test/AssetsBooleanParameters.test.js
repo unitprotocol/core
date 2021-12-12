@@ -3,7 +3,7 @@ const {deployContract} = require("./helpers/ethersUtils");
 const BN = ethers.BigNumber.from;
 
 let context;
-describe("WrappedShibaSwapLpFactory", function () {
+describe("AssetsBooleanParameters", function () {
 
 	beforeEach(async function () {
 		context = this;

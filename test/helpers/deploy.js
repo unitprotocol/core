@@ -89,9 +89,11 @@ async function prepareWrappedSSLP(context) {
 
     const deployedAddresses0 = await deployWrappedSSLP(context, 0);
     context.wrappedSslp0 = await attachContract("WrappedShibaSwapLp", deployedAddresses0.WrappedShibaSwapLp)
+    await context.wrappedSslp0.approveSslpToTopdog();
 
     const deployedAddresses1 = await deployWrappedSSLP(context, 1);
     context.wrappedSslp1 = await attachContract("WrappedShibaSwapLp", deployedAddresses1.WrappedShibaSwapLp)
+    await context.wrappedSslp1.approveSslpToTopdog();
 
     await prepareOracle(context, CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN, {wrappedAsset: context.wrappedSslp0, mainAsset: context.sslpToken0});
 
@@ -129,7 +131,6 @@ async function deployWrappedSSLP(context, topDogPoolId) {
         deployer: context.deployer.address,
         manager: context.manager.address,
         vaultParameters: context.vaultParameters.address,
-        boneToken: context.boneToken.address,
         topDog: context.topDog.address,
         topDogPoolId: topDogPoolId,
     });

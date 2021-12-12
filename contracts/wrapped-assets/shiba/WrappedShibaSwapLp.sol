@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../../helpers/ReentrancyGuard.sol";
 import "../../helpers/TransferHelper.sol";
 import "../../Auth2.sol";
+import "../../interfaces/IVault.sol";
 import "../../interfaces/IERC20WithOptional.sol";
 import "../../interfaces/wrapped-assets/IWrappedAsset.sol";
 import "../../interfaces/wrapped-assets/ITopDog.sol";
@@ -24,6 +25,7 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
 
     uint256 public constant MULTIPLIER = 1e12;
 
+    IVault public immutable vault;
     ITopDog public immutable topDog;
     uint256 public immutable topDogPoolId;
     IERC20 public immutable boneToken;
@@ -35,27 +37,23 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     uint256 public lastKnownBonesBalance;
     uint256 public accBonePerShare; // Accumulated BONEs per share, times MULTIPLIER. See below.
 
-    // Info of each user that stakes LP tokens.
-    mapping(address => UserInfo) public userInfo;
-
-    // Info of each user.
-    struct UserInfo {
-        uint256 amount;     // How many LP tokens the user has provided.
-        uint256 rewardDebt; // Reward debt. See explanation below.
-        // similar to TopDog contract https://etherscan.io/address/0x94235659cf8b805b2c658f9ea2d6d6ddbb17c8d7
-        // but we update accBonePerShare every transaction
-        //
-        // We do some fancy math here. Basically, any point in time, the amount of BONEs
-        // entitled to a user but is pending to be distributed is:
-        //
-        //   pending reward = (user.amount * accBonePerShare) - user.rewardDebt
-        //
-        // Whenever a user deposits or withdraws LP tokens to a pool. Here's what happens:
-        //   1. The pool's `accBonePerShare` gets updated.
-        //   2. User receives the pending reward sent to his/her address.
-        //   3. User's `amount` gets updated.
-        //   4. User's `rewardDebt` gets updated.
-    }
+    // Reward debt. See explanation below.
+    // similar to TopDog contract https://etherscan.io/address/0x94235659cf8b805b2c658f9ea2d6d6ddbb17c8d7
+    // but we update accBonePerShare every transaction
+    //
+    // We do some fancy math here. Basically, any point in time, the amount of BONEs
+    // entitled to a user but is pending to be distributed is:
+    //
+    //   pending reward = (totalBalanceOf(user) * accBonePerShare) - rewardDebt[user]
+    //
+    // Whenever a user deposits or withdraws LP tokens to a pool. Here's what happens:
+    //   1. The pool's `accBonePerShare` gets updated.
+    //   2. User receives the pending reward sent to his/her address.
+    //   3. User's `totalBalanceOf` gets updated (since minted/burned tokens for user)
+    //   4. User's `rewardDebt` gets updated.
+    //
+    // on transfers balanceOf + deposited to vault = const
+    mapping(address => uint256) public rewardDebts;
 
     modifier updatePool() {
         _updatePool();
@@ -64,7 +62,6 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
 
     constructor(
         address _vaultParameters,
-        IERC20 _boneToken,
         ITopDog _topDog,
         uint256 _topDogPoolId
     )
@@ -90,11 +87,20 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         )
     )
     {
-        boneToken = _boneToken;
+        boneToken = _topDog.bone();
         topDog = _topDog;
         topDogPoolId = _topDogPoolId;
+        vault = IVault(VaultParameters(_vaultParameters).vault());
 
         _setupDecimals(IERC20WithOptional(getSsLpToken(_topDog, _topDogPoolId)).decimals());
+    }
+
+    /**
+     * @notice Approves for TopDog contract to transfer tokens from this ~forever
+     * @dev only manager could call this method
+     */
+    function approveSslpToTopdog() public onlyManager {
+        getUnderlyingToken().approve(address(topDog), uint256(-1));
     }
 
     /**
@@ -104,24 +110,22 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     function deposit(address _userAddr, uint256 _amount) public override nonReentrant updatePool {
         require(msg.sender == _userAddr || vaultParameters.canModifyVault(msg.sender), "Unit Protocol Wrapped Assets: AUTH_FAILED");
 
-        UserInfo storage user = userInfo[_userAddr];
-        _sendPendingRewardInternal(_userAddr, user.amount);
+        uint256 userBalance = totalBalanceOf(_userAddr);
+        _sendPendingRewardInternal(_userAddr, userBalance);
 
         if (_amount > 0) {
             IERC20 sslpToken = getUnderlyingToken();
 
             // get tokens from user, need approve of sslp tokens to pool
             TransferHelper.safeTransferFrom(address(sslpToken), _userAddr, address(this), _amount);
-            user.amount = user.amount.add(_amount);
 
             // deposit them to TopDog
-            sslpToken.approve(address(topDog), _amount);
             topDog.deposit(topDogPoolId, _amount);
 
             // wrapped tokens to user
             _mint(_userAddr, _amount);
         }
-        user.rewardDebt = user.amount.mul(accBonePerShare).div(MULTIPLIER);
+        rewardDebts[_userAddr] = (userBalance.add(_amount)).mul(accBonePerShare).div(MULTIPLIER);
         emit Deposit(_userAddr, _amount);
     }
 
@@ -132,13 +136,12 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     function withdraw(address _userAddr, uint256 _amount) public override nonReentrant updatePool {
         require(msg.sender == _userAddr || vaultParameters.canModifyVault(msg.sender), "Unit Protocol Wrapped Assets: AUTH_FAILED");
 
-        UserInfo storage user = userInfo[_userAddr];
-        require(user.amount >= _amount, "Unit Protocol Wrapped Assets: INSUFFICIENT_AMOUNT");
-        _sendPendingRewardInternal(_userAddr, user.amount);
+        uint256 userBalance = totalBalanceOf(_userAddr);
+        require(userBalance >= _amount, "Unit Protocol Wrapped Assets: INSUFFICIENT_AMOUNT");
+        _sendPendingRewardInternal(_userAddr, userBalance);
 
         if (_amount > 0) {
             IERC20 sslpToken = getUnderlyingToken();
-            user.amount = user.amount.sub(_amount);
 
             // get wrapped tokens from user
             _burn(_userAddr, _amount);
@@ -150,7 +153,7 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
             TransferHelper.safeTransfer(address(sslpToken), _userAddr, _amount);
         }
 
-        user.rewardDebt = user.amount.mul(accBonePerShare).div(MULTIPLIER);
+        rewardDebts[_userAddr] = (userBalance.sub(_amount)).mul(accBonePerShare).div(MULTIPLIER);
         if (totalSupply() == 0) {
             // on full withdrawal clear counters to distribute possible remainder next time
             accBonePerShare = 0;
@@ -161,7 +164,7 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
 
     /**
      * @notice Manually move position (or its part) to another user (for example in case of liquidation)
-     * @dev Important! no tokens transferred since in case of liquidation tokens are in vault
+     * @dev Important! Use only with additional token transferring outside this function (example: liquidation - tokens are in vault and transferred by vault)
      * @dev only CDPManager could call this method
      */
     function movePosition(address _userAddrFrom, address _userAddrTo, uint256 _amount) public override nonReentrant updatePool hasVaultAccess {
@@ -170,18 +173,16 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
             return;
         }
 
-        UserInfo storage userFrom = userInfo[_userAddrFrom];
-        require(userFrom.amount >= _amount, "Unit Protocol Wrapped Assets: INSUFFICIENT_AMOUNT");
-        _sendPendingRewardInternal(_userAddrFrom, userFrom.amount);
+        uint256 userFromBalance = totalBalanceOf(_userAddrFrom);
+        require(userFromBalance >= _amount, "Unit Protocol Wrapped Assets: INSUFFICIENT_AMOUNT");
+        _sendPendingRewardInternal(_userAddrFrom, userFromBalance);
 
-        UserInfo storage userTo = userInfo[_userAddrTo];
-        _sendPendingRewardInternal(_userAddrTo, userTo.amount);
+        uint256 userToBalance = totalBalanceOf(_userAddrTo);
+        _sendPendingRewardInternal(_userAddrTo, userToBalance);
 
-        userFrom.amount = userFrom.amount.sub(_amount);
-        userTo.amount = userTo.amount.add(_amount);
-
-        userFrom.rewardDebt = userFrom.amount.mul(accBonePerShare).div(MULTIPLIER);
-        userTo.rewardDebt = userTo.amount.mul(accBonePerShare).div(MULTIPLIER);
+        // tokens must be transferred outside. We suppose it
+        rewardDebts[_userAddrFrom] = (userFromBalance.sub(_amount)).mul(accBonePerShare).div(MULTIPLIER);
+        rewardDebts[_userAddrTo] = (userToBalance.add(_amount)).mul(accBonePerShare).div(MULTIPLIER);
 
         emit PositionMoved(_userAddrFrom, _userAddrTo, _amount);
     }
@@ -196,8 +197,8 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
             return 0;
         }
 
-        UserInfo storage user = userInfo[_userAddr];
-        if (user.amount == 0) {
+        uint256 userBalance = totalBalanceOf(_userAddr);
+        if (userBalance == 0) {
             return 0;
         }
 
@@ -206,7 +207,7 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         uint256 addedBones = currentBonesBalance.sub(lastKnownBonesBalance).add(pendingBones);
         uint256 accBonePerShareTemp = accBonePerShare.add(addedBones.mul(MULTIPLIER).div(lpDeposited));
 
-        return user.amount.mul(accBonePerShareTemp).div(MULTIPLIER).sub(user.rewardDebt);
+        return userBalance.mul(accBonePerShareTemp).div(MULTIPLIER).sub(rewardDebts[_userAddr]);
     }
 
     /**
@@ -218,9 +219,9 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     }
 
     function _claimRewardInternal(address _userAddr) internal {
-        UserInfo storage user = userInfo[_userAddr];
-        _sendPendingRewardInternal(_userAddr, user.amount);
-        user.rewardDebt = user.amount.mul(accBonePerShare).div(MULTIPLIER);
+        uint256 userBalance = totalBalanceOf(_userAddr);
+        _sendPendingRewardInternal(_userAddr, userBalance);
+        rewardDebts[_userAddr] = userBalance.mul(accBonePerShare).div(MULTIPLIER);
     }
 
     /**
@@ -236,8 +237,8 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         require(_firstBoneLockerIndex <= _lastBoneLockerIndex, "Unit Protocol Wrapped Assets: INVALID_BOUNDS");
         require(_lastBoneLockerIndex < knownBoneLockersArr.length, "Unit Protocol Wrapped Assets: INVALID_RIGHT_BOUND");
 
-        UserInfo storage user = userInfo[_userAddr];
-        if (userInfo[_userAddr].amount == 0) {
+        uint256 userBalance = totalBalanceOf(_userAddr);
+        if (userBalance == 0) {
             return 0;
         }
 
@@ -246,7 +247,7 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
             poolReward = poolReward.add(knownBoneLockersArr[i].getClaimableAmount(address(this)));
         }
 
-        return poolReward.mul(user.amount).div(totalSupply());
+        return poolReward.mul(userBalance).div(totalSupply());
     }
 
     /**
@@ -341,8 +342,8 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
             return;
         }
 
-        UserInfo storage user = userInfo[_userAddr];
-        uint256 pending = user.amount.mul(accBonePerShare).div(MULTIPLIER).sub(user.rewardDebt);
+        uint256 userBalance = totalBalanceOf(_userAddr);
+        uint256 pending = userBalance.mul(accBonePerShare).div(MULTIPLIER).sub(rewardDebts[_userAddr]);
         if (pending == 0) {
             return;
         }
@@ -398,6 +399,14 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
      */
     function getSsLpTokenToken1Symbol(ITopDog _topDog, uint256 _topDogPoolId) private view returns (string memory) {
         return IERC20WithOptional(address(ISushiSwapLpToken(getSsLpToken(_topDog, _topDogPoolId)).token1())).symbol();
+    }
+
+    function totalBalanceOf(address account) public view returns (uint256) {
+        if (account == address(vault)) {
+            return 0;
+        }
+        uint256 collateralsOnVault = vault.collaterals(address(this), account);
+        return balanceOf(account).add(collateralsOnVault);
     }
 
     /**

@@ -46,7 +46,7 @@ async function mineBlocks(count) {
     }
 }
 
-describe("WrappedShibaSwapLpFactory", function () {
+describe("WrappedShibaSwapLp", function () {
 
     beforeEach(async function () { // todo keydonix case
         context = this;
@@ -166,6 +166,9 @@ describe("WrappedShibaSwapLpFactory", function () {
                 expect(await this.sslpToken0.balanceOf(this.topDog.address)).to.be.equal(lockAmount, "transferred to TopDog");
                 expect(await this.sslpToken0.balanceOf(this.wrappedSslp0.address)).to.be.equal(ether('0'), "transferred not to pool");
                 expect(await this.wrappedSslp0.balanceOf(this.vault.address)).to.be.equal(lockAmount, "wrapped token sent to vault");
+                expect(await this.wrappedSslp0.balanceOf(this.user1.address)).to.be.equal(0, "wrapped token sent not to user");
+                expect(await this.wrappedSslp0.totalBalanceOf(this.vault.address)).to.be.equal(0, "bault has not total balance");
+                expect(await this.wrappedSslp0.totalBalanceOf(this.user1.address)).to.be.equal(lockAmount, "wrapped token user total position");
                 expect(await this.wrappedSslp0.totalSupply()).to.be.equal(lockAmount, "minted only wrapped tokens for deposited amount");
 
                 for (let i = 0; i < blockInterval - 1; ++i) {
@@ -903,7 +906,7 @@ describe("WrappedShibaSwapLpFactory", function () {
         })
     });
 
-    describe("liquidations relates", function() {
+    describe("liquidations related", function() {
         it('move position', async function () {
             const lockAmount = ether('0.4');
             const usdpAmount = ether('0.2');
@@ -918,40 +921,14 @@ describe("WrappedShibaSwapLpFactory", function () {
             expect(await bonesBalance(this.user1)).to.be.equal(directBonesReward(block1, block2));
             expect(await this.sslpToken0.balanceOf(this.user1.address)).to.be.equal(ether('0.6'));
             expect(await this.wrappedSslp0.balanceOf(this.user1.address)).to.be.equal(ether('0.4'), 'no wrapped tokens transferred');
-            let user1Info = await this.wrappedSslp0.userInfo(this.user1.address);
-            expect(user1Info.amount).to.be.equal(ether('0.3'), 'position moved');
+            expect(await this.wrappedSslp0.totalBalanceOf(this.user1.address)).to.be.equal(ether('0.4'), 'nothing changes in token balances');
 
             expect(await bonesBalance(this.user2)).to.be.equal(0);
             expect(await this.sslpToken0.balanceOf(this.user2.address)).to.be.equal(ether('1'));
             expect(await this.wrappedSslp0.balanceOf(this.user2.address)).to.be.equal(0, 'no wrapped tokens transferred');
-            let user2Info = await this.wrappedSslp0.userInfo(this.user2.address)
-            expect(user2Info.amount).to.be.equal(ether('0.1'), 'position moved');
+            expect(await this.wrappedSslp0.totalBalanceOf(this.user2.address)).to.be.equal(0, 'nothing changes in token balances');
 
-            let prevUser1Bones = await bonesBalance(this.user1);
-            let prevUser2Bones = await bonesBalance(this.user2);
-            const {blockNumber: block3} = await this.wrappedSslp0.connect(this.deployer).movePosition(this.user1.address, this.user2.address, ether('0.3'));
-
-            expect(await bonesBalance(this.user1)).to.be.equal(prevUser1Bones.add(directBonesReward(block2, block3).mul(3).div(4))) // moving triggers claiming bones on the both users
-            expect(await this.sslpToken0.balanceOf(this.user1.address)).to.be.equal(ether('0.6'));
-            expect(await this.wrappedSslp0.balanceOf(this.user1.address)).to.be.equal(ether('0.4'), 'no wrapped tokens transferred');
-            user1Info = await this.wrappedSslp0.userInfo(this.user1.address);
-            expect(user1Info.amount).to.be.equal(0, 'position moved');
-
-            expect(await bonesBalance(this.user2)).to.be.equal(prevUser2Bones.add(directBonesReward(block2, block3).mul(1).div(4))); // moving triggers claiming bones on the both users
-            expect(await this.sslpToken0.balanceOf(this.user2.address)).to.be.equal(ether('1'));
-            expect(await this.wrappedSslp0.balanceOf(this.user2.address)).to.be.equal(0, 'no wrapped tokens transferred');
-            user2Info = await this.wrappedSslp0.userInfo(this.user2.address)
-            expect(user2Info.amount).to.be.equal(ether('0.4'), 'position moved');
-
-            prevUser1Bones = await bonesBalance(this.user1);
-            const {blockNumber: block4} = await this.wrappedSslp0.connect(this.user1).claimReward(this.user1.address);
-            expect(await bonesBalance(this.user1)).to.be.equal(prevUser1Bones); // no position - no bones
-
-            prevUser2Bones = await bonesBalance(this.user2);
-            const {blockNumber: block5} = await this.wrappedSslp0.connect(this.user2).claimReward(this.user2.address);
-            expect(await bonesBalance(this.user2)).to.be.equal(prevUser2Bones.add(directBonesReward(block3, block5))); // all bones
-
-            // user2 couldn't withdraw such position, so it must be used only in liquidator with tokens transfer
+            // next movePosition us senselessly since contract is in inconsistent state
         })
 
         it('move position to the same user', async function () {
@@ -973,8 +950,7 @@ describe("WrappedShibaSwapLpFactory", function () {
             expect(await bonesBalance(this.user2)).to.be.equal(user2Bones);
             expect(await this.sslpToken0.balanceOf(this.user2.address)).to.be.equal(ether('0.6'));
             expect(await this.wrappedSslp0.balanceOf(this.user2.address)).to.be.equal(lockAmount, 'no wrapped tokens transferred');
-            let user2Info = await this.wrappedSslp0.userInfo(this.user2.address)
-            expect(user2Info.amount).to.be.equal(lockAmount, 'position didnt change');
+            expect(await this.wrappedSslp0.totalBalanceOf(this.user2.address)).to.be.equal(lockAmount, 'position didnt change');
 
             let prevUser2Bones = await bonesBalance(this.user2);
             const {blockNumber: block4} = await this.wrappedSslp0.connect(this.deployer).movePosition(this.user2.address, this.user2.address, lockAmount);
@@ -982,8 +958,7 @@ describe("WrappedShibaSwapLpFactory", function () {
             expect(await bonesBalance(this.user2)).to.be.equal(prevUser2Bones.add(directBonesReward(block3, block4).mul(4).div(5)))
             expect(await this.sslpToken0.balanceOf(this.user2.address)).to.be.equal(ether('0.6'));
             expect(await this.wrappedSslp0.balanceOf(this.user2.address)).to.be.equal(lockAmount, 'no wrapped tokens transferred');
-            user2Info = await this.wrappedSslp0.userInfo(this.user2.address);
-            expect(user2Info.amount).to.be.equal(lockAmount, 'position didnt change');
+            expect(await this.wrappedSslp0.totalBalanceOf(this.user2.address)).to.be.equal(lockAmount, 'position didnt change');
 
             prevUser2Bones = await bonesBalance(this.user2);
             const {blockNumber: block5} = await this.wrappedSslp0.connect(this.user2).withdraw(this.user2.address, lockAmount); // can withdraw
@@ -991,8 +966,7 @@ describe("WrappedShibaSwapLpFactory", function () {
             expect(await bonesBalance(this.user2)).to.be.equal(prevUser2Bones.add(directBonesReward(block4, block5).mul(4).div(5)))
             expect(await this.sslpToken0.balanceOf(this.user2.address)).to.be.equal(ether('1'));
             expect(await this.wrappedSslp0.balanceOf(this.user2.address)).to.be.equal(0, 'wrapped tokens burned');
-            user2Info = await this.wrappedSslp0.userInfo(this.user2.address);
-            expect(user2Info.amount).to.be.equal(0, 'position closed');
+            expect(await this.wrappedSslp0.totalBalanceOf(this.user2.address)).to.be.equal(0, 'position closed');
         })
 
         it('liquidation (with moving position)', async function () {
@@ -1013,20 +987,18 @@ describe("WrappedShibaSwapLpFactory", function () {
             await this.cdpManager.triggerLiquidation(this.wrappedSslp0.address, this.user1.address);
 
             expect(await this.wrappedSslp0.balanceOf(this.vault.address)).to.be.equal(lockAmount, "wrapped tokens in vault");
-            let user1Info = await this.wrappedSslp0.userInfo(this.user1.address);
-            expect(user1Info.amount).to.be.equal(lockAmount);
-            let user2Info = await this.wrappedSslp0.userInfo(this.user2.address);
-            expect(user2Info.amount).to.be.equal(0);
+            expect(await this.wrappedSslp0.totalBalanceOf(this.user1.address)).to.be.equal(lockAmount);
+            expect(await this.wrappedSslp0.balanceOf(this.user1.address)).to.be.equal(0);
+            expect(await this.wrappedSslp0.totalBalanceOf(this.user2.address)).to.be.equal(0);
+            expect(await this.wrappedSslp0.balanceOf(this.user2.address)).to.be.equal(0);
 
             await mineBlocks(10)
 
             await this.liquidationAuction.connect(this.user2).buyout(this.wrappedSslp0.address, this.user1.address);
 
             expect(await this.wrappedSslp0.balanceOf(this.vault.address)).to.be.equal(0, "wrapped tokens not in vault");
-            user1Info = await this.wrappedSslp0.userInfo(this.user1.address);
-            let ownerCollateralAmount = user1Info.amount;
-            user2Info = await this.wrappedSslp0.userInfo(this.user2.address);
-            let liquidatorCollateralAmount = user2Info.amount;
+            let ownerCollateralAmount = await this.wrappedSslp0.totalBalanceOf(this.user1.address);
+            let liquidatorCollateralAmount = await this.wrappedSslp0.totalBalanceOf(this.user2.address);
             expect(lockAmount).to.be.equal(ownerCollateralAmount.add(liquidatorCollateralAmount))
 
             expect(await this.wrappedSslp0.balanceOf(this.user1.address)).to.be.equal(ownerCollateralAmount, 'tokens = position');
@@ -1056,16 +1028,16 @@ describe("WrappedShibaSwapLpFactory", function () {
             await this.cdpManager.triggerLiquidation(this.wrappedSslp0.address, this.user1.address);
 
             expect(await this.wrappedSslp0.balanceOf(this.vault.address)).to.be.equal(lockAmount, "wrapped tokens in vault");
-            let user1Info = await this.wrappedSslp0.userInfo(this.user1.address);
-            expect(user1Info.amount).to.be.equal(lockAmount);
+            expect(await this.wrappedSslp0.totalBalanceOf(this.user1.address)).to.be.equal(lockAmount);
+            expect(await this.wrappedSslp0.balanceOf(this.user1.address)).to.be.equal(0);
 
             await mineBlocks(52);
 
             await this.liquidationAuction.connect(this.user1).buyout(this.wrappedSslp0.address, this.user1.address);
 
             expect(await this.wrappedSslp0.balanceOf(this.vault.address)).to.be.equal(0, "wrapped tokens not in vault");
-            user1Info = await this.wrappedSslp0.userInfo(this.user1.address);
-            expect(user1Info.amount).to.be.equal(lockAmount);
+            expect(await this.wrappedSslp0.totalBalanceOf(this.user1.address)).to.be.equal(lockAmount);
+            expect(await this.wrappedSslp0.balanceOf(this.user1.address)).to.be.equal(lockAmount);
 
             expect(await this.wrappedSslp0.balanceOf(this.user1.address)).to.be.equal(lockAmount, 'tokens = position');
 
