@@ -224,21 +224,29 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     }
 
     /**
-     * @notice Calculates claimable from BoneLockers bones FOR THIS POOL, not for user. Reward grouped by BoneLockers
+     * @notice Calculates approximate share of user in claimable bones from BoneLockers for this pool.
+     * @notice Not all this reward could be claimed at one call of `claimRewardFromBoneLockers` bcs of gas
+     * @param _userAddr user address
      * @param _firstBoneLockerIndex use 0 to calculate all rewards
      * @param _lastBoneLockerIndex use knownBoneLockersArrLength to calculate all rewards
      */
-    function getClaimableRewardAmountFromBoneLockers(uint256 _firstBoneLockerIndex, uint256 _lastBoneLockerIndex)
-    public view returns (uint256[] memory rewards)
+    function getClaimableRewardAmountFromBoneLockers(address _userAddr, uint256 _firstBoneLockerIndex, uint256 _lastBoneLockerIndex)
+    public view returns (uint256)
     {
         require(_firstBoneLockerIndex <= _lastBoneLockerIndex, "Unit Protocol Wrapped Assets: INVALID_BOUNDS");
         require(_lastBoneLockerIndex < knownBoneLockersArr.length, "Unit Protocol Wrapped Assets: INVALID_RIGHT_BOUND");
 
-        rewards = new uint256[](_lastBoneLockerIndex - _firstBoneLockerIndex + 1);
-
-        for (uint256 i = _firstBoneLockerIndex; i <= _lastBoneLockerIndex; ++i) {
-            rewards[i - _firstBoneLockerIndex] = knownBoneLockersArr[i].getClaimableAmount(address(this));
+        UserInfo storage user = userInfo[_userAddr];
+        if (userInfo[_userAddr].amount == 0) {
+            return 0;
         }
+
+        uint256 poolReward;
+        for (uint256 i = _firstBoneLockerIndex; i <= _lastBoneLockerIndex; ++i) {
+            poolReward = poolReward.add(knownBoneLockersArr[i].getClaimableAmount(address(this)));
+        }
+
+        return poolReward.mul(user.amount).div(totalSupply());
     }
 
     /**

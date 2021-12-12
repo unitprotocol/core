@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const {directBonesReward} = require("./TopDogLogic");
+const {directBonesReward, fullBonesReward, lockedBonesReward} = require("./TopDogLogic");
 
 ether = ethers.utils.parseUnits;
 
@@ -15,6 +15,9 @@ describe("TopDogLogic", function () {
             }
 
             expect(directBonesReward(10, 10+blockInterval)).to.be.equal(expectedResult[blockInterval]);
+            expect(fullBonesReward(10, 10+blockInterval)).to.be.equal(
+                directBonesReward(10, 10+blockInterval).add(lockedBonesReward(10, 10+blockInterval))
+            );
         })
     );
 });

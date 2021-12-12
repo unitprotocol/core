@@ -111,6 +111,45 @@ describe("WrappedShibaSwapLpFactory", function () {
             expect(await bonesBalance(this.user1)).not.to.be.equal(0);
         });
 
+        it("transfer sslp token", async function () {
+            const lockAmount = ether('0.4');
+            await prepareUserForJoin(this.user1, ether('1'));
+            await prepareUserForJoin(this.user2, ether('1'));
+
+            await context.wrappedSslp0.connect(this.user1).deposit(context.user1.address, lockAmount);
+            await context.wrappedSslp0.connect(this.user2).deposit(context.user2.address, lockAmount);
+
+            // user cannot transfer tokens
+            await expect(
+                context.wrappedSslp0.connect(this.user1).transfer(context.user3.address, lockAmount)
+            ).to.be.revertedWith("AUTH_FAILED");
+
+            // another user cannot transfer tokens
+            await expect(
+                context.wrappedSslp0.connect(this.user2).transfer(context.user3.address, lockAmount)
+            ).to.be.revertedWith("AUTH_FAILED");
+        });
+
+
+        it("transfer from for sslp token", async function () {
+            const lockAmount = ether('0.4');
+            await prepareUserForJoin(this.user1, ether('1'));
+
+            await context.wrappedSslp0.connect(this.user1).deposit(context.user1.address, lockAmount);
+
+            // user cannot transfer tokens from another
+            await expect(
+                context.wrappedSslp0.connect(this.user2).transferFrom(context.user1.address, context.user3.address, lockAmount)
+            ).to.be.revertedWith("AUTH_FAILED");
+
+            // even if they are approved
+            await this.usdp.connect(this.user1).approve(this.user2.address, lockAmount);
+            await expect(
+                context.wrappedSslp0.connect(this.user2).transferFrom(context.user1.address, context.user3.address, lockAmount)
+            ).to.be.revertedWith("AUTH_FAILED");
+
+            // transfer allowance for vault tested in liquidation cases
+        });
     });
 
     describe("join/exit cases via cdp manager", function() {
@@ -594,9 +633,8 @@ describe("WrappedShibaSwapLpFactory", function () {
             const lockAmount = ether('0.4');
             const usdpAmount = ether('0.2');
 
-            async function lockerClaimableReward(fromLocker = 0, toLocker = 0) {
-                let [claimableReward] = await context.wrappedSslp0.connect(context.user3).getClaimableRewardAmountFromBoneLockers(fromLocker, toLocker); // everyone can view info
-                return claimableReward;
+            async function lockerClaimableReward(user, fromLocker = 0, toLocker = 0) {
+                return await context.wrappedSslp0.connect(context.user3).getClaimableRewardAmountFromBoneLockers(user.address, fromLocker, toLocker); // everyone can view info
             }
 
             await this.topDog.setLockingPeriod(3600, 3600); // topdog calls bonelocker inside
@@ -608,16 +646,38 @@ describe("WrappedShibaSwapLpFactory", function () {
             const {blockNumber: block1} = await wrapAndJoin(this.user1, lockAmount, usdpAmount);
             await mineBlocks(3)
             const {blockNumber: block2} = await wrapAndJoin(this.user2, lockAmount, usdpAmount); // sent the first reward to pool + locked the first reward in locker
-            expect(await lockerClaimableReward()).to.be.equal(ether('0'));
+            expect(await lockerClaimableReward(this.user1)).to.be.equal(ether('0'));
+            expect(await lockerClaimableReward(this.user2)).to.be.equal(ether('0'));
 
             await network.provider.send("evm_increaseTime", [3601]);
             await network.provider.send("evm_mine");
-            expect(await lockerClaimableReward()).to.be.equal(lockedBonesReward(block1, block2));
+            expect(await lockerClaimableReward(this.user1)).to.be.equal(lockedBonesReward(block1, block2).div(2));
+            expect(await lockerClaimableReward(this.user2)).to.be.equal(lockedBonesReward(block1, block2).div(2));
+
+            const block2_1 = (await ethers.provider.getBlock("latest")).number;
+            let user1PendingReward = directBonesReward(block1, block2)
+                .add(directBonesReward(block2, block2_1).div(2));
+            let user2PendingReward = directBonesReward(block2, block2_1).div(2);
+            expect(await pendingReward(this.user1)).to.be.equal(user1PendingReward);
+            expect(await pendingReward(this.user2)).to.be.equal(user2PendingReward);
 
             expect(await bonesBalance(this.wrappedSslp0)).to.be.equal(directBonesReward(block1, block2)); // on pool only direct reward
             await lockerClaimReward()
             expect(await bonesBalance(this.wrappedSslp0)).to.be.equal(fullBonesReward(block1, block2)); // on pool all reward
-            expect(await lockerClaimableReward()).to.be.equal(ether('0')); // nothing to claim
+            // todo claimable for user
+            expect(await lockerClaimableReward(this.user1)).to.be.equal(ether('0')); // nothing to claim
+            expect(await lockerClaimableReward(this.user2)).to.be.equal(ether('0')); // nothing to claim
+
+            const block2_2 = (await ethers.provider.getBlock("latest")).number;
+            user1PendingReward = user1PendingReward
+                .add(directBonesReward(block2_1, block2_2).div(2))
+                .add(lockedBonesReward(block1, block2).div(2)); // claimed reward reflects in pending reward
+            user2PendingReward = user2PendingReward
+                .add(directBonesReward(block2_1, block2_2).div(2))
+                .add(lockedBonesReward(block1, block2).div(2)); // claimed reward reflects in pending reward
+
+            expect(await pendingReward(this.user1)).to.be.equal(user1PendingReward);
+            expect(await pendingReward(this.user2)).to.be.equal(user2PendingReward);
 
             ////////////////////////
             const {blockNumber: block3} = await unwrapAndExit(this.user1, lockAmount, usdpAmount); // sent the second reward to pool + locked the second reward in locker
@@ -625,16 +685,19 @@ describe("WrappedShibaSwapLpFactory", function () {
                 .add(directBonesReward(block2, block3).div(2))
                 .add(lockedBonesReward(block1, block2).div(2)) // locked reward distributed between 2 and 3, so divided between 2 users
             expect(await bonesBalance(this.user1)).to.be.equal(reward);
-            expect(await lockerClaimableReward()).to.be.equal(ether('0'));
+            expect(await lockerClaimableReward(this.user1)).to.be.equal(ether('0'));
+            expect(await lockerClaimableReward(this.user2)).to.be.equal(ether('0'));
 
             await network.provider.send("evm_increaseTime", [3601]);
             await network.provider.send("evm_mine");
-            expect(await lockerClaimableReward()).to.be.equal(lockedBonesReward(block2, block3));
+            expect(await lockerClaimableReward(this.user1)).to.be.equal(ether('0'));
+            expect(await lockerClaimableReward(this.user2)).to.be.equal(lockedBonesReward(block2, block3));
 
             let currentPoolReward = await bonesBalance(this.wrappedSslp0);
             await lockerClaimReward()
             expect(await bonesBalance(this.wrappedSslp0)).to.be.equal(currentPoolReward.add(lockedBonesReward(block2, block3)));
-            expect(await lockerClaimableReward()).to.be.equal(ether('0'));
+            expect(await lockerClaimableReward(this.user1)).to.be.equal(ether('0'));
+            expect(await lockerClaimableReward(this.user2)).to.be.equal(ether('0'));
 
             //////////////////////
             const {blockNumber: block4} = await unwrapAndExit(this.user2, lockAmount, usdpAmount); // sent the 3rd reward to pool + locked the 3rd reward in locker
@@ -643,16 +706,19 @@ describe("WrappedShibaSwapLpFactory", function () {
                 .add(directBonesReward(block3, block4))
                 .add(lockedBonesReward(block2, block3)) // locked reward distributed only to user 2 since it claimed after exit of the first user
             expect(await bonesBalance(this.user2)).to.be.equal(reward);
-            expect(await lockerClaimableReward()).to.be.equal(ether('0'));
+            expect(await lockerClaimableReward(this.user1)).to.be.equal(ether('0'));
+            expect(await lockerClaimableReward(this.user2)).to.be.equal(ether('0'));
 
             await network.provider.send("evm_increaseTime", [3601]);
             await network.provider.send("evm_mine");
-            expect(await lockerClaimableReward()).to.be.equal(lockedBonesReward(block3, block4));
+            expect(await lockerClaimableReward(this.user1)).to.be.equal(ether('0'));
+            expect(await lockerClaimableReward(this.user2)).to.be.equal(ether('0'));
 
             expect(await bonesBalance(this.wrappedSslp0)).to.be.equal(ether('0')); // everything was withdrawn
             await lockerClaimReward()
             expect(await bonesBalance(this.wrappedSslp0)).to.be.equal(lockedBonesReward(block3, block4)); // bones on pool, the first deposited user will get it
-            expect(await lockerClaimableReward()).to.be.equal(ether('0'));
+            expect(await lockerClaimableReward(this.user1)).to.be.equal(ether('0'));
+            expect(await lockerClaimableReward(this.user2)).to.be.equal(ether('0'));
 
             ///////////////////
             let remainder = lockedBonesReward(block3, block4);
@@ -665,8 +731,8 @@ describe("WrappedShibaSwapLpFactory", function () {
             const lockAmount = ether('0.02');
             const usdpAmount = ether('0.01');
 
-            async function lockerClaimableReward(fromLocker = 0, toLocker = 0) {
-                return await context.wrappedSslp0.connect(context.user3).getClaimableRewardAmountFromBoneLockers(fromLocker, toLocker); // everyone can view info
+            async function lockerClaimableReward(user, fromLocker = 0, toLocker = 0) {
+                return await context.wrappedSslp0.connect(context.user3).getClaimableRewardAmountFromBoneLockers(user.address, fromLocker, toLocker); // everyone can view info
             }
 
             async function getBoneLockerRewardsCount(fromLocker = 0, toLocker = 0) {
@@ -706,10 +772,7 @@ describe("WrappedShibaSwapLpFactory", function () {
 
             const {blockNumber: block8} = await wrapAndJoin(this.user1, lockAmount, usdpAmount); // locked the first reward in locker3
 
-            let claimableReward = await lockerClaimableReward(0, 2);
-            expect(claimableReward[0]).to.be.equal(ether('0'));
-            expect(claimableReward[1]).to.be.equal(ether('0'));
-            expect(claimableReward[2]).to.be.equal(ether('0'));
+            expect(await lockerClaimableReward(this.user1, 0, 2)).to.be.equal(ether('0'));
 
             const expectedLocker1Amount = lockedBonesReward(block1, block2)
                 .add(lockedBonesReward(block2, block3))
@@ -721,14 +784,12 @@ describe("WrappedShibaSwapLpFactory", function () {
 
             await network.provider.send("evm_increaseTime", [4000]);
             await network.provider.send("evm_mine");
-            claimableReward = await lockerClaimableReward(0, 2);
-            expect(claimableReward[0]).to.be.closeTo(expectedLocker1Amount, EPSILON);
-            expect(claimableReward[1]).to.be.equal(ether('0'));
-            expect(claimableReward[2]).to.be.equal(ether('0'));
-            claimableReward = await lockerClaimableReward(0, 0);
-            expect(claimableReward[0]).to.be.closeTo(expectedLocker1Amount, EPSILON);
-            claimableReward = await lockerClaimableReward(2, 2);
-            expect(claimableReward[0]).to.be.equal(ether('0'));
+            let claimableReward = await lockerClaimableReward(this.user1, 0, 2);
+            expect(claimableReward).to.be.closeTo(expectedLocker1Amount, EPSILON);
+            claimableReward = await lockerClaimableReward(this.user1, 0, 0);
+            expect(claimableReward).to.be.closeTo(expectedLocker1Amount, EPSILON);
+            claimableReward = await lockerClaimableReward(this.user1, 2, 2);
+            expect(claimableReward).to.be.equal(ether('0'));
             let claimableRewardCounts = await getBoneLockerRewardsCount(0, 2);
             expect(claimableRewardCounts[0]).to.be.equal(3);
             expect(claimableRewardCounts[1]).to.be.equal(0);
@@ -736,14 +797,12 @@ describe("WrappedShibaSwapLpFactory", function () {
 
             await network.provider.send("evm_increaseTime", [4000]);
             await network.provider.send("evm_mine");
-            claimableReward = await lockerClaimableReward(0, 2);
-            expect(claimableReward[0]).to.be.closeTo(expectedLocker1Amount, EPSILON);
-            expect(claimableReward[1]).to.be.closeTo(expectedLocker2Amount, EPSILON);
-            expect(claimableReward[2]).to.be.equal(ether('0'));
-            claimableReward = await lockerClaimableReward(1, 1);
-            expect(claimableReward[0]).to.be.closeTo(expectedLocker2Amount, EPSILON);
-            claimableReward = await lockerClaimableReward(2, 2);
-            expect(claimableReward[0]).to.be.equal(ether('0'));
+            claimableReward = await lockerClaimableReward(this.user1, 0, 2);
+            expect(claimableReward).to.be.closeTo(expectedLocker1Amount.add(expectedLocker2Amount), EPSILON);
+            claimableReward = await lockerClaimableReward(this.user1, 1, 1);
+            expect(claimableReward).to.be.closeTo(expectedLocker2Amount, EPSILON);
+            claimableReward = await lockerClaimableReward(this.user1, 2, 2);
+            expect(claimableReward).to.be.equal(ether('0'));
             claimableRewardCounts = await getBoneLockerRewardsCount(0, 2);
             expect(claimableRewardCounts[0]).to.be.equal(3);
             expect(claimableRewardCounts[1]).to.be.equal(3);
@@ -751,14 +810,12 @@ describe("WrappedShibaSwapLpFactory", function () {
 
             await network.provider.send("evm_increaseTime", [4000]);
             await network.provider.send("evm_mine");
-            claimableReward = await lockerClaimableReward(0, 2);
-            expect(claimableReward[0]).to.be.closeTo(expectedLocker1Amount, EPSILON);
-            expect(claimableReward[1]).to.be.closeTo(expectedLocker2Amount, EPSILON);
-            expect(claimableReward[2]).to.be.closeTo(expectedLocker3Amount, EPSILON);
-            claimableReward = await lockerClaimableReward(1, 1);
-            expect(claimableReward[0]).to.be.closeTo(expectedLocker2Amount, EPSILON);
-            claimableReward = await lockerClaimableReward(2, 2);
-            expect(claimableReward[0]).to.be.closeTo(expectedLocker3Amount, EPSILON);
+            claimableReward = await lockerClaimableReward(this.user1, 0, 2);
+            expect(claimableReward).to.be.closeTo(expectedLocker1Amount.add(expectedLocker2Amount).add(expectedLocker3Amount), EPSILON);
+            claimableReward = await lockerClaimableReward(this.user1, 1, 1);
+            expect(claimableReward).to.be.closeTo(expectedLocker2Amount, EPSILON);
+            claimableReward = await lockerClaimableReward(this.user1, 2, 2);
+            expect(claimableReward).to.be.closeTo(expectedLocker3Amount, EPSILON);
             claimableRewardCounts = await getBoneLockerRewardsCount(0, 2);
             expect(claimableRewardCounts[0]).to.be.equal(3);
             expect(claimableRewardCounts[1]).to.be.equal(3);
@@ -767,10 +824,8 @@ describe("WrappedShibaSwapLpFactory", function () {
             let currentBones = await bonesBalance(this.wrappedSslp0)
             await lockerClaimReward(0, 0, 1);
             expect(await bonesBalance(this.wrappedSslp0)).to.be.equal(currentBones.add(lockedBonesReward(block1, block2)))
-            claimableReward = await lockerClaimableReward(0, 2);
-            expect(claimableReward[0]).to.be.closeTo(expectedLocker1Amount.sub(lockedBonesReward(block1, block2)), EPSILON);
-            expect(claimableReward[1]).to.be.closeTo(expectedLocker2Amount, EPSILON);
-            expect(claimableReward[2]).to.be.closeTo(expectedLocker3Amount, EPSILON);
+            claimableReward = await lockerClaimableReward(this.user1, 0, 2);
+            expect(claimableReward).to.be.closeTo(expectedLocker1Amount.add(expectedLocker2Amount).add(expectedLocker3Amount).sub(lockedBonesReward(block1, block2)), EPSILON);
             claimableRewardCounts = await getBoneLockerRewardsCount(0, 2);
             expect(claimableRewardCounts[0]).to.be.equal(2);
             expect(claimableRewardCounts[1]).to.be.equal(3);
@@ -787,10 +842,8 @@ describe("WrappedShibaSwapLpFactory", function () {
                     .add(lockedBonesReward(block7, block8)),
                 EPSILON
             )
-            claimableReward = await lockerClaimableReward(0, 2);
-            expect(claimableReward[0]).to.be.equal(ether('0'));
-            expect(claimableReward[1]).to.be.closeTo(lockedBonesReward(block6, block7), EPSILON);
-            expect(claimableReward[2]).to.be.equal(ether('0'));
+            claimableReward = await lockerClaimableReward(this.user1, 0, 2);
+            expect(claimableReward).to.be.closeTo(lockedBonesReward(block6, block7), EPSILON);
             claimableRewardCounts = await getBoneLockerRewardsCount(0, 2);
             expect(claimableRewardCounts[0]).to.be.equal(0);
             expect(claimableRewardCounts[1]).to.be.equal(1);
@@ -803,10 +856,8 @@ describe("WrappedShibaSwapLpFactory", function () {
                     .add(lockedBonesReward(block6, block7)),
                 EPSILON
             )
-            claimableReward = await lockerClaimableReward(0, 2);
-            expect(claimableReward[0]).to.be.equal(ether('0'));
-            expect(claimableReward[1]).to.be.equal(ether('0'));
-            expect(claimableReward[2]).to.be.equal(ether('0'));
+            claimableReward = await lockerClaimableReward(this.user1, 0, 2);
+            expect(claimableReward).to.be.equal(ether('0'));
             claimableRewardCounts = await getBoneLockerRewardsCount(0, 2);
             expect(claimableRewardCounts[0]).to.be.equal(0);
             expect(claimableRewardCounts[1]).to.be.equal(0);
