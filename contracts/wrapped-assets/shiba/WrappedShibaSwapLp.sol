@@ -30,10 +30,6 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     uint256 public immutable topDogPoolId;
     IERC20 public immutable boneToken;
 
-    mapping(IBoneLocker => bool) public knownBoneLockers;
-    IBoneLocker[] public knownBoneLockersArr;
-
-
     uint256 public lastKnownBonesBalance;
     uint256 public accBonePerShare; // Accumulated BONEs per share, times MULTIPLIER. See below.
 
@@ -228,23 +224,18 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
      * @notice Calculates approximate share of user in claimable bones from BoneLockers for this pool.
      * @notice Not all this reward could be claimed at one call of `claimRewardFromBoneLockers` bcs of gas
      * @param _userAddr user address
-     * @param _firstBoneLockerIndex use 0 to calculate all rewards
-     * @param _lastBoneLockerIndex use knownBoneLockersArrLength to calculate all rewards
+     * @param _boneLockers array of bone lockers. Not expected that TopDog.boneLocker would be changes, but still
      */
-    function getClaimableRewardAmountFromBoneLockers(address _userAddr, uint256 _firstBoneLockerIndex, uint256 _lastBoneLockerIndex)
-    public view returns (uint256)
+    function getClaimableRewardAmountFromBoneLockers(address _userAddr, IBoneLocker[] memory _boneLockers) public view returns (uint256)
     {
-        require(_firstBoneLockerIndex <= _lastBoneLockerIndex, "Unit Protocol Wrapped Assets: INVALID_BOUNDS");
-        require(_lastBoneLockerIndex < knownBoneLockersArr.length, "Unit Protocol Wrapped Assets: INVALID_RIGHT_BOUND");
-
         uint256 userBalance = totalBalanceOf(_userAddr);
         if (userBalance == 0) {
             return 0;
         }
 
         uint256 poolReward;
-        for (uint256 i = _firstBoneLockerIndex; i <= _lastBoneLockerIndex; ++i) {
-            poolReward = poolReward.add(knownBoneLockersArr[i].getClaimableAmount(address(this)));
+        for (uint256 i = 0; i < _boneLockers.length; ++i) {
+            poolReward = poolReward.add(_boneLockers[i].getClaimableAmount(address(this)));
         }
 
         return poolReward.mul(userBalance).div(totalSupply());
@@ -253,39 +244,27 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     /**
      * @notice Claim bones from BoneLockers FOR THIS POOL, not for user. User will get share from this amount
      * @notice Since it could be a lot of pending rewards items parameters are used limit tx size
-     * @param _firstBoneLockerIndex use 0 to claim rewards from all BoneLockers
-     * @param _lastBoneLockerIndex use knownBoneLockersArrLength to claim rewards from all BoneLockers
+     * @param _boneLockers array of bone lockers. Not expected that TopDog.boneLocker would be changes, but still
      * @param _maxBoneLockerRewardsAtOneClaim max amount of rewards items to claim from each BoneLocker, see getBoneLockerRewardsCount
      */
-    function claimRewardFromBoneLockers(uint256 _firstBoneLockerIndex, uint256 _lastBoneLockerIndex, uint256 _maxBoneLockerRewardsAtOneClaim) public nonReentrant {
-        require(_firstBoneLockerIndex <= _lastBoneLockerIndex, "Unit Protocol Wrapped Assets: INVALID_BOUNDS");
-        require(_lastBoneLockerIndex < knownBoneLockersArr.length, "Unit Protocol Wrapped Assets: INVALID_RIGHT_BOUND");
-
-        for (uint256 i = _firstBoneLockerIndex; i <= _lastBoneLockerIndex; ++i) {
-            (uint256 left, uint256 right) = knownBoneLockersArr[i].getLeftRightCounters(address(this));
+    function claimRewardFromBoneLockers(IBoneLocker[] memory _boneLockers, uint256 _maxBoneLockerRewardsAtOneClaim) public nonReentrant {
+        for (uint256 i = 0; i < _boneLockers.length; ++i) {
+            (uint256 left, uint256 right) = _boneLockers[i].getLeftRightCounters(address(this));
             if (right > left) {
                 if (right - left > _maxBoneLockerRewardsAtOneClaim) {
                     right = left + _maxBoneLockerRewardsAtOneClaim;
                 }
-                knownBoneLockersArr[i].claimAll(right);
+                _boneLockers[i].claimAll(right);
             }
         }
     }
 
-    function knownBoneLockersArrLength() public view returns (uint256) {
-        return knownBoneLockersArr.length;
-    }
-
-    function getBoneLockerRewardsCount(uint256 _firstBoneLockerIndex, uint256 _lastBoneLockerIndex)
-    public view returns (uint256[] memory rewards)
+    function getBoneLockerRewardsCount(IBoneLocker[] memory _boneLockers) public view returns (uint256[] memory rewards)
     {
-        require(_firstBoneLockerIndex <= _lastBoneLockerIndex, "Unit Protocol Wrapped Assets: INVALID_BOUNDS");
-        require(_lastBoneLockerIndex < knownBoneLockersArr.length, "Unit Protocol Wrapped Assets: INVALID_RIGHT_BOUND");
+        rewards = new uint256[](_boneLockers.length);
 
-        rewards = new uint256[](_lastBoneLockerIndex - _firstBoneLockerIndex + 1);
-
-        for (uint256 locker_i = _firstBoneLockerIndex; locker_i <= _lastBoneLockerIndex; ++locker_i) {
-            IBoneLocker locker = knownBoneLockersArr[locker_i];
+        for (uint256 locker_i = 0; locker_i < _boneLockers.length; ++locker_i) {
+            IBoneLocker locker = _boneLockers[locker_i];
             (uint256 left, uint256 right) = locker.getLeftRightCounters(address(this));
             uint i;
             for (i = left; i < right; i++) {
@@ -295,7 +274,7 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
                 }
             }
 
-            rewards[locker_i - _firstBoneLockerIndex] = i - left;
+            rewards[locker_i] = i - left;
         }
     }
 
@@ -316,25 +295,14 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
             return;
         }
 
-        _claimBones();
+        // getting current reward (no separate methods)
+        topDog.deposit(topDogPoolId, 0);
 
         uint256 currentBonesBalance = boneToken.balanceOf(address(this));
         uint256 addedBones = currentBonesBalance.sub(lastKnownBonesBalance);
         lastKnownBonesBalance = currentBonesBalance;
 
         accBonePerShare = accBonePerShare.add(addedBones.mul(MULTIPLIER).div(lpDeposited));
-    }
-
-    function _claimBones() internal {
-        // getting current reward (no separate methods)
-        topDog.deposit(topDogPoolId, 0);
-
-        // since bone locker could be replaced we're store all of them to claim all rewards
-        IBoneLocker currentBoneLocker = topDog.boneLocker();
-        if (!knownBoneLockers[currentBoneLocker]) {
-            knownBoneLockers[currentBoneLocker] = true;
-            knownBoneLockersArr.push(currentBoneLocker);
-        }
     }
 
     function _sendPendingRewardInternal(address _userAddr, uint256 _userAmount) internal {
