@@ -1,8 +1,7 @@
 const {ethers} = require("hardhat");
 
 async function attachContract(contract, address) {
-    const ContractFactory = await ethers.getContractFactory(contract);
-    return ContractFactory.attach(address);
+    return ethers.getContractAt(contract, address)
 }
 
 async function deployContract(contract, ...args) {

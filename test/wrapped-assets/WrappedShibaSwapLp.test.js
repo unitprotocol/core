@@ -1,9 +1,12 @@
 const {expect} = require("chai");
 const {ethers} = require("hardhat");
-const {prepareWrappedSSLP} = require("../helpers/deploy");
+const {prepareWrappedSSLP, CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN,
+    CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN
+} = require("../helpers/deploy");
 const {directBonesReward, lockedBonesReward, fullBonesReward} = require("./helpers/TopDogLogic");
 const {deployContract} = require("../helpers/ethersUtils");
 const {PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION} = require("../../lib/constants");
+const {cdpManagerWrapper} = require("../helpers/cdpManagerWrappers");
 
 ether = ethers.utils.parseUnits;
 
@@ -11,49 +14,20 @@ const EPSILON = ethers.BigNumber.from('20000000');
 
 let context;
 
-async function prepareUserForJoin(user, amount) {
-    await context.sslpToken0.connect(user).approve(context.wrappedSslp0.address, amount);
-    await context.wrappedSslp0.connect(user).approve(context.vault.address, amount);
-}
+const oracleCases = [
+    [CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN, 'cdp manager'],
+    [CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN, 'cdp manager keydonix'],
+]
 
-async function pendingReward(user) {
-    return await context.wrappedSslp0.pendingReward(user.address)
-}
+oracleCases.forEach(params =>
+describe(`WrappedShibaSwapLp with ${params[1]}`, function () {
 
-async function claimReward(user) {
-    return await context.wrappedSslp0.connect(user).claimReward(user.address)
-}
-
-async function wrapAndJoin(user, assetAmount, usdpAmount) {
-    return await context.cdpManager.connect(user).wrapAndJoin(context.wrappedSslp0.address, assetAmount, usdpAmount);
-}
-
-async function unwrapAndExit(user, assetAmount, usdpAmount) {
-    return await context.cdpManager.connect(user).unwrapAndExit(context.wrappedSslp0.address, assetAmount, usdpAmount);
-}
-
-async function bonesBalance(user) {
-    return await context.boneToken.balanceOf(user.address)
-}
-
-async function lockerClaimReward(lockers = [context.boneLocker1.address], maxRewardsAtOnce = 10) {
-    await context.wrappedSslp0.connect(context.user3).claimRewardFromBoneLockers(lockers, maxRewardsAtOnce); // everyone can claim
-}
-
-async function mineBlocks(count) {
-    for (let i = 0; i < count; ++i) {
-        await network.provider.send("evm_mine");
-    }
-}
-
-describe("WrappedShibaSwapLp", function () {
-
-    beforeEach(async function () { // todo keydonix case
+    beforeEach(async function () {
         context = this;
         await network.provider.send("evm_setAutomine", [true]);
 
         [this.deployer, this.user1, this.user2, this.user3, this.manager] = await ethers.getSigners();
-        await prepareWrappedSSLP(this)
+        await prepareWrappedSSLP(this, params[0]);
 
         // initials distribution of lptokens to users
         await this.sslpToken0.transfer(this.user1.address, ether('1'));
@@ -204,8 +178,8 @@ describe("WrappedShibaSwapLp", function () {
             expect(joinResult.blockNumber).to.be.equal(exitResult.blockNumber);
             expect(joinResult.blockNumber).not.to.be.equal(null);
 
-            expect(joinTx).to.emit(this.cdpManager, "Join").withArgs(this.wrappedSslp0.address, this.user1.address, lockAmount, usdpAmount);
-            expect(exitTx).to.emit(this.cdpManager, "Exit").withArgs(this.wrappedSslp0.address, this.user1.address, lockAmount, usdpAmount);
+            expect(joinTx).to.emit(cdpManagerWrapper.cdpManager(context), "Join").withArgs(this.wrappedSslp0.address, this.user1.address, lockAmount, usdpAmount);
+            expect(exitTx).to.emit(cdpManagerWrapper.cdpManager(context), "Exit").withArgs(this.wrappedSslp0.address, this.user1.address, lockAmount, usdpAmount);
 
             expect(await this.sslpToken0.balanceOf(this.user1.address)).to.be.equal(ether('1'), "returned all tokens to user");
             expect(await this.sslpToken0.balanceOf(this.topDog.address)).to.be.equal(0, "everything were withdrawn from TopDog");
@@ -246,7 +220,7 @@ describe("WrappedShibaSwapLp", function () {
             expect(await this.sslpToken0.balanceOf(this.user1.address)).to.be.equal(ether('0.6'), "sent tokens");
             expect(await this.usdp.balanceOf(this.user1.address)).to.be.equal(usdpAmount, "got usdp");
 
-            await context.cdpManager.connect(this.user1).unwrapAndExitTargetRepayment(context.wrappedSslp0.address, ether('0.2'), ether('0.1'));
+            await cdpManagerWrapper.unwrapAndExitTargetRepayment(context, this.user1, context.wrappedSslp0, ether('0.2'), ether('0.1'));
             expect(await this.sslpToken0.balanceOf(this.user1.address)).to.be.equal(ether('0.8'), "returned tokens to user");
             expect(await this.usdp.balanceOf(this.user1.address)).to.be.equal(ether('0.1'), "got usdp without fee");
         })
@@ -289,12 +263,12 @@ describe("WrappedShibaSwapLp", function () {
             await prepareUserForJoin(this.user1, ether('1'));
 
             await wrapAndJoin(this.user1, lockAmount, usdpAmount);
-            await context.cdpManager.connect(this.user1).exit(context.wrappedSslp0.address, lockAmount, usdpAmount);
+            await cdpManagerWrapper.exit(context, this.user1, context.wrappedSslp0, lockAmount, usdpAmount);
             expect(await this.sslpToken0.balanceOf(this.user1.address)).to.be.equal(ether('0.6'), "nothing returned in lp tokens");
             expect(await this.wrappedSslp0.balanceOf(this.user1.address)).to.be.equal(lockAmount, "but returned in new wrapped tokens");
 
             // rescue of tokens - rejoin and unwrapAndExit
-            await context.cdpManager.connect(this.user1).join(context.wrappedSslp0.address, lockAmount, usdpAmount);
+            await cdpManagerWrapper.join(context, this.user1, context.wrappedSslp0, lockAmount, usdpAmount);
             await unwrapAndExit(this.user1, lockAmount, usdpAmount);
             expect(await this.sslpToken0.balanceOf(this.user1.address)).to.be.equal(ether('1'), "everything returned in lp tokens");
             expect(await this.wrappedSslp0.balanceOf(this.user1.address)).to.be.equal(0, "zero wraped tokens");
@@ -307,7 +281,7 @@ describe("WrappedShibaSwapLp", function () {
             await prepareUserForJoin(this.user1, ether('1'));
 
             await wrapAndJoin(this.user1, lockAmount, usdpAmount);
-            await context.cdpManager.connect(this.user1).exit(context.wrappedSslp0.address, lockAmount, usdpAmount);
+            await cdpManagerWrapper.exit(context, this.user1, context.wrappedSslp0, lockAmount, usdpAmount);
             expect(await this.sslpToken0.balanceOf(this.user1.address)).to.be.equal(ether('0.6'), "nothing returned in lp tokens");
             expect(await this.wrappedSslp0.balanceOf(this.user1.address)).to.be.equal(lockAmount, "but returned in new wrapped tokens");
 
@@ -327,7 +301,7 @@ describe("WrappedShibaSwapLp", function () {
             expect(await this.sslpToken0.balanceOf(this.topDog.address)).to.be.equal(ether('0.4'), "top TopDog");
             expect(await this.wrappedSslp0.balanceOf(this.user1.address)).to.be.equal(ether('0.4'), "got wrapped lp tokens");
 
-            await context.cdpManager.connect(this.user1).join(context.wrappedSslp0.address, lockAmount, usdpAmount);
+            await cdpManagerWrapper.join(context, this.user1, context.wrappedSslp0, lockAmount, usdpAmount);
             expect(await this.wrappedSslp0.balanceOf(this.vault.address)).to.be.equal(ether('0.4'), "sent wrapped tokens to vault");
 
             await unwrapAndExit(this.user1, lockAmount, usdpAmount);
@@ -986,7 +960,7 @@ describe("WrappedShibaSwapLp", function () {
             await this.vaultManagerParameters.setLiquidationRatio(this.wrappedSslp0.address, ethers.BigNumber.from(10));
 
 
-            await this.cdpManager.triggerLiquidation(this.wrappedSslp0.address, this.user1.address);
+            await cdpManagerWrapper.triggerLiquidation(context, this.wrappedSslp0, this.user1);
 
             expect(await this.wrappedSslp0.balanceOf(this.vault.address)).to.be.equal(lockAmount, "wrapped tokens in vault");
             expect(await this.wrappedSslp0.totalBalanceOf(this.user1.address)).to.be.equal(lockAmount);
@@ -1027,7 +1001,7 @@ describe("WrappedShibaSwapLp", function () {
             await this.vaultManagerParameters.setInitialCollateralRatio(this.wrappedSslp0.address, ethers.BigNumber.from(9));
             await this.vaultManagerParameters.setLiquidationRatio(this.wrappedSslp0.address, ethers.BigNumber.from(10));
 
-            await this.cdpManager.triggerLiquidation(this.wrappedSslp0.address, this.user1.address);
+            await cdpManagerWrapper.triggerLiquidation(context, this.wrappedSslp0, this.user1);
 
             expect(await this.wrappedSslp0.balanceOf(this.vault.address)).to.be.equal(lockAmount, "wrapped tokens in vault");
             expect(await this.wrappedSslp0.totalBalanceOf(this.user1.address)).to.be.equal(lockAmount);
@@ -1052,4 +1026,40 @@ describe("WrappedShibaSwapLp", function () {
         })
     });
 
-});
+})
+);
+
+async function prepareUserForJoin(user, amount) {
+    await context.sslpToken0.connect(user).approve(context.wrappedSslp0.address, amount);
+    await context.wrappedSslp0.connect(user).approve(context.vault.address, amount);
+}
+
+async function pendingReward(user) {
+    return await context.wrappedSslp0.pendingReward(user.address)
+}
+
+async function claimReward(user) {
+    return await context.wrappedSslp0.connect(user).claimReward(user.address)
+}
+
+async function wrapAndJoin(user, assetAmount, usdpAmount) {
+    return cdpManagerWrapper.wrapAndJoin(context, user, context.wrappedSslp0, assetAmount, usdpAmount);
+}
+
+async function unwrapAndExit(user, assetAmount, usdpAmount) {
+    return cdpManagerWrapper.unwrapAndExit(context, user, context.wrappedSslp0, assetAmount, usdpAmount);
+}
+
+async function bonesBalance(user) {
+    return await context.boneToken.balanceOf(user.address)
+}
+
+async function lockerClaimReward(lockers = [context.boneLocker1.address], maxRewardsAtOnce = 10) {
+    await context.wrappedSslp0.connect(context.user3).claimRewardFromBoneLockers(lockers, maxRewardsAtOnce); // everyone can claim
+}
+
+async function mineBlocks(count) {
+    for (let i = 0; i < count; ++i) {
+        await network.provider.send("evm_mine");
+    }
+}

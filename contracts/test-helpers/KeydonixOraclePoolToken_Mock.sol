@@ -39,9 +39,8 @@ contract KeydonixOraclePoolToken_Mock is ChainlinkedKeydonixOraclePoolTokenAbstr
             revert("Unit Protocol: NOT_REGISTERED_PAIR");
         }
 
-        uint lpSupply = pair.totalSupply();
-        uint totalValueInEth_q112 = amount.mul(ePool).mul(2).mul(Q112);
+        uint totalValueInEth_q112 = amount.mul(ePool).mul(2).mul(Q112).div(pair.totalSupply());
 
-        return uniswapOracleMainAsset.ethToUsd(totalValueInEth_q112).div(lpSupply);
+        return uniswapOracleMainAsset.ethToUsd(totalValueInEth_q112);
     }
 }
