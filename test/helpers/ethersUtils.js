@@ -6,7 +6,10 @@ async function attachContract(contract, address) {
 
 async function deployContract(contract, ...args) {
     const ContractFactory = await ethers.getContractFactory(contract);
-    return ContractFactory.deploy(...args);
+    const deployedContract = await ContractFactory.deploy(...args);
+    await deployedContract.deployed();
+
+    return deployedContract;
 }
 
 module.exports = {

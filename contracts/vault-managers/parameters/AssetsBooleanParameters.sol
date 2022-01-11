@@ -12,15 +12,15 @@ import "../../interfaces/vault-managers/parameters/IAssetsBooleanParameters.sol"
 /**
  * @title AssetsBooleanParameters
  **/
-contract AssetsBooleanParameters is Auth, IAssetsBooleanParameters {
+contract AssetsBooleanParameters is Auth2, IAssetsBooleanParameters {
 
     mapping(address => uint256) internal values;
 
-    constructor(address _vaultParameters, address[] memory _initialAssets, uint8[] memory _initialParams) Auth(_vaultParameters) {
+    constructor(address _vaultParameters, address[] memory _initialAssets, uint8[] memory _initialParams) Auth2(_vaultParameters) {
         require(_initialAssets.length == _initialParams.length, "Unit Protocol: ARGUMENTS_LENGTH_MISMATCH");
 
         for (uint i = 0; i < _initialAssets.length; i++) {
-            set(_initialAssets[i], _initialParams[i], true);
+            _set(_initialAssets[i], _initialParams[i], true);
         }
     }
 
@@ -44,6 +44,10 @@ contract AssetsBooleanParameters is Auth, IAssetsBooleanParameters {
      * @dev see ParametersConstants
      **/
     function set(address _asset, uint8 _param, bool _value) public override onlyManager {
+        _set(_asset, _param, _value);
+    }
+
+    function _set(address _asset, uint8 _param, bool _value) internal {
         require(_asset != address(0), "Unit Protocol: ZERO_ADDRESS");
 
         if (_value) {
