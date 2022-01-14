@@ -44,7 +44,7 @@
 | ------------- |:-------------:|:-------------:|:-------------:|:-------------:|
 | ChainlinkedKeydonixOracleMainAsset (Uniswap)      | 1 (3) | [0xBFE2e6eCEdFB9CDf0e9dA98AB116D57DdC82D078](https://etherscan.io/address/0xBFE2e6eCEdFB9CDf0e9dA98AB116D57DdC82D078#code)    | - | - |
 | ChainlinkedKeydonixOraclePoolToken      | 2 (4, 8) | [0x72A2e0D0A201B54DcFB668a46BE99494eFF6D2A8](https://etherscan.io/address/0x72A2e0D0A201B54DcFB668a46BE99494eFF6D2A8#code)      | - | - |
-| ChainlinkedOracleMainAsset | 5 (3, 7) | [0x54b21C140F5463e1fDa69B934da619eAaa61f1CA](https://etherscan.io/address/0x54b21C140F5463e1fDa69B934da619eAaa61f1CA#code)      | - | [0xEac49454A156AbFF249E2C1A2aEF4E4f192D8Cb9](https://ftmscan.com/address/0xEac49454A156AbFF249E2C1A2aEF4E4f192D8Cb9) |
+| ChainlinkedOracleMainAsset | 5 (3, 7) | [0x54b21C140F5463e1fDa69B934da619eAaa61f1CA](https://etherscan.io/address/0x54b21C140F5463e1fDa69B934da619eAaa61f1CA#code)      | [0x8F904b4d41630135fa020E8cE5Dd6DFD92028264](https://bscscan.com/address/0x8F904b4d41630135fa020E8cE5Dd6DFD92028264) | [0xEac49454A156AbFF249E2C1A2aEF4E4f192D8Cb9](https://ftmscan.com/address/0xEac49454A156AbFF249E2C1A2aEF4E4f192D8Cb9) |
 | BearingAssetOracle      | 9 | [0x190DB945Ae572Ae72E367b549b78C41E211864AB](https://etherscan.io/address/0x190DB945Ae572Ae72E367b549b78C41E211864AB#code)      | - | - |
 | ChainlinkedKeep3rV1OracleMainAsset | 7 | - | [0x7562FB711173095Bc2d8100C107e6Da639E0F4B0](https://bscscan.com/address/0x7562FB711173095Bc2d8100C107e6Da639E0F4B0#code)      | - |
 | CurveLPOracle      | 10 | [0x0E08d9e1DC22a400EbcA25E9a8f292910fa8fe08](https://etherscan.io/address/0x0E08d9e1DC22a400EbcA25E9a8f292910fa8fe08#code)      | - | - |
