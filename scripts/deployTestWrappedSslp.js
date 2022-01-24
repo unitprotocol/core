@@ -15,6 +15,7 @@ const MULTISIG_ADDR = '0xae37E8f9a3f960eE090706Fa4db41Ca2f2C56Cb8'
 const VAULT = '0xb1cFF81b9305166ff1EFc49A129ad2AfCd7BCf19'
 const USDP_ADDR = '0x1456688345527bE1f37E9e627DA0837D6f08C925'
 const VAULT_PARAMETERS = '0xB46F8CF42e504Efe8BEf895f848741daA55e9f1D'
+const CDP_VIEWER = '0x2cd49031ecb022cfA7c527Fd1AA5cE9FA187793D'
 const VAULT_MANAGER_PARAMS = '0x203153522B9EAef4aE17c6e99851EE7b2F7D312E'
 const ORACLE_REGISTRY = '0x75fBFe26B21fd3EA008af0C764949f8214150C8f'
 const CDP_REGISTRY = '0x1a5Ff58BC3246Eb233fEA20D32b79B5F01eC650c'
@@ -31,8 +32,10 @@ async function deploy() {
 
     await ethers.provider.send("hardhat_impersonateAccount", [MULTISIG_ADDR]);
     const multisig = await ethers.getSigner(MULTISIG_ADDR)
+    await ethers.provider.send("hardhat_setBalance", [MULTISIG_ADDR, '0x3635c9adc5dea00000' /* 1000Ether */]);
 
     const vaultParameters = await attachContract('VaultParameters', VAULT_PARAMETERS);
+    const cdpViewer = await attachContract('CDPViewer', CDP_VIEWER);
 
     //////// cdp manager ////////////////////////////////////////////
     const cdpManager = await deployContract(
@@ -176,6 +179,8 @@ async function deploy() {
     // console.log('claimable bones after 2 blocks: ', (await wrappedSslpUsdt.pendingReward(testWallet.address)).toString())
     // await wrappedSslpUsdt.claimReward(testWallet.address)
     // console.log("balance of bone sslp: ", (await bone.balanceOf(TEST_WALLET)).toString())
+
+    // console.log(await cdpViewer.getCollateralParameters(wrappedSslpUsdt.address, '0x0000000000000000000000000000000000000000'))
 }
 
 
