@@ -12,6 +12,7 @@ import "../interfaces/IVaultParameters.sol";
 import "../interfaces/vault-managers/parameters/IVaultManagerParameters.sol";
 import "../interfaces/vault-managers/parameters/IVaultManagerBorrowFeeParameters.sol";
 import "../interfaces/IOracleRegistry.sol";
+import "../interfaces/wrapped-assets/IWrappedAsset.sol";
 import "./IUniswapV2PairFull.sol";
 import "./ERC20Like.sol";
 
@@ -88,6 +89,13 @@ contract CDPViewer {
         address[2] lpUnderlyings;
         uint128 balance;
         uint128 totalSupply;
+        address uniswapV2Factory;
+
+        address underlyingToken;
+        uint256 underlyingTokenTotalSupply;
+        address underlyingTokenUniswapV2Factory;
+        address[2] underlyingTokenUnderlyings;
+        uint256 underlyingTokenBalance;
     }
 
 
@@ -148,10 +156,24 @@ contract CDPViewer {
             r.lpUnderlyings[0] = token0;
             r.lpUnderlyings[1] = IUniswapV2PairFull(asset).token1();
             r.totalSupply = uint128(IUniswapV2PairFull(asset).totalSupply());
+            r.uniswapV2Factory = IUniswapV2PairFull(asset).factory();
         } catch (bytes memory) { }
 
-        if (owner == address(0)) return r;
-        r.balance = uint128(ERC20Like(asset).balanceOf(owner));
+        if (owner != address(0)) {
+            r.balance = uint128(ERC20Like(asset).balanceOf(owner));
+        }
+
+        try IWrappedAsset(asset).getUnderlyingToken() returns(IERC20 underlyingToken) {
+            r.underlyingToken = address(underlyingToken);
+
+            TokenDetails memory underlyingTokenDetails = getTokenDetails(r.underlyingToken, owner);
+            r.underlyingTokenTotalSupply = underlyingTokenDetails.totalSupply;
+            r.underlyingTokenUniswapV2Factory = underlyingTokenDetails.uniswapV2Factory;
+            r.underlyingTokenUnderlyings[0] = underlyingTokenDetails.lpUnderlyings[0];
+            r.underlyingTokenUnderlyings[1] = underlyingTokenDetails.lpUnderlyings[1];
+            r.underlyingTokenBalance = underlyingTokenDetails.balance;
+        } catch (bytes memory) { }
+
     }
 
     /**

@@ -17,6 +17,7 @@ const USDP_ADDR = '0x1456688345527bE1f37E9e627DA0837D6f08C925'
 const VAULT_PARAMETERS = '0xB46F8CF42e504Efe8BEf895f848741daA55e9f1D'
 const CDP_VIEWER = '0x2cd49031ecb022cfA7c527Fd1AA5cE9FA187793D'
 const VAULT_MANAGER_PARAMS = '0x203153522B9EAef4aE17c6e99851EE7b2F7D312E'
+const VAULT_MANAGER_BORROW_FEE_PARAMS = "0xCbA7154bfBF898d9AB0cf0e259ABAB6CcbfB4894";
 const ORACLE_REGISTRY = '0x75fBFe26B21fd3EA008af0C764949f8214150C8f'
 const CDP_REGISTRY = '0x1a5Ff58BC3246Eb233fEA20D32b79B5F01eC650c'
 const WRAPPED_ORACLE = '0x220Ea780a484c18fd0Ab252014c58299759a1Fbd'
@@ -35,23 +36,12 @@ async function deploy() {
     await ethers.provider.send("hardhat_setBalance", [MULTISIG_ADDR, '0x3635c9adc5dea00000' /* 1000Ether */]);
 
     const vaultParameters = await attachContract('VaultParameters', VAULT_PARAMETERS);
-    const cdpViewer = await attachContract('CDPViewer', CDP_VIEWER);
+    const cdpViewer = await deployContract('CDPViewer', VAULT_MANAGER_PARAMS, ORACLE_REGISTRY, VAULT_MANAGER_BORROW_FEE_PARAMS);
+    console.log("cdpViewer: " + cdpViewer.address)
 
     //////// cdp manager ////////////////////////////////////////////
-    const cdpManager = await deployContract(
-        "CDPManager01",
-        "0x203153522B9EAef4aE17c6e99851EE7b2F7D312E",
-        "0x75fBFe26B21fd3EA008af0C764949f8214150C8f",
-        "0x1a5Ff58BC3246Eb233fEA20D32b79B5F01eC650c",
-        "0xCbA7154bfBF898d9AB0cf0e259ABAB6CcbfB4894"
-    );
-    const cdpManagerKeydonix = await deployContract(
-        "CDPManager01_Fallback",
-        "0x203153522B9EAef4aE17c6e99851EE7b2F7D312E",
-        "0x75fBFe26B21fd3EA008af0C764949f8214150C8f",
-        "0x1a5Ff58BC3246Eb233fEA20D32b79B5F01eC650c",
-        "0xCbA7154bfBF898d9AB0cf0e259ABAB6CcbfB4894"
-    );
+    const cdpManager = await deployContract("CDPManager01", VAULT_MANAGER_PARAMS, ORACLE_REGISTRY, CDP_REGISTRY, VAULT_MANAGER_BORROW_FEE_PARAMS);
+    const cdpManagerKeydonix = await deployContract("CDPManager01_Fallback", VAULT_MANAGER_PARAMS, ORACLE_REGISTRY, CDP_REGISTRY, VAULT_MANAGER_BORROW_FEE_PARAMS);
 
     await vaultParameters.connect(multisig).setVaultAccess(cdpManager.address, true);
     await vaultParameters.connect(multisig).setVaultAccess(cdpManagerKeydonix.address, true);
@@ -62,14 +52,8 @@ async function deploy() {
 
 
     //////// wrapped assets ////////////////////////////////////////////
-    const wrappedSslpUsdt = await deployContract(
-        'WrappedShibaSwapLp',
-        VAULT_PARAMETERS, TOP_DOG, 17
-    )
-    const wrappedSslpShib = await deployContract(
-        'WrappedShibaSwapLp',
-        VAULT_PARAMETERS, TOP_DOG, 0
-    )
+    const wrappedSslpUsdt = await deployContract('WrappedShibaSwapLp', VAULT_PARAMETERS, TOP_DOG, 17)
+    const wrappedSslpShib = await deployContract('WrappedShibaSwapLp', VAULT_PARAMETERS, TOP_DOG, 0)
     await wrappedSslpUsdt.connect(multisig).approveSslpToTopdog();
     await wrappedSslpShib.connect(multisig).approveSslpToTopdog();
 
@@ -180,7 +164,8 @@ async function deploy() {
     // await wrappedSslpUsdt.claimReward(testWallet.address)
     // console.log("balance of bone sslp: ", (await bone.balanceOf(TEST_WALLET)).toString())
 
-    // console.log(await cdpViewer.getCollateralParameters(wrappedSslpUsdt.address, '0x0000000000000000000000000000000000000000'))
+    // console.log(await cdpViewer.getCollateralParameters(wrappedSslpUsdt.address, TEST_WALLET))
+    // console.log(await cdpViewer.getTokenDetails(wrappedSslpUsdt.address, TEST_WALLET))
 }
 
 
