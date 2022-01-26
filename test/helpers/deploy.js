@@ -80,6 +80,9 @@ async function prepareCoreContracts(context, _oracle_case) {
 
 /**
  * @param _oracle_case - case for oracle preparation, see CASE_* constants
+ * 
+ * context:
+ * - bonesFeeReceiver
  */
 async function prepareWrappedSSLP(context, _oracle_case) {
     await prepareCoreContracts(context); // oracles will be prepared below
@@ -116,10 +119,12 @@ async function prepareWrappedSSLP(context, _oracle_case) {
     const deployedAddresses0 = await deployWrappedSSLP(context, 0);
     context.wrappedSslp0 = await attachContract("WrappedShibaSwapLp", deployedAddresses0.WrappedShibaSwapLp)
     await context.wrappedSslp0.approveSslpToTopdog();
+    await context.wrappedSslp0.setFee(0); // to simplify most tests. Fee must be tested separately
 
     const deployedAddresses1 = await deployWrappedSSLP(context, 1);
     context.wrappedSslp1 = await attachContract("WrappedShibaSwapLp", deployedAddresses1.WrappedShibaSwapLp)
     await context.wrappedSslp1.approveSslpToTopdog();
+    await context.wrappedSslp1.setFee(0); // to simplify most tests. Fee must be tested separately
 
     await prepareOracle(context, _oracle_case, {
         wrappedAsset: context.wrappedSslp0,
@@ -162,6 +167,7 @@ async function deployWrappedSSLP(context, topDogPoolId) {
         vaultParameters: context.vaultParameters.address,
         topDog: context.topDog.address,
         topDogPoolId: topDogPoolId,
+        feeReceiver: context.bonesFeeReceiver.address,
     });
     const hre = await loadHRE();
     return await runDeployment(deployment, {hre, deployer: context.deployer.address});

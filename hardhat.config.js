@@ -43,6 +43,7 @@ task('deployWrappedSslp', 'Deploy wrapped sslp')
     .addParam('manager', 'Address of a manager account/contract')
     .addParam('vaultParameters', 'Address of VaultParameters')
     .addParam('topDogPoolId', 'id of pool in TopDog (each pool is for concrete sslp)', 0, types.int)
+    .addParam('feeReceiver', 'Address of fee receiver')
     .addOptionalParam('topDog', 'Address of topDog', '0x94235659cf8b805b2c658f9ea2d6d6ddbb17c8d7', types.string)
     .addOptionalParam('noVerify', 'Skip contracts verification on *scan block explorer', false, types.boolean)
     .setAction(async (taskArgs) => {
@@ -55,6 +56,7 @@ task('deployWrappedSslp', 'Deploy wrapped sslp')
             vaultParameters: taskArgs.vaultParameters,
             topDog: taskArgs.topDog,
             topDogPoolId: taskArgs.topDogPoolId,
+            feeReceiver: taskArgs.feeReceiver,
         });
 
         const deployed = await runDeployment(deployment, {deployer, verify: !taskArgs.noVerify});

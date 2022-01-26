@@ -13,6 +13,9 @@ interface IWrappedAsset is IERC20 /* IERC20WithOptional */ {
     event Withdraw(address indexed user, uint256 amount);
     event PositionMoved(address indexed userFrom, address indexed userTo, uint256 amount);
 
+    event FeeChanged(uint256 newFeePercent);
+    event FeeReceiverChanged(address newFeeReceiver);
+
     /**
      * @notice Get underlying token
      */

@@ -33,6 +33,10 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     uint256 public lastKnownBonesBalance;
     uint256 public accBonePerShare; // Accumulated BONEs per share, times MULTIPLIER. See below.
 
+    uint256 public feePercent = 10;
+    uint256 public constant FEE_DENOMINATOR = 100;
+    address public feeReceiver;
+
     // Reward debt. See explanation below.
     // similar to TopDog contract https://etherscan.io/address/0x94235659cf8b805b2c658f9ea2d6d6ddbb17c8d7
     // but we update accBonePerShare every transaction
@@ -59,7 +63,8 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     constructor(
         address _vaultParameters,
         ITopDog _topDog,
-        uint256 _topDogPoolId
+        uint256 _topDogPoolId,
+        address _feeReceiver
     )
     Auth2(_vaultParameters)
     ERC20(
@@ -89,6 +94,8 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         vault = IVault(VaultParameters(_vaultParameters).vault());
 
         _setupDecimals(IERC20WithOptional(getSsLpToken(_topDog, _topDogPoolId)).decimals());
+
+        feeReceiver = _feeReceiver;
     }
 
     /**
@@ -97,6 +104,19 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
      */
     function approveSslpToTopdog() public onlyManager {
         getUnderlyingToken().approve(address(topDog), uint256(-1));
+    }
+
+    function setFeeReceiver(address _feeReceiver) public onlyManager {
+        feeReceiver = _feeReceiver;
+
+        emit FeeReceiverChanged(_feeReceiver);
+    }
+
+    function setFee(uint256 _feePercent) public onlyManager {
+        require(_feePercent <= 50, "Unit Protocol Wrapped Assets: INVALID_FEE");
+        feePercent = _feePercent;
+
+        emit FeeChanged(_feePercent);
     }
 
     /**
@@ -266,7 +286,7 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         for (uint256 locker_i = 0; locker_i < _boneLockers.length; ++locker_i) {
             IBoneLocker locker = _boneLockers[locker_i];
             (uint256 left, uint256 right) = locker.getLeftRightCounters(address(this));
-            uint i;
+            uint256 i;
             for (i = left; i < right; i++) {
                 (, uint256 ts,) = locker.lockInfoByUser(address(this), i);
                 if (block.timestamp < ts.add(locker.lockingPeriod())) {
@@ -300,8 +320,16 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
 
         uint256 currentBonesBalance = boneToken.balanceOf(address(this));
         uint256 addedBones = currentBonesBalance.sub(lastKnownBonesBalance);
-        lastKnownBonesBalance = currentBonesBalance;
 
+        if (feePercent > 0 && feeReceiver != address(0)) {
+            uint256 fee = addedBones.mul(feePercent).div(FEE_DENOMINATOR);
+            TransferHelper.safeTransfer(address(boneToken), feeReceiver, fee);
+
+            addedBones = addedBones.sub(fee);
+            currentBonesBalance = currentBonesBalance.sub(fee);
+        }
+
+        lastKnownBonesBalance = currentBonesBalance;
         accBonePerShare = accBonePerShare.add(addedBones.mul(MULTIPLIER).div(lpDeposited));
     }
 
@@ -326,9 +354,9 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     function _safeBoneTransfer(address _to, uint256 _amount) internal {
         uint256 boneBal = boneToken.balanceOf(address(this));
         if (_amount > boneBal) {
-            boneToken.transfer(_to, boneBal);
+            TransferHelper.safeTransfer(address(boneToken), _to, boneBal);
         } else {
-            boneToken.transfer(_to, _amount);
+            TransferHelper.safeTransfer(address(boneToken), _to, _amount);
         }
     }
 

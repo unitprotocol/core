@@ -26,6 +26,7 @@ const BONE_ADDR = '0x9813037ee2218799597d83d4a5b6f3b6778218d9'
 const USDT_SSLP = '0x703b120F15Ab77B986a24c6f9262364d02f9432f'
 const SHIB_SSLP = '0xCF6dAAB95c476106ECa715D48DE4b13287ffDEAa'
 const TEST_WALLET = '0x8442e4fcbba519b4f4c1ea1fce57a5379c55906c'
+const BONES_FEE = '0x0000000000000000000000000000000000000003'
 
 async function deploy() {
     await ethers.provider.send("hardhat_impersonateAccount", [TEST_WALLET]);
@@ -52,8 +53,8 @@ async function deploy() {
 
 
     //////// wrapped assets ////////////////////////////////////////////
-    const wrappedSslpUsdt = await deployContract('WrappedShibaSwapLp', VAULT_PARAMETERS, TOP_DOG, 17)
-    const wrappedSslpShib = await deployContract('WrappedShibaSwapLp', VAULT_PARAMETERS, TOP_DOG, 0)
+    const wrappedSslpUsdt = await deployContract('WrappedShibaSwapLp', VAULT_PARAMETERS, TOP_DOG, 17, BONES_FEE)
+    const wrappedSslpShib = await deployContract('WrappedShibaSwapLp', VAULT_PARAMETERS, TOP_DOG, 0,  BONES_FEE)
     await wrappedSslpUsdt.connect(multisig).approveSslpToTopdog();
     await wrappedSslpShib.connect(multisig).approveSslpToTopdog();
 
@@ -149,7 +150,7 @@ async function deploy() {
     // const usdtSslp = await attachContract('IERC20', USDT_SSLP)
     // const balance = (await usdtSslp.balanceOf(TEST_WALLET)).toString();
     // console.log("balance of usdt sslp: ", balance)
-    // console.log("balance of bone sslp: ", (await bone.balanceOf(TEST_WALLET)).toString())
+    // console.log("balance of bone: ", (await bone.balanceOf(TEST_WALLET)).toString())
     //
     // await usdtSslp.connect(testWallet).approve(wrappedSslpUsdt.address, '1000000000000000000000');
     // await wrappedSslpUsdt.connect(testWallet).approve(VAULT, '1000000000000000000000');
@@ -161,8 +162,10 @@ async function deploy() {
     // await network.provider.send("evm_mine");
     // await network.provider.send("evm_mine");
     // console.log('claimable bones after 2 blocks: ', (await wrappedSslpUsdt.pendingReward(testWallet.address)).toString())
+    // console.log('bones fees wallet balance before claim: ', (await bone.balanceOf(BONES_FEE)).toString())
     // await wrappedSslpUsdt.claimReward(testWallet.address)
-    // console.log("balance of bone sslp: ", (await bone.balanceOf(TEST_WALLET)).toString())
+    // console.log("balance of bone: ", (await bone.balanceOf(TEST_WALLET)).toString())
+    // console.log('bones fees wallet balance after claim: ', (await bone.balanceOf(BONES_FEE)).toString())
 
     // console.log(await cdpViewer.getCollateralParameters(wrappedSslpUsdt.address, TEST_WALLET))
     // console.log(await cdpViewer.getTokenDetails(wrappedSslpUsdt.address, TEST_WALLET))
