@@ -15,3 +15,6 @@ The most important part of the onchain stablecoin protocol is the oracles that a
 - Custom wrappers for DeFi primitives (aka bearing assets) using Chainlink-based wrappers
 - [Keydonix-based](https://github.com/keydonix/uniswap-oracle) time-weighted average price (TWAP) oracle implementation that uses a window of [100; 255] blocks for price calculation
 - [Keep3rOracle-based](https://github.com/keep3r-network/keep3r.network/blob/master/contracts/jobs/UniswapV2Oracle.sol) time-weighted average price (TWAP) oracle implementation that uses a window of 1.5 - 2.5h for price calculation
+- Oracles for different LP tokens
+
+See the full current list of contracts here: [Oracle contracts](CONTRACTS.md#Oracles). Actual oracle contracts for collaterals are listed on collateral page on https://unit.xyz/
