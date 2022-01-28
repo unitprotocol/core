@@ -17,4 +17,4 @@ The most important part of the onchain stablecoin protocol is the oracles that a
 - [Keep3rOracle-based](https://github.com/keep3r-network/keep3r.network/blob/master/contracts/jobs/UniswapV2Oracle.sol) time-weighted average price (TWAP) oracle implementation that uses a window of 1.5 - 2.5h for price calculation
 - Oracles for different LP tokens
 
-See the full current list of contracts here: [Oracle contracts](CONTRACTS.md#Oracles). Actual oracle contracts for collaterals are listed on collateral page on https://unit.xyz/
+See the full current list of contracts here: [Oracle contracts](CONTRACTS.md#Oracles). Info about concrete oracle used for collateral is listed on collateral page on https://unit.xyz/
