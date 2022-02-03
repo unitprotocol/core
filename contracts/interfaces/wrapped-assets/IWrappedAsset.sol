@@ -48,4 +48,10 @@ interface IWrappedAsset is IERC20 /* IERC20WithOptional */ {
      * @dev Important! Only trusted contracts must be able to call this method
      */
     function movePosition(address _userAddrFrom, address _userAddrTo, uint256 _amount) external;
+
+    /**
+     * @dev function for checks that asset is unitprotocol wrapped asset.
+     * @dev For wrapped assets must return keccak256("UnitProtocolWrappedAsset")
+     */
+    function isUnitProtocolWrappedAsset() external view returns (bytes32);
 }

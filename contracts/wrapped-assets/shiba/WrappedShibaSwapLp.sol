@@ -25,6 +25,8 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
 
     uint256 public constant MULTIPLIER = 1e12;
 
+    bytes32 public constant override isUnitProtocolWrappedAsset = keccak256("UnitProtocolWrappedAsset");
+
     IVault public immutable vault;
     ITopDog public immutable topDog;
     uint256 public immutable topDogPoolId;

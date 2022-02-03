@@ -152,19 +152,29 @@ contract CDPViewer {
         view
         returns (TokenDetails memory r)
     {
-        try IUniswapV2PairFull(asset).token0() returns(address token0) {
-            r.lpUnderlyings[0] = token0;
-            r.lpUnderlyings[1] = IUniswapV2PairFull(asset).token1();
-            r.totalSupply = uint128(IUniswapV2PairFull(asset).totalSupply());
-            r.uniswapV2Factory = IUniswapV2PairFull(asset).factory();
-        } catch (bytes memory) { }
+        (bool success, bytes memory data) = asset.staticcall(abi.encodeWithSignature("token0()"));
+        if (success && data.length == 32) { // check in this way (and not try/catch) since some tokens has fallback functions
+            r.lpUnderlyings[0] = bytesToAddress(data);
+        }
 
+        (success, data) = asset.staticcall(abi.encodeWithSignature("token1()"));
+        if (success && data.length == 32) {
+            r.lpUnderlyings[1] = bytesToAddress(data);
+        }
+
+        (success, data) = asset.staticcall(abi.encodeWithSignature("factory()"));
+        if (success && data.length == 32) {
+            r.uniswapV2Factory = bytesToAddress(data);
+        }
+
+        r.totalSupply = uint128(IUniswapV2PairFull(asset).totalSupply());
         if (owner != address(0)) {
             r.balance = uint128(ERC20Like(asset).balanceOf(owner));
         }
 
-        try IWrappedAsset(asset).getUnderlyingToken() returns(IERC20 underlyingToken) {
-            r.underlyingToken = address(underlyingToken);
+        (success, data) = asset.staticcall(abi.encodeWithSignature("isUnitProtocolWrappedAsset()"));
+        if (success && data.length == 32 && bytesToBytes32(data) == keccak256("UnitProtocolWrappedAsset")) {
+            r.underlyingToken = address(IWrappedAsset(asset).getUnderlyingToken());
 
             TokenDetails memory underlyingTokenDetails = getTokenDetails(r.underlyingToken, owner);
             r.underlyingTokenTotalSupply = underlyingTokenDetails.totalSupply;
@@ -172,8 +182,19 @@ contract CDPViewer {
             r.underlyingTokenUnderlyings[0] = underlyingTokenDetails.lpUnderlyings[0];
             r.underlyingTokenUnderlyings[1] = underlyingTokenDetails.lpUnderlyings[1];
             r.underlyingTokenBalance = underlyingTokenDetails.balance;
-        } catch (bytes memory) { }
+        }
+    }
 
+    function bytesToAddress(bytes memory _bytes) private pure returns (address addr) {
+        assembly {
+          addr := mload(add(_bytes, 32))
+        }
+    }
+
+    function bytesToBytes32(bytes memory _bytes) private pure returns (bytes32 _bytes32) {
+        assembly {
+          _bytes32 := mload(add(_bytes, 32))
+        }
     }
 
     /**
