@@ -154,27 +154,22 @@ contract CDPViewer {
     {
         address token0;
         address token1;
-        address factory;
 
-        (bool success, bytes memory data) = asset.staticcall(abi.encodeWithSignature("token0()"));
+        (bool success, bytes memory data) = asset.staticcall{gas:20000}(abi.encodeWithSignature("token0()"));
         if (success && data.length == 32) { // check in this way (and not try/catch) since some tokens has fallback functions
             token0 = bytesToAddress(data);
-        }
 
-        (success, data) = asset.staticcall(abi.encodeWithSignature("token1()"));
-        if (success && data.length == 32) {
-            token1 = bytesToAddress(data);
-        }
+            (success, data) = asset.staticcall{gas:20000}(abi.encodeWithSignature("token1()"));
+            if (success && data.length == 32) {
+                token1 = bytesToAddress(data);
 
-        (success, data) = asset.staticcall(abi.encodeWithSignature("factory()"));
-        if (success && data.length == 32) {
-            factory = bytesToAddress(data);
-        }
-
-        if (token0 != address(0) && token1 != address(0) && factory != address(0)) {
-            r.lpUnderlyings[0] = token0;
-            r.lpUnderlyings[1] = token1;
-            r.uniswapV2Factory = factory;
+                (success, data) = asset.staticcall{gas:20000}(abi.encodeWithSignature("factory()"));
+                if (success && data.length == 32) {
+                    r.lpUnderlyings[0] = token0;
+                    r.lpUnderlyings[1] = token1;
+                    r.uniswapV2Factory = bytesToAddress(data);
+                }
+            }
         }
 
         r.totalSupply = uint128(IUniswapV2PairFull(asset).totalSupply());
@@ -182,7 +177,7 @@ contract CDPViewer {
             r.balance = uint128(ERC20Like(asset).balanceOf(owner));
         }
 
-        (success, data) = asset.staticcall(abi.encodeWithSignature("isUnitProtocolWrappedAsset()"));
+        (success, data) = asset.staticcall{gas:20000}(abi.encodeWithSignature("isUnitProtocolWrappedAsset()"));
         if (success && data.length == 32 && bytesToBytes32(data) == keccak256("UnitProtocolWrappedAsset")) {
             r.underlyingToken = address(IWrappedAsset(asset).getUnderlyingToken());
 
