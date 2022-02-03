@@ -152,19 +152,29 @@ contract CDPViewer {
         view
         returns (TokenDetails memory r)
     {
+        address token0;
+        address token1;
+        address factory;
+
         (bool success, bytes memory data) = asset.staticcall(abi.encodeWithSignature("token0()"));
         if (success && data.length == 32) { // check in this way (and not try/catch) since some tokens has fallback functions
-            r.lpUnderlyings[0] = bytesToAddress(data);
+            token0 = bytesToAddress(data);
         }
 
         (success, data) = asset.staticcall(abi.encodeWithSignature("token1()"));
         if (success && data.length == 32) {
-            r.lpUnderlyings[1] = bytesToAddress(data);
+            token1 = bytesToAddress(data);
         }
 
         (success, data) = asset.staticcall(abi.encodeWithSignature("factory()"));
         if (success && data.length == 32) {
-            r.uniswapV2Factory = bytesToAddress(data);
+            factory = bytesToAddress(data);
+        }
+
+        if (token0 != address(0) && token1 != address(0) && factory != address(0)) {
+            r.lpUnderlyings[0] = token0;
+            r.lpUnderlyings[1] = token1;
+            r.uniswapV2Factory = factory;
         }
 
         r.totalSupply = uint128(IUniswapV2PairFull(asset).totalSupply());
