@@ -5,13 +5,14 @@ const {
     CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN
 } = require("../helpers/deploy");
 const {directBonesReward, lockedBonesReward, fullBonesReward} = require("./helpers/TopDogLogic");
-const {deployContract} = require("../helpers/ethersUtils");
+const {deployContract, attachContract} = require("../helpers/ethersUtils");
 const {PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION} = require("../../lib/constants");
 const {cdpManagerWrapper} = require("../helpers/cdpManagerWrappers");
+const {ZERO_ADDRESS} = require("../helpers/deployUtils");
 
 ether = ethers.utils.parseUnits;
 
-const EPSILON = ethers.BigNumber.from('20000000');
+const EPSILON = ethers.BigNumber.from('400000');
 
 const oracleCases = [
     [CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN, 'cdp manager'],
@@ -67,24 +68,9 @@ describe("WrappedShibaSwapLp", function () {
             });
 
             it("zero deposit", async function () {
-                await context.wrappedSslp0.connect(context.user1).deposit(context.user1.address, 0);
-                expect(await context.sslpToken0.balanceOf(context.user1.address)).to.be.equal(ether('1'));
-                expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(0);
-
-                await context.wrappedSslp0.connect(context.user1).deposit(context.user1.address, 0);
-                expect(await context.sslpToken0.balanceOf(context.user1.address)).to.be.equal(ether('1'));
-                expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(0);
-            });
-
-            it("zero deposit as claim reward", async function () {
-                const lockAmount = ether('0.4');
-                await prepareUserForJoin(context.user1, ether('1'));
-
-                await context.wrappedSslp0.connect(context.user1).deposit(context.user1.address, lockAmount);
-                expect(await bonesBalance(context.user1)).to.be.equal(0);
-
-                await context.wrappedSslp0.connect(context.user1).deposit(context.user1.address, 0);
-                expect(await bonesBalance(context.user1)).not.to.be.equal(0);
+                await expect(
+                    context.wrappedSslp0.connect(context.user1).deposit(context.user1.address, 0)
+                ).to.be.revertedWith("INVALID_AMOUNT");
             });
 
             it("transfer sslp token", async function () {
@@ -128,6 +114,44 @@ describe("WrappedShibaSwapLp", function () {
             });
         });
 
+        describe("proxies direct calls", function () {
+            it("only manager methods", async function () {
+                const lockAmount = ether('0.4');
+                const usdpAmount = ether('0.2');
+
+                await prepareUserForJoin(context.user1, lockAmount);
+                await wrapAndJoin(context.user1, lockAmount, usdpAmount);
+                const user1ProxyAddr = await context.wrappedSslp0.usersProxies(context.user1.address);
+                expect(user1ProxyAddr).not.to.be.equal(ZERO_ADDRESS);
+
+                const user1Proxy = await attachContract('WSSLPUserProxy', user1ProxyAddr);
+
+                await expect(
+                    user1Proxy.init(context.user1.address, context.user2.address)
+                ).to.be.revertedWith("AUTH_FAILED");
+
+                await expect(
+                    user1Proxy.approveSslpToTopDog(context.sslpToken0.address)
+                ).to.be.revertedWith("AUTH_FAILED");
+
+                await expect(
+                    user1Proxy.deposit(ether('1'))
+                ).to.be.revertedWith("AUTH_FAILED");
+
+                await expect(
+                    user1Proxy.withdraw(context.sslpToken0.address, ether('1'), context.user1.address)
+                ).to.be.revertedWith("AUTH_FAILED");
+
+                await expect(
+                    user1Proxy.claimReward(context.user1.address, ether('1'))
+                ).to.be.revertedWith("AUTH_FAILED");
+
+                await expect(
+                    user1Proxy.claimRewardFromBoneLocker(context.boneLocker1.address, ether('1'), context.user1.address, ether('1'))
+                ).to.be.revertedWith("AUTH_FAILED");
+            });
+        });
+
         describe("reward distribution cases", function () {
             it('consecutive deposit and withdrawal with 3 users', async function () {
                 const lockAmount = ether('0.4');
@@ -155,23 +179,50 @@ describe("WrappedShibaSwapLp", function () {
                 const {blockNumber: withdrawal3Block} = await unwrapAndExit(context.user3, lockAmount, usdpAmount);
                 expect(await context.sslpToken0.balanceOf(context.user1.address)).to.be.equal(ether('1'), "returned asset");
 
+                const user1Proxy = await context.wrappedSslp0.usersProxies(context.user1.address);
+                const user2Proxy = await context.wrappedSslp0.usersProxies(context.user2.address);
+                const user3Proxy = await context.wrappedSslp0.usersProxies(context.user3.address);
+
+                // no reward sent to user on deposit/withdrawal
+                expect(await bonesBalance(context.user1)).to.be.equal(0);
+                expect(await bonesBalance(context.user2)).to.be.equal(0);
+                expect(await bonesBalance(context.user3)).to.be.equal(0);
+
+                // but reward was sent to user proxies by topdog
                 // with 3 simultaneous users we have imprecise calculations
                 const user1Reward = directBonesReward(deposit1Block, deposit2Block)
                     .add(directBonesReward(deposit2Block, deposit3Block).div(2))
                     .add(directBonesReward(deposit3Block, withdrawal1Block).div(3));
-                expect(await bonesBalance(context.user1)).to.be.closeTo(user1Reward, EPSILON);
+                expect(await bonesBalance(user1Proxy)).to.be.closeTo(user1Reward, EPSILON);
 
                 const user2Reward = directBonesReward(deposit2Block, deposit3Block).div(2)
                     .add(directBonesReward(deposit3Block, withdrawal1Block).div(3))
                     .add(directBonesReward(withdrawal1Block, withdrawal2Block).div(2));
-                expect(await bonesBalance(context.user2)).to.be.closeTo(user2Reward, EPSILON);
+                expect(await bonesBalance(user2Proxy)).to.be.closeTo(user2Reward, EPSILON);
 
                 const user3Reward = directBonesReward(deposit3Block, withdrawal1Block).div(3)
                     .add(directBonesReward(withdrawal1Block, withdrawal2Block).div(2))
                     .add(directBonesReward(withdrawal2Block, withdrawal3Block).div(1));
+                expect(await bonesBalance(user3Proxy)).to.be.closeTo(user3Reward, EPSILON);
+
+                await context.wrappedSslp0.connect(context.user1).claimReward(context.user1.address);
+                expect(await bonesBalance(context.user1)).to.be.closeTo(user1Reward, EPSILON);
+                expect(await bonesBalance(context.user2)).to.be.equal(0);
+                expect(await bonesBalance(context.user3)).to.be.equal(0);
+
+                await context.wrappedSslp0.connect(context.user1).claimReward(context.user2.address); // user1 claims for user2
+                expect(await bonesBalance(context.user1)).to.be.closeTo(user1Reward, EPSILON);
+                expect(await bonesBalance(context.user2)).to.be.closeTo(user2Reward, EPSILON); // reward was send to user 2
+                expect(await bonesBalance(context.user3)).to.be.equal(0);
+
+                await context.wrappedSslp0.connect(context.user3).claimReward(context.user3.address);
+                expect(await bonesBalance(context.user1)).to.be.closeTo(user1Reward, EPSILON);
+                expect(await bonesBalance(context.user2)).to.be.closeTo(user2Reward, EPSILON);
                 expect(await bonesBalance(context.user3)).to.be.closeTo(user3Reward, EPSILON);
 
-                expect(await bonesBalance(context.wrappedSslp0)).to.be.closeTo(ether('0'), EPSILON);
+                expect(await bonesBalance(user1Proxy)).to.be.equal(0);
+                expect(await bonesBalance(user2Proxy)).to.be.equal(0);
+                expect(await bonesBalance(user3Proxy)).to.be.equal(0);
             })
 
             it('bones distribution with non consecutive deposit and withdrawal with 3 users', async function () {
@@ -191,109 +242,46 @@ describe("WrappedShibaSwapLp", function () {
                 const {blockNumber: withdrawal2Block} = await unwrapAndExit(context.user2, lockAmount, usdpAmount);
                 const {blockNumber: withdrawal3Block} = await unwrapAndExit(context.user3, lockAmount, usdpAmount);
 
+                const user1Proxy = await context.wrappedSslp0.usersProxies(context.user1.address);
+                const user2Proxy = await context.wrappedSslp0.usersProxies(context.user2.address);
+                const user3Proxy = await context.wrappedSslp0.usersProxies(context.user3.address);
+
+                // no reward sent to user on deposit/withdrawal
+                expect(await bonesBalance(context.user1)).to.be.equal(0);
+                expect(await bonesBalance(context.user2)).to.be.equal(0);
+                expect(await bonesBalance(context.user3)).to.be.equal(0);
+
                 const user1Reward = directBonesReward(deposit1Block, deposit2Block)
                     .add(directBonesReward(deposit2Block, withdrawal1Block).div(2));
-                expect(await bonesBalance(context.user1)).to.be.equal(user1Reward);
+                expect(await bonesBalance(user1Proxy)).to.be.equal(user1Reward);
 
                 const user2Reward = directBonesReward(deposit2Block, withdrawal1Block).div(2)
                     .add(directBonesReward(withdrawal1Block, deposit3Block))
                     .add(directBonesReward(deposit3Block, withdrawal2Block).div(2));
-                expect(await bonesBalance(context.user2)).to.be.equal(user2Reward);
+                expect(await bonesBalance(user2Proxy)).to.be.equal(user2Reward);
 
                 const user3Reward = directBonesReward(deposit3Block, withdrawal2Block).div(2)
                     .add(directBonesReward(withdrawal2Block, withdrawal3Block));
-                expect(await bonesBalance(context.user3)).to.be.equal(user3Reward);
+                expect(await bonesBalance(user3Proxy)).to.be.equal(user3Reward);
 
-                expect(await bonesBalance(context.wrappedSslp0)).to.be.equal(0);
-            })
-
-            it('deposited bones to wrapped lp before first lp deposit', async function () {
-                const lockAmount = ether('0.4');
-                const usdpAmount = ether('0.2');
-
-                const depositedBones = ethers.BigNumber.from('1111111111111111111'); // 1.(1) ether
-                context.boneToken.testMint(context.wrappedSslp0.address, depositedBones);
-
-                await prepareUserForJoin(context.user1, lockAmount);
-                await prepareUserForJoin(context.user2, lockAmount);
-                await prepareUserForJoin(context.user3, lockAmount);
-
-                const {blockNumber: deposit1Block} = await wrapAndJoin(context.user1, lockAmount, usdpAmount);
-                const {blockNumber: deposit2Block} = await wrapAndJoin(context.user2, lockAmount, usdpAmount);
-                const {blockNumber: withdrawal1Block} = await unwrapAndExit(context.user1, lockAmount, usdpAmount);
-                const {blockNumber: deposit3Block} = await wrapAndJoin(context.user3, lockAmount, usdpAmount);
-                const {blockNumber: withdrawal2Block} = await unwrapAndExit(context.user2, lockAmount, usdpAmount);
-                const {blockNumber: withdrawal3Block} = await unwrapAndExit(context.user3, lockAmount, usdpAmount);
-
-                // not all initial bones distributed bcs of imprecise distribution calculations
-                const user1Reward = depositedBones
-                    .add(directBonesReward(deposit1Block, deposit2Block))
-                    .add(directBonesReward(deposit2Block, withdrawal1Block).div(2));
+                await context.wrappedSslp0.connect(context.user1).claimReward(context.user1.address);
                 expect(await bonesBalance(context.user1)).to.be.closeTo(user1Reward, EPSILON);
+                expect(await bonesBalance(context.user2)).to.be.equal(0);
+                expect(await bonesBalance(context.user3)).to.be.equal(0);
 
-                const user2Reward = directBonesReward(deposit2Block, withdrawal1Block).div(2)
-                    .add(directBonesReward(withdrawal1Block, deposit3Block))
-                    .add(directBonesReward(deposit3Block, withdrawal2Block).div(2));
-                expect(await bonesBalance(context.user2)).to.be.equal(user2Reward);
-
-                const user3Reward = directBonesReward(deposit3Block, withdrawal2Block).div(2)
-                    .add(directBonesReward(withdrawal2Block, withdrawal3Block));
-                expect(await bonesBalance(context.user3)).to.be.equal(user3Reward);
-
-                expect(await bonesBalance(context.wrappedSslp0)).to.be.closeTo(ether('0'), EPSILON);
-            })
-
-            it('withdraw all with remainder on wrapped lp and then deposit+withdraw', async function () {
-                const lockAmount = ether('0.4');
-                const usdpAmount = ether('0.2');
-
-                await prepareUserForJoin(context.user1, lockAmount);
-                await prepareUserForJoin(context.user2, lockAmount);
-                await prepareUserForJoin(context.user3, lockAmount);
-
-                await wrapAndJoin(context.user1, lockAmount, usdpAmount);
-                await wrapAndJoin(context.user2, lockAmount, usdpAmount);
-                await wrapAndJoin(context.user3, lockAmount, usdpAmount);
-
-                await unwrapAndExit(context.user1, lockAmount, usdpAmount);
-                await unwrapAndExit(context.user2, lockAmount, usdpAmount);
-                await unwrapAndExit(context.user3, lockAmount, usdpAmount);
-
-                const user1InitialReward = await bonesBalance(context.user1);
-                const user2InitialReward = await bonesBalance(context.user2);
-                const user3InitialReward = await bonesBalance(context.user3);
-                const remainder = await bonesBalance(context.wrappedSslp0);
-                expect(remainder).not.to.be.equal(0); // remainder
-
-                await prepareUserForJoin(context.user1, lockAmount);
-                await prepareUserForJoin(context.user2, lockAmount);
-                await prepareUserForJoin(context.user3, lockAmount);
-
-                const {blockNumber: deposit1Block} = await wrapAndJoin(context.user1, lockAmount, usdpAmount);
-                const {blockNumber: deposit2Block} = await wrapAndJoin(context.user2, lockAmount, usdpAmount);
-                const {blockNumber: withdrawal1Block} = await unwrapAndExit(context.user1, lockAmount, usdpAmount);
-                const {blockNumber: deposit3Block} = await wrapAndJoin(context.user3, lockAmount, usdpAmount);
-                const {blockNumber: withdrawal2Block} = await unwrapAndExit(context.user2, lockAmount, usdpAmount);
-                const {blockNumber: withdrawal3Block} = await unwrapAndExit(context.user3, lockAmount, usdpAmount);
-
-                const user1Reward = remainder
-                    .add(user1InitialReward)
-                    .add(directBonesReward(deposit1Block, deposit2Block))
-                    .add(directBonesReward(deposit2Block, withdrawal1Block).div(2));
+                await context.wrappedSslp0.connect(context.user1).claimReward(context.user2.address); // user1 claims for user2
                 expect(await bonesBalance(context.user1)).to.be.closeTo(user1Reward, EPSILON);
+                expect(await bonesBalance(context.user2)).to.be.closeTo(user2Reward, EPSILON); // reward was send to user 2
+                expect(await bonesBalance(context.user3)).to.be.equal(0);
 
-                const user2Reward = user2InitialReward
-                    .add(directBonesReward(deposit2Block, withdrawal1Block).div(2))
-                    .add(directBonesReward(withdrawal1Block, deposit3Block))
-                    .add(directBonesReward(deposit3Block, withdrawal2Block).div(2));
-                expect(await bonesBalance(context.user2)).to.be.equal(user2Reward);
+                await context.wrappedSslp0.connect(context.user3).claimReward(context.user3.address);
+                expect(await bonesBalance(context.user1)).to.be.closeTo(user1Reward, EPSILON);
+                expect(await bonesBalance(context.user2)).to.be.closeTo(user2Reward, EPSILON);
+                expect(await bonesBalance(context.user3)).to.be.closeTo(user3Reward, EPSILON);
 
-                const user3Reward = user3InitialReward
-                    .add(directBonesReward(deposit3Block, withdrawal2Block).div(2))
-                    .add(directBonesReward(withdrawal2Block, withdrawal3Block));
-                expect(await bonesBalance(context.user3)).to.be.equal(user3Reward);
-
-                expect(await bonesBalance(context.wrappedSslp0)).to.be.closeTo(ether('0'), EPSILON);
+                expect(await bonesBalance(user1Proxy)).to.be.equal(0);
+                expect(await bonesBalance(user2Proxy)).to.be.equal(0);
+                expect(await bonesBalance(user3Proxy)).to.be.equal(0);
             })
 
             it('simple case for pending reward', async function () {
@@ -315,395 +303,273 @@ describe("WrappedShibaSwapLp", function () {
                 expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block1, block3));
 
                 const {blockNumber: block4} = await unwrapAndExit(context.user1, lockAmount, usdpAmount);
+                expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block1, block4));
+
+                await context.wrappedSslp0.claimReward(context.user1.address);
                 expect(await pendingReward(context.user1)).to.be.equal(0);
+                expect(await bonesBalance(context.user1)).to.be.equal(directBonesReward(block1, block4));
             })
 
-            it('complex case: bones distribution with non consecutive multiple deposit and withdrawal and reward claims with 3 users', async function () {
-                const lockAmount = ether('0.5');
-                const lockAmount2 = ether('1');
-                const usdpAmount = ether('0.1');
-                const usdpAmount2 = ether('0.2');
-
-                await prepareUserForJoin(context.user1, ether('10'));
-                await prepareUserForJoin(context.user2, ether('10'));
-                await prepareUserForJoin(context.user3, ether('10'));
-
-                let usersPendingReward = {
-                    1: ether('0'),
-                    2: ether('0'),
-                    3: ether('0'),
-                };
-                let usersWithdrawnReward = {
-                    1: ether('0'),
-                    2: ether('0'),
-                    3: ether('0'),
-                };
-
-                async function updateRewardsByPrevBlockAndCheck(block1, block2, actionUserNumber, user1Balance, user2Balance, user3Balance) {
-                    const balances = {
-                        1: ether(user1Balance),
-                        2: ether(user2Balance),
-                        3: ether(user3Balance),
-                    }
-                    const balancesSum = balances[1].add(balances[2]).add(balances[3])
-
-                    usersPendingReward[1] = usersPendingReward[1].add(directBonesReward(block1, block2).mul(balances[1]).div(balancesSum));
-                    usersPendingReward[2] = usersPendingReward[2].add(directBonesReward(block1, block2).mul(balances[2]).div(balancesSum));
-                    usersPendingReward[3] = usersPendingReward[3].add(directBonesReward(block1, block2).mul(balances[3]).div(balancesSum));
-
-                    if (actionUserNumber) {
-                        // compare reward of user made action, since reward is sending on action
-                        usersWithdrawnReward[actionUserNumber] = usersWithdrawnReward[actionUserNumber].add(usersPendingReward[actionUserNumber]);
-                        usersPendingReward[actionUserNumber] = ether('0');
-                    }
-
-                    expect(await pendingReward(context.user1)).to.be.closeTo(usersPendingReward[1], EPSILON);
-                    expect(await pendingReward(context.user2)).to.be.closeTo(usersPendingReward[2], EPSILON);
-                    expect(await pendingReward(context.user3)).to.be.closeTo(usersPendingReward[3], EPSILON);
-                    expect(await bonesBalance(context.user1)).to.be.closeTo(usersWithdrawnReward[1], EPSILON);
-                    expect(await bonesBalance(context.user2)).to.be.closeTo(usersWithdrawnReward[2], EPSILON);
-                    expect(await bonesBalance(context.user3)).to.be.closeTo(usersWithdrawnReward[3], EPSILON);
-                }
-
-                const {blockNumber: block1} = await wrapAndJoin(context.user1, lockAmount, usdpAmount); // 1-0.5, 2-0, 3-0
-                const {blockNumber: block2} = await wrapAndJoin(context.user2, lockAmount2, usdpAmount2); // 1-0.5, 2-1, 3-0
-                await updateRewardsByPrevBlockAndCheck(block1, block2, null, '0.5', '0', '0');
-
-                const {blockNumber: block3} = await wrapAndJoin(context.user1, lockAmount, usdpAmount); // 1-1, 2-1, 3-0
-                await updateRewardsByPrevBlockAndCheck(block2, block3, 1, '0.5', '1', '0');
-
-                const {blockNumber: block4} = await unwrapAndExit(context.user2, lockAmount, usdpAmount); // 1-1, 2-0.5, 3-0
-                await updateRewardsByPrevBlockAndCheck(block3, block4, 2, '1', '1', '0');
-
-                const {blockNumber: block5} = await claimReward(context.user1); // 1-1, 2-0.5, 3-0
-                await updateRewardsByPrevBlockAndCheck(block4, block5, 1, '1', '0.5', '0');
-
-                const {blockNumber: block6} = await wrapAndJoin(context.user3, lockAmount2, usdpAmount2); // 1-1, 2-0.5, 3-1
-                await updateRewardsByPrevBlockAndCheck(block5, block6, null, '1', '0.5', '0');
-
-                await network.provider.send("evm_mine");
-                await network.provider.send("evm_mine");
-                await network.provider.send("evm_mine");
-
-                const {blockNumber: block7} = await wrapAndJoin(context.user2, lockAmount, usdpAmount); // 1-1, 2-1, 3-1
-                await updateRewardsByPrevBlockAndCheck(block6, block7, 2, '1', '0.5', '1');
-                expect(block7 - block6).to.be.equal(4)
-
-                const {blockNumber: block8} = await claimReward(context.user3); // 1-1, 2-1, 3-1
-                await updateRewardsByPrevBlockAndCheck(block7, block8, 3, '1', '1', '1');
-
-                const {blockNumber: block9} = await unwrapAndExit(context.user3, lockAmount, usdpAmount); // 1-1, 2-1, 3-0.5
-                await updateRewardsByPrevBlockAndCheck(block8, block9, 3, '1', '1', '1');
-
-                await network.provider.send("evm_mine");
-                await network.provider.send("evm_mine");
-
-                const {blockNumber: block10} = await claimReward(context.user3); // 1-1, 2-1, 3-0.5
-                await updateRewardsByPrevBlockAndCheck(block9, block10, 3, '1', '1', '0.5');
-                expect(block10 - block9).to.be.equal(3)
-
-                const {blockNumber: block11} = await unwrapAndExit(context.user1, lockAmount, usdpAmount); // 1-0.5, 2-1, 3-0.5
-                await updateRewardsByPrevBlockAndCheck(block10, block11, 1, '1', '1', '0.5');
-
-                const {blockNumber: block12} = await claimReward(context.user1); // 1-0.5, 2-1, 3-0.5
-                await updateRewardsByPrevBlockAndCheck(block11, block12, 1, '0.5', '1', '0.5');
-
-                const {blockNumber: block13} = await unwrapAndExit(context.user1, lockAmount, usdpAmount); // 1-0, 2-1, 3-0.5
-                await updateRewardsByPrevBlockAndCheck(block12, block13, 1, '0.5', '1', '0.5');
-
-                const {blockNumber: block14} = await unwrapAndExit(context.user3, lockAmount, usdpAmount); // 1-0, 2-1, 3-0
-                await updateRewardsByPrevBlockAndCheck(block13, block14, 3, '0', '1', '0.5');
-
-                const {blockNumber: block15} = await unwrapAndExit(context.user2, lockAmount2, usdpAmount2); // 1-0, 2-0, 3-0
-                await updateRewardsByPrevBlockAndCheck(block14, block15, 2, '0', '1', '0');
-
-                expect(await bonesBalance(context.wrappedSslp0)).to.be.closeTo(ether('0'), EPSILON);
-            })
-
-            it('bones fee: 3 users + deposited bones to wrapped lp before first lp deposit + change receiver', async function () {
+            it('bones fee', async function () {
                 await context.wrappedSslp0.setFee(10);
-                const lockAmount = ether('0.4');
-                const usdpAmount = ether('0.2');
 
-                const depositedBones = ethers.BigNumber.from('1111111111111111111'); // 1.(1) ether
-                context.boneToken.testMint(context.wrappedSslp0.address, depositedBones);
+                const lockAmount = ether('0.2');
+                const usdpAmount = ether('0.1');
 
                 await prepareUserForJoin(context.user1, lockAmount);
-                await prepareUserForJoin(context.user2, lockAmount);
-                await prepareUserForJoin(context.user3, lockAmount);
 
-                const {blockNumber: deposit1Block} = await wrapAndJoin(context.user1, lockAmount, usdpAmount);
-                const {blockNumber: deposit2Block} = await wrapAndJoin(context.user2, lockAmount, usdpAmount);
-                const {blockNumber: withdrawal1Block} = await unwrapAndExit(context.user1, lockAmount, usdpAmount);
-                const {blockNumber: deposit3Block} = await wrapAndJoin(context.user3, lockAmount, usdpAmount);
-                const {blockNumber: withdrawal2Block} = await unwrapAndExit(context.user2, lockAmount, usdpAmount);
-                await context.wrappedSslp0.setFeeReceiver(context.manager.address);
-                await context.wrappedSslp0.setFee(20);
-                const {blockNumber: withdrawal3Block} = await unwrapAndExit(context.user3, lockAmount, usdpAmount);
+                expect(await pendingReward(context.user1)).to.be.equal(0);
+                const {blockNumber: block1} = await wrapAndJoin(context.user1, lockAmount, usdpAmount);
+                expect(await pendingReward(context.user1)).to.be.equal(0);
 
-                // not all initial bones distributed bcs of imprecise distribution calculations
-                const user1Reward = depositedBones
-                    .add(directBonesReward(deposit1Block, deposit2Block))
-                    .add(directBonesReward(deposit2Block, withdrawal1Block).div(2));
-                const user1Fee = user1Reward.mul(10).div(100);
-                expect(await bonesBalance(context.user1)).to.be.closeTo(user1Reward.sub(user1Fee), EPSILON);
+                await network.provider.send("evm_mine");
+                const block2 = (await ethers.provider.getBlock("latest")).number
+                expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block1, block2).mul(90).div(100));
 
-                const user2Reward = directBonesReward(deposit2Block, withdrawal1Block).div(2)
-                    .add(directBonesReward(withdrawal1Block, deposit3Block))
-                    .add(directBonesReward(deposit3Block, withdrawal2Block).div(2));
-                const user2Fee = user2Reward.mul(10).div(100);
-                expect(await bonesBalance(context.user2)).to.be.equal(user2Reward.sub(user2Fee));
+                await network.provider.send("evm_mine");
+                const block3 = (await ethers.provider.getBlock("latest")).number
+                expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block1, block3).mul(90).div(100));
 
-                const user3Reward = directBonesReward(deposit3Block, withdrawal2Block).div(2)
-                    .add(directBonesReward(withdrawal2Block, withdrawal3Block));
-                const user3FeePart1 = directBonesReward(deposit3Block, withdrawal2Block).div(2).mul(10).div(100);
-                const user3FeePart2 = directBonesReward(withdrawal2Block, withdrawal3Block).mul(20).div(100);
-                expect(await bonesBalance(context.user3)).to.be.equal(user3Reward.sub(user3FeePart1).sub(user3FeePart2));
+                const {blockNumber: block4} = await unwrapAndExit(context.user1, lockAmount, usdpAmount);
+                expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block1, block4).mul(90).div(100));
 
-                expect(await bonesBalance(context.bonesFeeReceiver)).to.be.closeTo(user1Fee.add(user2Fee).add(user3FeePart1), EPSILON);
-                expect(await bonesBalance(context.manager)).to.be.closeTo(user3FeePart2, EPSILON);
+                await context.wrappedSslp0.claimReward(context.user1.address);
+                expect(await pendingReward(context.user1)).to.be.equal(0);
+                expect(await bonesBalance(context.user1)).to.be.equal(directBonesReward(block1, block4).mul(90).div(100));
+                expect(await bonesBalance(context.bonesFeeReceiver)).to.be.equal(directBonesReward(block1, block4).mul(10).div(100));
+            })
 
-                expect(await bonesBalance(context.wrappedSslp0)).to.be.closeTo(ether('0'), EPSILON);
+            it('bones fee with empty receiver', async function () {
+                await context.wrappedSslp0.setFee(10);
+                await context.wrappedSslp0.setFeeReceiver(ZERO_ADDRESS);
+
+                const lockAmount = ether('0.2');
+                const usdpAmount = ether('0.1');
+
+                await prepareUserForJoin(context.user1, lockAmount);
+
+                expect(await pendingReward(context.user1)).to.be.equal(0);
+                const {blockNumber: block1} = await wrapAndJoin(context.user1, lockAmount, usdpAmount);
+                expect(await pendingReward(context.user1)).to.be.equal(0);
+
+                const {blockNumber: block2} = await unwrapAndExit(context.user1, lockAmount, usdpAmount);
+                expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block1, block2));
+
+                await context.wrappedSslp0.claimReward(context.user1.address);
+                expect(await pendingReward(context.user1)).to.be.equal(0);
+                expect(await bonesBalance(context.user1)).to.be.equal(directBonesReward(block1, block2));
+                expect(await bonesBalance(context.bonesFeeReceiver)).to.be.equal(0);
+            })
+
+            it('bones fee for reward from bonelocker', async function () {
+                await context.wrappedSslp0.setFee(10);
+
+                const lockAmount = ether('0.4');
+                const lockAmount2 = ether('0.2');
+                const usdpAmount = ether('0.1');
+
+                await context.topDog.setLockingPeriod(3600, 3600); // topdog calls bonelocker inside
+
+                await prepareUserForJoin(context.user1, lockAmount.add(lockAmount2));
+
+                const {blockNumber: block1} = await wrapAndJoin(context.user1, lockAmount, usdpAmount);
+                const user1Proxy = await context.wrappedSslp0.usersProxies(context.user1.address);
+
+                expect(await bonesBalance(user1Proxy)).to.be.equal(ether('0'));
+                expect(await pendingReward(context.user1)).to.be.equal(ether('0'));
+                expect(await lockerClaimableReward(context.user1)).to.be.equal(ether('0'));
+                expect(await bonesBalance(context.user1)).to.be.equal(ether('0'));
+
+                await mineBlocks(3)
+                const {blockNumber: block2} = await wrapAndJoin(context.user1, lockAmount2, usdpAmount); // sent the first reward to userproxy + locked the first reward in locker
+                expect(await bonesBalance(user1Proxy)).to.be.equal(directBonesReward(block1, block2));
+                expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block1, block2).mul(90).div(100));
+                expect(await lockerClaimableReward(context.user1)).to.be.equal(ether('0'));
+                expect(await bonesBalance(context.user1)).to.be.equal(ether('0'));
+
+
+                await network.provider.send("evm_increaseTime", [3601]);
+                await network.provider.send("evm_mine");
+                const block2_1 = (await ethers.provider.getBlock("latest")).number;
+                expect(await bonesBalance(user1Proxy)).to.be.equal(directBonesReward(block1, block2));
+                expect(await pendingReward(context.user1)).to.be.closeTo(directBonesReward(block1, block2_1).mul(90).div(100), EPSILON);
+                expect(await lockerClaimableReward(context.user1)).to.be.equal(lockedBonesReward(block1, block2).mul(90).div(100)); // unlocked
+                expect(await bonesBalance(context.user1)).to.be.equal(ether('0'));
+
+                await lockerClaimReward(context.user1) // sent all bones from user proxy + from locker to user
+                expect(await bonesBalance(user1Proxy)).to.be.equal(0);
+                expect(await lockerClaimableReward(context.user1)).to.be.equal(0);
+                expect(await bonesBalance(context.user1)).to.be.equal(
+                    directBonesReward(block1, block2) // were on proxy
+                    .add(lockedBonesReward(block1, block2)) // got from locker
+                    .mul(90).div(100) // fee
+                );
+
+                expect(await bonesBalance(context.bonesFeeReceiver)).to.be.equal(
+                    directBonesReward(block1, block2) // were on proxy
+                    .add(lockedBonesReward(block1, block2)) // got from locker
+                    .mul(10).div(100) // fee
+                );
             })
 
         });
 
         describe("bone lockers", function () {
-            it('distribution bones from bone locker', async function () {
-                const lockAmount = ether('0.8');
-                const lockAmount2 = ether('0.4');
-                const usdpAmount = ether('0.2');
-
-                async function lockerClaimableReward(user) {
-                    return await context.wrappedSslp0.connect(context.user3).getClaimableRewardAmountFromBoneLockers(user.address, [context.boneLocker1.address]); // everyone can view info
-                }
+            it('distribution bones from default bone locker', async function () {
+                const lockAmount = ether('0.4');
+                const lockAmount2 = ether('0.2');
+                const usdpAmount = ether('0.1');
 
                 await context.topDog.setLockingPeriod(3600, 3600); // topdog calls bonelocker inside
 
-                await prepareUserForJoin(context.user1, lockAmount);
-                await prepareUserForJoin(context.user2, lockAmount);
-                await prepareUserForJoin(context.user3, lockAmount);
+                await prepareUserForJoin(context.user1, lockAmount.add(lockAmount2));
 
                 const {blockNumber: block1} = await wrapAndJoin(context.user1, lockAmount, usdpAmount);
-                await mineBlocks(3)
-                const {blockNumber: block2} = await wrapAndJoin(context.user2, lockAmount2, usdpAmount); // sent the first reward to pool + locked the first reward in locker
+                const user1Proxy = await context.wrappedSslp0.usersProxies(context.user1.address);
+
+                expect(await bonesBalance(user1Proxy)).to.be.equal(ether('0'));
+                expect(await pendingReward(context.user1)).to.be.equal(ether('0'));
                 expect(await lockerClaimableReward(context.user1)).to.be.equal(ether('0'));
-                expect(await lockerClaimableReward(context.user2)).to.be.equal(ether('0'));
+                expect(await bonesBalance(context.user1)).to.be.equal(ether('0'));
+
+                await mineBlocks(3)
+                const {blockNumber: block2} = await wrapAndJoin(context.user1, lockAmount2, usdpAmount); // sent the first reward to userproxy + locked the first reward in locker
+                expect(await bonesBalance(user1Proxy)).to.be.equal(directBonesReward(block1, block2));
+                expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block1, block2));
+                expect(await lockerClaimableReward(context.user1)).to.be.equal(ether('0'));
+                expect(await bonesBalance(context.user1)).to.be.equal(ether('0'));
+
 
                 await network.provider.send("evm_increaseTime", [3601]);
                 await network.provider.send("evm_mine");
-                expect(await lockerClaimableReward(context.user1)).to.be.equal(lockedBonesReward(block1, block2).mul(2).div(3));
-                expect(await lockerClaimableReward(context.user2)).to.be.equal(lockedBonesReward(block1, block2).div(3));
-
                 const block2_1 = (await ethers.provider.getBlock("latest")).number;
-                let user1PendingReward = directBonesReward(block1, block2)
-                    .add(directBonesReward(block2, block2_1).mul(2).div(3));
-                let user2PendingReward = directBonesReward(block2, block2_1).div(3);
-                expect(await pendingReward(context.user1)).to.be.closeTo(user1PendingReward, EPSILON);
-                expect(await pendingReward(context.user2)).to.be.closeTo(user2PendingReward, EPSILON);
+                expect(await bonesBalance(user1Proxy)).to.be.equal(directBonesReward(block1, block2));
+                expect(await pendingReward(context.user1)).to.be.closeTo(directBonesReward(block1, block2_1), EPSILON);
+                expect(await lockerClaimableReward(context.user1)).to.be.equal(lockedBonesReward(block1, block2)); // unlocked
+                expect(await bonesBalance(context.user1)).to.be.equal(ether('0'));
 
-                expect(await bonesBalance(context.wrappedSslp0)).to.be.equal(directBonesReward(block1, block2)); // on pool only direct reward
-                await lockerClaimReward()
-                expect(await bonesBalance(context.wrappedSslp0)).to.be.equal(fullBonesReward(block1, block2)); // on pool all reward
-                expect(await lockerClaimableReward(context.user1)).to.be.equal(ether('0')); // nothing to claim
-                expect(await lockerClaimableReward(context.user2)).to.be.equal(ether('0')); // nothing to claim
 
+                await lockerClaimReward(context.user1) // sent all bones from user proxy + from locker to user
                 const block2_2 = (await ethers.provider.getBlock("latest")).number;
-                user1PendingReward = user1PendingReward
-                    .add(directBonesReward(block2_1, block2_2).mul(2).div(3))
-                    .add(lockedBonesReward(block1, block2).mul(2).div(3)); // claimed reward reflects in pending reward
-                user2PendingReward = user2PendingReward
-                    .add(directBonesReward(block2_1, block2_2).div(3))
-                    .add(lockedBonesReward(block1, block2).div(3)); // claimed reward reflects in pending reward
+                expect(await bonesBalance(user1Proxy)).to.be.equal(ether('0')); // reward sent to user at once with reward from locker
+                expect(await pendingReward(context.user1)).to.be.closeTo(directBonesReward(block2, block2_2), EPSILON);
+                expect(await lockerClaimableReward(context.user1)).to.be.equal(ether('0')); // nothing to claim
+                expect(await bonesBalance(context.user1)).to.be.equal(fullBonesReward(block1, block2));
 
-                expect(await pendingReward(context.user1)).to.be.closeTo(user1PendingReward, EPSILON);
-                expect(await pendingReward(context.user2)).to.be.closeTo(user2PendingReward, EPSILON);
 
                 ////////////////////////
-                const {blockNumber: block3} = await unwrapAndExit(context.user1, lockAmount, usdpAmount); // sent the second reward to pool + locked the second reward in locker
-                let reward = directBonesReward(block1, block2)
-                    .add(directBonesReward(block2, block3).mul(2).div(3))
-                    .add(lockedBonesReward(block1, block2).mul(2).div(3)) // locked reward distributed between 2 and 3, so divided between 2 users (in proportion of deposits)
-                expect(await bonesBalance(context.user1)).to.be.closeTo(reward, EPSILON);
+                const {blockNumber: block3} = await unwrapAndExit(context.user1, lockAmount, usdpAmount); // sent the second reward to user proxy + locked the second reward in locker
+                expect(await bonesBalance(user1Proxy)).to.be.equal(directBonesReward(block2, block3));
+                expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block2, block3));
                 expect(await lockerClaimableReward(context.user1)).to.be.equal(ether('0'));
-                expect(await lockerClaimableReward(context.user2)).to.be.equal(ether('0'));
+                expect(await bonesBalance(context.user1)).to.be.equal(fullBonesReward(block1, block2));
+
 
                 await network.provider.send("evm_increaseTime", [3601]);
                 await network.provider.send("evm_mine");
-                expect(await lockerClaimableReward(context.user1)).to.be.equal(ether('0'));
-                expect(await lockerClaimableReward(context.user2)).to.be.equal(lockedBonesReward(block2, block3));
+                const block3_1 = (await ethers.provider.getBlock("latest")).number;
+                expect(await bonesBalance(user1Proxy)).to.be.equal(directBonesReward(block2, block3));
+                expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block2, block3_1));
+                expect(await lockerClaimableReward(context.user1)).to.be.equal(lockedBonesReward(block2, block3)); // unlocked
+                expect(await bonesBalance(context.user1)).to.be.equal(fullBonesReward(block1, block2));
 
-                let currentPoolReward = await bonesBalance(context.wrappedSslp0);
-                await lockerClaimReward()
-                expect(await bonesBalance(context.wrappedSslp0)).to.be.equal(currentPoolReward.add(lockedBonesReward(block2, block3)));
+
+                await lockerClaimReward(context.user1)
+                const block3_2 = (await ethers.provider.getBlock("latest")).number;
+                expect(await bonesBalance(user1Proxy)).to.be.equal(ether('0'));
+                expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block3, block3_2));
                 expect(await lockerClaimableReward(context.user1)).to.be.equal(ether('0'));
-                expect(await lockerClaimableReward(context.user2)).to.be.equal(ether('0'));
+                expect(await bonesBalance(context.user1)).to.be.equal(fullBonesReward(block1, block3));
+
 
                 //////////////////////
-                const {blockNumber: block4} = await unwrapAndExit(context.user2, lockAmount2, usdpAmount); // sent the 3rd reward to pool + locked the 3rd reward in locker
-                reward = directBonesReward(block2, block3).div(3)
-                    .add(lockedBonesReward(block1, block2).div(3)) // locked reward distributed between 2 and 3, so divided between 2 users (in proportion of deposits)
-                    .add(directBonesReward(block3, block4))
-                    .add(lockedBonesReward(block2, block3)) // locked reward distributed only to user 2 since it claimed after exit of the first user
-                expect(await bonesBalance(context.user2)).to.be.closeTo(reward, EPSILON);
+                const {blockNumber: block4} = await unwrapAndExit(context.user1, lockAmount2, usdpAmount); // sent the 3rd reward to user proxy + locked the 3rd reward in locker
+                expect(await bonesBalance(user1Proxy)).to.be.equal(directBonesReward(block3, block4));
+                expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block3, block4));
                 expect(await lockerClaimableReward(context.user1)).to.be.equal(ether('0'));
-                expect(await lockerClaimableReward(context.user2)).to.be.equal(ether('0'));
+                expect(await bonesBalance(context.user1)).to.be.equal(fullBonesReward(block1, block3));
 
                 await network.provider.send("evm_increaseTime", [3601]);
                 await network.provider.send("evm_mine");
-                expect(await lockerClaimableReward(context.user1)).to.be.equal(ether('0'));
-                expect(await lockerClaimableReward(context.user2)).to.be.equal(ether('0'));
+                const block4_1 = (await ethers.provider.getBlock("latest")).number;
+                expect(await bonesBalance(user1Proxy)).to.be.equal(directBonesReward(block3, block4));
+                expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block3, block4)); // no new reward
+                expect(await lockerClaimableReward(context.user1)).to.be.equal(lockedBonesReward(block3, block4)); // unlocked
+                expect(await bonesBalance(context.user1)).to.be.equal(fullBonesReward(block1, block3));
 
-                expect(await bonesBalance(context.wrappedSslp0)).to.be.closeTo(ether('0'), EPSILON); // almost everything was withdrawn
-                await lockerClaimReward()
-                expect(await bonesBalance(context.wrappedSslp0)).to.be.closeTo(lockedBonesReward(block3, block4), EPSILON); // bones on pool, the first deposited user will get it
+                await lockerClaimReward(context.user1);
+                const block4_2 = (await ethers.provider.getBlock("latest")).number;
+                expect(await bonesBalance(user1Proxy)).to.be.equal(ether('0'));
+                expect(await pendingReward(context.user1)).to.be.equal(ether('0'));
                 expect(await lockerClaimableReward(context.user1)).to.be.equal(ether('0'));
-                expect(await lockerClaimableReward(context.user2)).to.be.equal(ether('0'));
+                expect(await bonesBalance(context.user1)).to.be.equal(fullBonesReward(block1, block4));
 
-                ///////////////////
-                let remainder = lockedBonesReward(block3, block4);
-                const {blockNumber: block5} = await wrapAndJoin(context.user3, lockAmount, usdpAmount);
-                const {blockNumber: block6} = await unwrapAndExit(context.user3, lockAmount, usdpAmount);
-                expect(await bonesBalance(context.user3)).to.be.closeTo(remainder.add(directBonesReward(block5, block6)), EPSILON);
+                // claim with r=l
+                const rlCounters = await context.boneLocker1.getLeftRightCounters(user1Proxy);
+                expect(rlCounters[0]).to.be.equal(rlCounters[1])
+                expect(rlCounters[0]).to.be.gt(0);
+                await lockerClaimReward(context.user1, context.boneLocker1); // not failing
+                await lockerClaimReward(context.user1, context.boneLocker1, 0);
+                await lockerClaimReward(context.user1, context.boneLocker1, 100);
             })
 
             it('several bone lockers', async function () {
-                const lockAmount = ether('0.02');
-                const usdpAmount = ether('0.01');
-
-                async function lockerClaimableReward(user, lockers) {
-                    return await context.wrappedSslp0.connect(context.user3).getClaimableRewardAmountFromBoneLockers(user.address, lockers); // everyone can view info
-                }
-
-                async function getBoneLockerRewardsCount(lockers) {
-                    return await context.wrappedSslp0.connect(context.user3).getBoneLockerRewardsCount(lockers); // everyone can view info
-                }
+                const lockAmount = ether('0.2');
+                const usdpAmount = ether('0.1');
 
                 await context.topDog.setLockingPeriod(3600, 3600); // topdog calls bonelocker inside
-
-                await prepareUserForJoin(context.user1, ether('1'));
-
                 const boneLocker2 = await deployContract("BoneLocker_Mock", context.boneToken.address, "0x0000000000000000000000000000000000001234", 1, 3);
                 await boneLocker2.transferOwnership(context.topDog.address);
-                const boneLocker3 = await deployContract("BoneLocker_Mock", context.boneToken.address, "0x0000000000000000000000000000000000001234", 1, 3);
-                await boneLocker3.transferOwnership(context.topDog.address);
 
-                const boneLockers = [context.boneLocker1.address, boneLocker2.address, boneLocker3.address];
+                await prepareUserForJoin(context.user1, lockAmount.mul(5));
 
                 const {blockNumber: block1} = await wrapAndJoin(context.user1, lockAmount, usdpAmount);
-                await mineBlocks(2) // fot different bones reward
-                const {blockNumber: block2} = await wrapAndJoin(context.user1, lockAmount, usdpAmount); // locked the first reward in locker1
-                await mineBlocks(1)
-                const {blockNumber: block3} = await wrapAndJoin(context.user1, lockAmount, usdpAmount); // locked the 2nd reward in locker1
-                await mineBlocks(3)
-                const {blockNumber: block4} = await wrapAndJoin(context.user1, lockAmount, usdpAmount); // locked the 3nd reward in locker1
-                await mineBlocks(5)
+                const {blockNumber: block2} = await wrapAndJoin(context.user1, lockAmount, usdpAmount); // sent the first reward to userproxy + locked the first reward in locker
 
                 await context.topDog.boneLockerUpdate(boneLocker2.address);
                 await context.topDog.setLockingPeriod(7200, 7200);
 
-                const {blockNumber: block5} = await wrapAndJoin(context.user1, lockAmount, usdpAmount); // locked the first reward in locker2
-                await mineBlocks(3)
-                const {blockNumber: block6} = await wrapAndJoin(context.user1, lockAmount, usdpAmount); // locked the 2nd reward in locker2
-                await mineBlocks(7)
-                const {blockNumber: block7} = await wrapAndJoin(context.user1, lockAmount, usdpAmount); // locked the 3rd reward in locker2
-                await mineBlocks(1)
+                const {blockNumber: block3} = await wrapAndJoin(context.user1, lockAmount, usdpAmount); // sent the second reward to userproxy + locked the second reward in locker2
+                const {blockNumber: block4} = await wrapAndJoin(context.user1, lockAmount, usdpAmount); // sent the third reward to userproxy + locked the third reward in locker2
+                const {blockNumber: block5} = await wrapAndJoin(context.user1, lockAmount, usdpAmount); // sent the forth reward to userproxy + locked the forth reward in locker2
 
-                await context.topDog.boneLockerUpdate(boneLocker3.address);
-                await context.topDog.setLockingPeriod(10000, 10000);
-
-                const {blockNumber: block8} = await wrapAndJoin(context.user1, lockAmount, usdpAmount); // locked the first reward in locker3
-
-                expect(await lockerClaimableReward(context.user1, boneLockers)).to.be.equal(ether('0'));
-
-                const expectedLocker1Amount = lockedBonesReward(block1, block2)
-                    .add(lockedBonesReward(block2, block3))
-                    .add(lockedBonesReward(block3, block4));
-                const expectedLocker2Amount = lockedBonesReward(block4, block5)
-                    .add(lockedBonesReward(block5, block6))
-                    .add(lockedBonesReward(block6, block7));
-                const expectedLocker3Amount = lockedBonesReward(block7, block8);
-
-                await network.provider.send("evm_increaseTime", [4000]);
+                await network.provider.send("evm_increaseTime", [3601]);
                 await network.provider.send("evm_mine");
-                let claimableReward = await lockerClaimableReward(context.user1, boneLockers);
-                expect(claimableReward).to.be.closeTo(expectedLocker1Amount, EPSILON);
-                claimableReward = await lockerClaimableReward(context.user1, boneLockers.slice(0, 1));
-                expect(claimableReward).to.be.closeTo(expectedLocker1Amount, EPSILON);
-                claimableReward = await lockerClaimableReward(context.user1, boneLockers.slice(2, 3));
-                expect(claimableReward).to.be.equal(ether('0'));
-                let claimableRewardCounts = await getBoneLockerRewardsCount(boneLockers);
-                expect(claimableRewardCounts[0]).to.be.equal(3);
-                expect(claimableRewardCounts[1]).to.be.equal(0);
-                expect(claimableRewardCounts[2]).to.be.equal(0);
 
-                await network.provider.send("evm_increaseTime", [4000]);
+                expect(await lockerClaimableReward(context.user1, context.boneLocker1)).to.be.equal(lockedBonesReward(block1, block2));
+                expect(await lockerClaimableReward(context.user1, boneLocker2)).to.be.equal(ether('0'));
+                expect(await lockerClaimableReward(context.user1, ZERO_ADDRESS)).to.be.equal(ether('0')); // current
+
+                await network.provider.send("evm_increaseTime", [3601]);
                 await network.provider.send("evm_mine");
-                claimableReward = await lockerClaimableReward(context.user1, boneLockers);
-                expect(claimableReward).to.be.closeTo(expectedLocker1Amount.add(expectedLocker2Amount), EPSILON);
-                claimableReward = await lockerClaimableReward(context.user1, boneLockers.slice(1, 2));
-                expect(claimableReward).to.be.closeTo(expectedLocker2Amount, EPSILON);
-                claimableReward = await lockerClaimableReward(context.user1, boneLockers.slice(2, 3));
-                expect(claimableReward).to.be.equal(ether('0'));
-                claimableRewardCounts = await getBoneLockerRewardsCount(boneLockers);
-                expect(claimableRewardCounts[0]).to.be.equal(3);
-                expect(claimableRewardCounts[1]).to.be.equal(3);
-                expect(claimableRewardCounts[2]).to.be.equal(0);
 
-                await network.provider.send("evm_increaseTime", [4000]);
-                await network.provider.send("evm_mine");
-                claimableReward = await lockerClaimableReward(context.user1, boneLockers);
-                expect(claimableReward).to.be.closeTo(expectedLocker1Amount.add(expectedLocker2Amount).add(expectedLocker3Amount), EPSILON);
-                claimableReward = await lockerClaimableReward(context.user1, boneLockers.slice(1, 2));
-                expect(claimableReward).to.be.closeTo(expectedLocker2Amount, EPSILON);
-                claimableReward = await lockerClaimableReward(context.user1, boneLockers.slice(2, 3));
-                expect(claimableReward).to.be.closeTo(expectedLocker3Amount, EPSILON);
-                claimableRewardCounts = await getBoneLockerRewardsCount(boneLockers);
-                expect(claimableRewardCounts[0]).to.be.equal(3);
-                expect(claimableRewardCounts[1]).to.be.equal(3);
-                expect(claimableRewardCounts[2]).to.be.equal(1);
+                expect(await lockerClaimableReward(context.user1, context.boneLocker1)).to.be.equal(lockedBonesReward(block1, block2));
+                expect(await lockerClaimableReward(context.user1, boneLocker2)).to.be.closeTo(lockedBonesReward(block2, block5), EPSILON);
+                expect(await lockerClaimableReward(context.user1, ZERO_ADDRESS)).to.be.closeTo(lockedBonesReward(block2, block5), EPSILON);
 
-                let currentBones = await bonesBalance(context.wrappedSslp0)
-                await lockerClaimReward(boneLockers.slice(0, 1), 1);
-                expect(await bonesBalance(context.wrappedSslp0)).to.be.equal(currentBones.add(lockedBonesReward(block1, block2)))
-                claimableReward = await lockerClaimableReward(context.user1, boneLockers);
-                expect(claimableReward).to.be.closeTo(expectedLocker1Amount.add(expectedLocker2Amount).add(expectedLocker3Amount).sub(lockedBonesReward(block1, block2)), EPSILON);
-                claimableRewardCounts = await getBoneLockerRewardsCount(boneLockers);
-                expect(claimableRewardCounts[0]).to.be.equal(2);
-                expect(claimableRewardCounts[1]).to.be.equal(3);
-                expect(claimableRewardCounts[2]).to.be.equal(1);
+                await lockerClaimReward(context.user1, context.boneLocker1)
+                expect(await lockerClaimableReward(context.user1, context.boneLocker1)).to.be.equal(ether('0'));
+                expect(await lockerClaimableReward(context.user1, boneLocker2)).to.be.closeTo(lockedBonesReward(block2, block5), EPSILON);
+                expect(await lockerClaimableReward(context.user1, ZERO_ADDRESS)).to.be.closeTo(lockedBonesReward(block2, block5), EPSILON);
+                expect(await bonesBalance(context.user1)).to.be.closeTo(
+                    lockedBonesReward(block1, block2).add(directBonesReward(block1, block5)), EPSILON
+                );
 
-                currentBones = await bonesBalance(context.wrappedSslp0)
-                await lockerClaimReward(boneLockers, 2);
-                expect(await bonesBalance(context.wrappedSslp0)).to.be.closeTo(
-                    currentBones
-                        .add(lockedBonesReward(block2, block3))
-                        .add(lockedBonesReward(block3, block4))
-                        .add(lockedBonesReward(block4, block5))
-                        .add(lockedBonesReward(block5, block6))
-                        .add(lockedBonesReward(block7, block8)),
-                    EPSILON
-                )
-                claimableReward = await lockerClaimableReward(context.user1, boneLockers);
-                expect(claimableReward).to.be.closeTo(lockedBonesReward(block6, block7), EPSILON);
-                claimableRewardCounts = await getBoneLockerRewardsCount(boneLockers);
-                expect(claimableRewardCounts[0]).to.be.equal(0);
-                expect(claimableRewardCounts[1]).to.be.equal(1);
-                expect(claimableRewardCounts[2]).to.be.equal(0);
+                await lockerClaimReward(context.user1, boneLocker2, 1) // only 1 reward from 2nd locker
+                expect(await lockerClaimableReward(context.user1, context.boneLocker1)).to.be.equal(ether('0'));
+                expect(await lockerClaimableReward(context.user1, boneLocker2)).to.be.closeTo(lockedBonesReward(block3, block5), EPSILON);
+                expect(await lockerClaimableReward(context.user1, ZERO_ADDRESS)).to.be.closeTo(lockedBonesReward(block3, block5), EPSILON);
+                expect(await bonesBalance(context.user1)).to.be.closeTo(
+                    lockedBonesReward(block1, block3).add(directBonesReward(block1, block5)), EPSILON
+                );
 
-                currentBones = await bonesBalance(context.wrappedSslp0)
-                await lockerClaimReward(boneLockers.slice(1, 3), 5);
-                expect(await bonesBalance(context.wrappedSslp0)).to.be.closeTo(
-                    currentBones
-                        .add(lockedBonesReward(block6, block7)),
-                    EPSILON
-                )
-                claimableReward = await lockerClaimableReward(context.user1, boneLockers);
-                expect(claimableReward).to.be.equal(ether('0'));
-                claimableRewardCounts = await getBoneLockerRewardsCount(boneLockers);
-                expect(claimableRewardCounts[0]).to.be.equal(0);
-                expect(claimableRewardCounts[1]).to.be.equal(0);
-                expect(claimableRewardCounts[2]).to.be.equal(0);
+                await lockerClaimReward(context.user1, ZERO_ADDRESS, 0) // the last 2 rewards from 2nd locker (0 = all)
+                expect(await lockerClaimableReward(context.user1, context.boneLocker1)).to.be.equal(ether('0'));
+                expect(await lockerClaimableReward(context.user1, boneLocker2)).to.be.equal(ether('0'));
+                expect(await lockerClaimableReward(context.user1, ZERO_ADDRESS)).to.be.equal(ether('0'));
+                expect(await bonesBalance(context.user1)).to.be.closeTo(
+                    lockedBonesReward(block1, block5).add(directBonesReward(block1, block5)), EPSILON
+                );
             })
 
         });
@@ -742,13 +608,21 @@ describe("WrappedShibaSwapLp", function () {
                 expect(await context.sslpToken0.balanceOf(context.topDog.address)).to.be.equal(lockAmount, "old lp tokens didn't use");
                 expect(await context.sslpToken1.balanceOf(context.topDog.address)).to.be.equal(ether('0'), "no new lp tokens left in topdog");
 
+                // reapprove new sslp to pool
+                await context.sslpToken1.connect(context.user1).approve(context.wrappedSslp0.address, ether('1'));
+                // revert since new sslp is not approved for topdog
+                await expect(
+                  wrapAndJoin(context.user1, lockAmount, usdpAmount)
+                ).to.be.revertedWith("ERC20: transfer amount exceeds allowance");
+
+                await context.wrappedSslp0.connect(context.user1).approveSslpToTopDog();
+                await wrapAndJoin(context.user1, lockAmount, usdpAmount); // success
             })
         });
 
         describe("liquidations related", function () {
             it('move position', async function () {
                 const lockAmount = ether('0.4');
-                const usdpAmount = ether('0.2');
 
                 await prepareUserForJoin(context.user1, lockAmount);
 
@@ -757,22 +631,23 @@ describe("WrappedShibaSwapLp", function () {
                 const {blockNumber: block1} = await context.wrappedSslp0.connect(context.user1).deposit(context.user1.address, lockAmount);
                 const {blockNumber: block2} = await context.wrappedSslp0.connect(context.deployer).movePosition(context.user1.address, context.user2.address, ether('0.1'));
 
-                expect(await bonesBalance(context.user1)).to.be.equal(directBonesReward(block1, block2));
+                const user1Proxy = await context.wrappedSslp0.usersProxies(context.user1.address);
+                const user2Proxy = await context.wrappedSslp0.usersProxies(context.user2.address);
+                expect(user2Proxy).not.to.be.equal(ZERO_ADDRESS); // created on movePosition
+
+                expect(await bonesBalance(user1Proxy)).to.be.equal(directBonesReward(block1, block2)); // sent to proxy
                 expect(await context.sslpToken0.balanceOf(context.user1.address)).to.be.equal(ether('0.6'));
                 expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(ether('0.4'), 'no wrapped tokens transferred');
-                expect(await context.wrappedSslp0.totalBalanceOf(context.user1.address)).to.be.equal(ether('0.4'), 'nothing changes in token balances');
 
                 expect(await bonesBalance(context.user2)).to.be.equal(0);
                 expect(await context.sslpToken0.balanceOf(context.user2.address)).to.be.equal(ether('1'));
                 expect(await context.wrappedSslp0.balanceOf(context.user2.address)).to.be.equal(0, 'no wrapped tokens transferred');
-                expect(await context.wrappedSslp0.totalBalanceOf(context.user2.address)).to.be.equal(0, 'nothing changes in token balances');
 
-                // next movePosition us senselessly since contract is in inconsistent state
+                // next movePosition is senselessly since contract is in inconsistent state
             })
 
             it('move position to the same user', async function () {
                 const lockAmount = ether('0.4');
-                const usdpAmount = ether('0.2');
 
                 await prepareUserForJoin(context.user1, lockAmount);
                 await prepareUserForJoin(context.user2, lockAmount);
@@ -783,29 +658,26 @@ describe("WrappedShibaSwapLp", function () {
                 const {blockNumber: block2} = await context.wrappedSslp0.connect(context.user2).deposit(context.user2.address, lockAmount);
                 const {blockNumber: block3} = await context.wrappedSslp0.connect(context.deployer).movePosition(context.user2.address, context.user2.address, ether('0.2'));
 
-                expect(await bonesBalance(context.user1)).to.be.equal(0);
+                const user1Proxy = await context.wrappedSslp0.usersProxies(context.user1.address);
+                const user2Proxy = await context.wrappedSslp0.usersProxies(context.user2.address);
 
-                let user2Bones = directBonesReward(block2, block3).mul(4).div(5)
-                expect(await bonesBalance(context.user2)).to.be.equal(user2Bones);
+                expect(await bonesBalance(user1Proxy)).to.be.equal(0);
+                expect(await bonesBalance(user2Proxy)).to.be.equal(0);
+
                 expect(await context.sslpToken0.balanceOf(context.user2.address)).to.be.equal(ether('0.6'));
                 expect(await context.wrappedSslp0.balanceOf(context.user2.address)).to.be.equal(lockAmount, 'no wrapped tokens transferred');
-                expect(await context.wrappedSslp0.totalBalanceOf(context.user2.address)).to.be.equal(lockAmount, 'position didnt change');
 
-                let prevUser2Bones = await bonesBalance(context.user2);
                 const {blockNumber: block4} = await context.wrappedSslp0.connect(context.deployer).movePosition(context.user2.address, context.user2.address, lockAmount);
-
-                expect(await bonesBalance(context.user2)).to.be.equal(prevUser2Bones.add(directBonesReward(block3, block4).mul(4).div(5)))
+                // nothing changes
+                expect(await bonesBalance(user2Proxy)).to.be.equal(0);
                 expect(await context.sslpToken0.balanceOf(context.user2.address)).to.be.equal(ether('0.6'));
                 expect(await context.wrappedSslp0.balanceOf(context.user2.address)).to.be.equal(lockAmount, 'no wrapped tokens transferred');
-                expect(await context.wrappedSslp0.totalBalanceOf(context.user2.address)).to.be.equal(lockAmount, 'position didnt change');
 
-                prevUser2Bones = await bonesBalance(context.user2);
                 const {blockNumber: block5} = await context.wrappedSslp0.connect(context.user2).withdraw(context.user2.address, lockAmount); // can withdraw
 
-                expect(await bonesBalance(context.user2)).to.be.equal(prevUser2Bones.add(directBonesReward(block4, block5).mul(4).div(5)))
+                expect(await bonesBalance(user2Proxy)).to.be.equal(directBonesReward(block2, block5).mul(4).div(5))
                 expect(await context.sslpToken0.balanceOf(context.user2.address)).to.be.equal(ether('1'));
                 expect(await context.wrappedSslp0.balanceOf(context.user2.address)).to.be.equal(0, 'wrapped tokens burned');
-                expect(await context.wrappedSslp0.totalBalanceOf(context.user2.address)).to.be.equal(0, 'position closed');
             })
 
             it('liquidation (with moving position)', async function () {
@@ -826,9 +698,7 @@ describe("WrappedShibaSwapLp", function () {
                 await cdpManagerWrapper.triggerLiquidation(context, context.wrappedSslp0, context.user1);
 
                 expect(await context.wrappedSslp0.balanceOf(context.vault.address)).to.be.equal(lockAmount, "wrapped tokens in vault");
-                expect(await context.wrappedSslp0.totalBalanceOf(context.user1.address)).to.be.equal(lockAmount);
                 expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(0);
-                expect(await context.wrappedSslp0.totalBalanceOf(context.user2.address)).to.be.equal(0);
                 expect(await context.wrappedSslp0.balanceOf(context.user2.address)).to.be.equal(0);
 
                 await mineBlocks(10)
@@ -836,12 +706,9 @@ describe("WrappedShibaSwapLp", function () {
                 await context.liquidationAuction.connect(context.user2).buyout(context.wrappedSslp0.address, context.user1.address);
 
                 expect(await context.wrappedSslp0.balanceOf(context.vault.address)).to.be.equal(0, "wrapped tokens not in vault");
-                let ownerCollateralAmount = await context.wrappedSslp0.totalBalanceOf(context.user1.address);
-                let liquidatorCollateralAmount = await context.wrappedSslp0.totalBalanceOf(context.user2.address);
+                let ownerCollateralAmount = await context.wrappedSslp0.balanceOf(context.user1.address);
+                let liquidatorCollateralAmount = await context.wrappedSslp0.balanceOf(context.user2.address);
                 expect(lockAmount).to.be.equal(ownerCollateralAmount.add(liquidatorCollateralAmount))
-
-                expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(ownerCollateralAmount, 'tokens = position');
-                expect(await context.wrappedSslp0.balanceOf(context.user2.address)).to.be.equal(liquidatorCollateralAmount, 'tokens = position');
 
                 await context.wrappedSslp0.connect(context.user1).withdraw(context.user1.address, ownerCollateralAmount);
                 await context.wrappedSslp0.connect(context.user2).withdraw(context.user2.address, liquidatorCollateralAmount);
@@ -867,7 +734,7 @@ describe("WrappedShibaSwapLp", function () {
                 await cdpManagerWrapper.triggerLiquidation(context, context.wrappedSslp0, context.user1);
 
                 expect(await context.wrappedSslp0.balanceOf(context.vault.address)).to.be.equal(lockAmount, "wrapped tokens in vault");
-                expect(await context.wrappedSslp0.totalBalanceOf(context.user1.address)).to.be.equal(lockAmount);
+                expect(await context.vault.collaterals(context.wrappedSslp0.address, context.user1.address)).to.be.equal(lockAmount);
                 expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(0);
 
                 await mineBlocks(52);
@@ -875,7 +742,7 @@ describe("WrappedShibaSwapLp", function () {
                 await context.liquidationAuction.connect(context.user1).buyout(context.wrappedSslp0.address, context.user1.address);
 
                 expect(await context.wrappedSslp0.balanceOf(context.vault.address)).to.be.equal(0, "wrapped tokens not in vault");
-                expect(await context.wrappedSslp0.totalBalanceOf(context.user1.address)).to.be.equal(lockAmount);
+                expect(await context.vault.collaterals(context.wrappedSslp0.address, context.user1.address)).to.be.equal(0);
                 expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(lockAmount);
 
                 expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(lockAmount, 'tokens = position');
@@ -949,8 +816,6 @@ describe("WrappedShibaSwapLp", function () {
                         expect(await context.sslpToken0.balanceOf(context.wrappedSslp0.address)).to.be.equal(ether('0'), "transferred not to pool");
                         expect(await context.wrappedSslp0.balanceOf(context.vault.address)).to.be.equal(lockAmount, "wrapped token sent to vault");
                         expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(0, "wrapped token sent not to user");
-                        expect(await context.wrappedSslp0.totalBalanceOf(context.vault.address)).to.be.equal(0, "bault has not total balance");
-                        expect(await context.wrappedSslp0.totalBalanceOf(context.user1.address)).to.be.equal(lockAmount, "wrapped token user total position");
                         expect(await context.wrappedSslp0.totalSupply()).to.be.equal(lockAmount, "minted only wrapped tokens for deposited amount");
 
                         for (let i = 0; i < blockInterval - 1; ++i) {
@@ -965,6 +830,7 @@ describe("WrappedShibaSwapLp", function () {
                         expect(await context.wrappedSslp0.balanceOf(context.vault.address)).to.be.equal(0, "wrapped token withdrawn from vault");
                         expect(await context.wrappedSslp0.totalSupply()).to.be.equal(0, "everything were burned");
 
+                        await claimReward(context.user1);
                         expect(await bonesBalance(context.user1)).to.be.equal(directBonesReward(depositBlock, withdrawalBlock), "bones reward got");
                     })
                 );
@@ -994,6 +860,7 @@ describe("WrappedShibaSwapLp", function () {
                     expect(await context.wrappedSslp0.balanceOf(context.vault.address)).to.be.equal(0, "wrapped token withdrawn from vault");
                     expect(await context.wrappedSslp0.totalSupply()).to.be.equal(0, "everything were burned");
 
+                    await claimReward(context.user1);
                     expect(await bonesBalance(context.user1)).to.be.equal(0, "bones reward got");
                 });
 
@@ -1005,8 +872,11 @@ describe("WrappedShibaSwapLp", function () {
 
                     const {blockNumber: deposit1Block} = await wrapAndJoin(context.user1, lockAmount.div(2), usdpAmount.div(2));
                     const {blockNumber: deposit2Block} = await wrapAndJoin(context.user1, lockAmount.div(2), usdpAmount.div(2));
+
+                    const user1Proxy = await context.wrappedSslp0.usersProxies(context.user1.address);
+
                     const reward = directBonesReward(deposit1Block, deposit2Block);
-                    expect(await bonesBalance(context.user1)).to.be.equal(reward, "bones reward got");
+                    expect(await bonesBalance(user1Proxy)).to.be.equal(reward, "bones reward got to proxy");
 
                     const {blockNumber: withdrawalBlock} = await unwrapAndExit(context.user1, lockAmount, usdpAmount);
                     expect(await context.sslpToken0.balanceOf(context.user1.address)).to.be.equal(ether('1'), "returned all tokens to user");
@@ -1014,6 +884,7 @@ describe("WrappedShibaSwapLp", function () {
                     expect(await context.wrappedSslp0.balanceOf(context.vault.address)).to.be.equal(0, "wrapped token withdrawn from vault");
                     expect(await context.wrappedSslp0.totalSupply()).to.be.equal(0, "everything were burned");
 
+                    await claimReward(context.user1);
                     expect(await bonesBalance(context.user1)).to.be.equal(directBonesReward(deposit2Block, withdrawalBlock).add(reward), "bones reward got");
                 })
 
@@ -1144,11 +1015,15 @@ async function unwrapAndExit(user, assetAmount, usdpAmount) {
 }
 
 async function bonesBalance(user) {
-    return await context.boneToken.balanceOf(user.address)
+    return await context.boneToken.balanceOf(user.address ? user.address : user)
 }
 
-async function lockerClaimReward(lockers = [context.boneLocker1.address], maxRewardsAtOnce = 10) {
-    await context.wrappedSslp0.connect(context.user3).claimRewardFromBoneLockers(lockers, maxRewardsAtOnce); // everyone can claim
+async function lockerClaimReward(user, locker = context.boneLocker1, maxRewardsAtOnce = 10) {
+    await context.wrappedSslp0.connect(context.user3).claimRewardFromBoneLocker(user.address, locker.address ? locker.address : locker, maxRewardsAtOnce); // everyone can claim
+}
+
+async function lockerClaimableReward(user, locker = context.boneLocker1) {
+    return await context.wrappedSslp0.connect(context.user3).getClaimableRewardFromBoneLocker(user.address, locker.address ? locker.address : locker); // everyone can view info
 }
 
 async function mineBlocks(count) {

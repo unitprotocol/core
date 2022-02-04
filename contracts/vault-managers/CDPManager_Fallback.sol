@@ -177,7 +177,9 @@ contract CDPManager01_Fallback is BaseCDPManager {
       **/
     function unwrapAndExit(IWrappedAsset wrappedAsset, uint assetAmount, uint usdpAmount, KeydonixOracleAbstract.ProofDataStruct calldata proofData) public returns (uint) {
         usdpAmount = exit(address(wrappedAsset), assetAmount, usdpAmount, proofData);
-        wrappedAsset.withdraw(msg.sender, assetAmount);
+        if (assetAmount > 0) {
+            wrappedAsset.withdraw(msg.sender, assetAmount);
+        }
 
         return usdpAmount;
     }

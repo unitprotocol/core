@@ -8,6 +8,7 @@ pragma solidity 0.7.6;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+import "./WSSLPUserProxy.sol";
 import "../../helpers/ReentrancyGuard.sol";
 import "../../helpers/TransferHelper.sol";
 import "../../Auth2.sol";
@@ -32,35 +33,12 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     uint256 public immutable topDogPoolId;
     IERC20 public immutable boneToken;
 
-    uint256 public lastKnownBonesBalance;
-    uint256 public accBonePerShare; // Accumulated BONEs per share, times MULTIPLIER. See below.
+    address public immutable userProxyImplementation;
+    mapping(address => WSSLPUserProxy) public usersProxies;
 
     uint256 public feePercent = 10;
     uint256 public constant FEE_DENOMINATOR = 100;
     address public feeReceiver;
-
-    // Reward debt. See explanation below.
-    // similar to TopDog contract https://etherscan.io/address/0x94235659cf8b805b2c658f9ea2d6d6ddbb17c8d7
-    // but we update accBonePerShare every transaction
-    //
-    // We do some fancy math here. Basically, any point in time, the amount of BONEs
-    // entitled to a user but is pending to be distributed is:
-    //
-    //   pending reward = (totalBalanceOf(user) * accBonePerShare) - rewardDebt[user]
-    //
-    // Whenever a user deposits or withdraws LP tokens to a pool. Here's what happens:
-    //   1. The pool's `accBonePerShare` gets updated.
-    //   2. User receives the pending reward sent to his/her address.
-    //   3. User's `totalBalanceOf` gets updated (since minted/burned tokens for user)
-    //   4. User's `rewardDebt` gets updated.
-    //
-    // on transfers balanceOf + deposited to vault = const
-    mapping(address => uint256) public rewardDebts;
-
-    modifier updatePool() {
-        _updatePool();
-        _;
-    }
 
     constructor(
         address _vaultParameters,
@@ -98,14 +76,8 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         _setupDecimals(IERC20WithOptional(getSsLpToken(_topDog, _topDogPoolId)).decimals());
 
         feeReceiver = _feeReceiver;
-    }
 
-    /**
-     * @notice Approves for TopDog contract to transfer tokens from this ~forever
-     * @dev only manager could call this method
-     */
-    function approveSslpToTopdog() public onlyManager {
-        getUnderlyingToken().approve(address(topDog), uint256(-1));
+        userProxyImplementation = address(new WSSLPUserProxy(_topDog, _topDogPoolId));
     }
 
     function setFeeReceiver(address _feeReceiver) public onlyManager {
@@ -122,62 +94,56 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     }
 
     /**
+     * @notice Approve sslp token to spend from user proxy (in case of change sslp)
+     */
+    function approveSslpToTopDog() public nonReentrant {
+        WSSLPUserProxy userProxy = _requireUserProxy(msg.sender);
+        IERC20 sslpToken = getUnderlyingToken();
+
+        userProxy.approveSslpToTopDog(sslpToken);
+    }
+
+    /**
      * @notice Get tokens from user, send them to TopDog, sent to user wrapped tokens
      * @dev only user or CDPManager could call this method
      */
-    function deposit(address _userAddr, uint256 _amount) public override nonReentrant updatePool {
-        require(msg.sender == _userAddr || vaultParameters.canModifyVault(msg.sender), "Unit Protocol Wrapped Assets: AUTH_FAILED");
+    function deposit(address _user, uint256 _amount) public override nonReentrant {
+        require(_amount > 0, "Unit Protocol Wrapped Assets: INVALID_AMOUNT");
+        require(msg.sender == _user || vaultParameters.canModifyVault(msg.sender), "Unit Protocol Wrapped Assets: AUTH_FAILED");
 
-        uint256 userBalance = totalBalanceOf(_userAddr);
-        _sendPendingRewardInternal(_userAddr, userBalance);
+        IERC20 sslpToken = getUnderlyingToken();
+        WSSLPUserProxy userProxy = _getOrCreateUserProxy(_user, sslpToken);
 
-        if (_amount > 0) {
-            IERC20 sslpToken = getUnderlyingToken();
+        // get tokens from user, need approve of sslp tokens to pool
+        TransferHelper.safeTransferFrom(address(sslpToken), _user, address(userProxy), _amount);
 
-            // get tokens from user, need approve of sslp tokens to pool
-            TransferHelper.safeTransferFrom(address(sslpToken), _userAddr, address(this), _amount);
+        // deposit them to TopDog
+        userProxy.deposit(_amount);
 
-            // deposit them to TopDog
-            topDog.deposit(topDogPoolId, _amount);
+        // wrapped tokens to user
+        _mint(_user, _amount);
 
-            // wrapped tokens to user
-            _mint(_userAddr, _amount);
-        }
-        rewardDebts[_userAddr] = (userBalance.add(_amount)).mul(accBonePerShare).div(MULTIPLIER);
-        emit Deposit(_userAddr, _amount);
+        emit Deposit(_user, _amount);
     }
 
     /**
      * @notice Unwrap tokens, withdraw from TopDog and send them to user
      * @dev only user or CDPManager could call this method
      */
-    function withdraw(address _userAddr, uint256 _amount) public override nonReentrant updatePool {
-        require(msg.sender == _userAddr || vaultParameters.canModifyVault(msg.sender), "Unit Protocol Wrapped Assets: AUTH_FAILED");
+    function withdraw(address _user, uint256 _amount) public override nonReentrant {
+        require(_amount > 0, "Unit Protocol Wrapped Assets: INVALID_AMOUNT");
+        require(msg.sender == _user || vaultParameters.canModifyVault(msg.sender), "Unit Protocol Wrapped Assets: AUTH_FAILED");
 
-        uint256 userBalance = totalBalanceOf(_userAddr);
-        require(userBalance >= _amount, "Unit Protocol Wrapped Assets: INSUFFICIENT_AMOUNT");
-        _sendPendingRewardInternal(_userAddr, userBalance);
+        IERC20 sslpToken = getUnderlyingToken();
+        WSSLPUserProxy userProxy = _requireUserProxy(_user);
 
-        if (_amount > 0) {
-            IERC20 sslpToken = getUnderlyingToken();
+        // get wrapped tokens from user
+        _burn(_user, _amount);
 
-            // get wrapped tokens from user
-            _burn(_userAddr, _amount);
+        // withdraw funds from TopDog
+        userProxy.withdraw(sslpToken, _amount, _user);
 
-            // withdraw funds from TopDog
-            topDog.withdraw(topDogPoolId, _amount);
-
-            // send to user
-            TransferHelper.safeTransfer(address(sslpToken), _userAddr, _amount);
-        }
-
-        rewardDebts[_userAddr] = (userBalance.sub(_amount)).mul(accBonePerShare).div(MULTIPLIER);
-        if (totalSupply() == 0) {
-            // on full withdrawal clear counters to distribute possible remainder next time
-            accBonePerShare = 0;
-            lastKnownBonesBalance = 0;
-        }
-        emit Withdraw(_userAddr, _amount);
+        emit Withdraw(_user, _amount);
     }
 
     /**
@@ -185,119 +151,71 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
      * @dev Important! Use only with additional token transferring outside this function (example: liquidation - tokens are in vault and transferred by vault)
      * @dev only CDPManager could call this method
      */
-    function movePosition(address _userAddrFrom, address _userAddrTo, uint256 _amount) public override nonReentrant updatePool hasVaultAccess {
-        if (_userAddrFrom == _userAddrTo) {
-            _claimRewardInternal(_userAddrFrom);
+    function movePosition(address _userFrom, address _userTo, uint256 _amount) public override nonReentrant hasVaultAccess {
+        require(_userFrom != address(vault) && _userTo != address(vault), "Unit Protocol Wrapped Assets: NOT_ALLOWED_FOR_VAULT");
+        if (_userFrom == _userTo || _amount == 0) {
             return;
         }
 
-        uint256 userFromBalance = totalBalanceOf(_userAddrFrom);
-        require(userFromBalance >= _amount, "Unit Protocol Wrapped Assets: INSUFFICIENT_AMOUNT");
-        _sendPendingRewardInternal(_userAddrFrom, userFromBalance);
+        IERC20 sslpToken = getUnderlyingToken();
+        WSSLPUserProxy userFromProxy = _requireUserProxy(_userFrom);
+        WSSLPUserProxy userToProxy = _getOrCreateUserProxy(_userTo, sslpToken);
 
-        uint256 userToBalance = totalBalanceOf(_userAddrTo);
-        _sendPendingRewardInternal(_userAddrTo, userToBalance);
+        userFromProxy.withdraw(sslpToken, _amount, address(userToProxy));
+        userToProxy.deposit(_amount);
 
-        // tokens must be transferred outside. We suppose it
-        rewardDebts[_userAddrFrom] = (userFromBalance.sub(_amount)).mul(accBonePerShare).div(MULTIPLIER);
-        rewardDebts[_userAddrTo] = (userToBalance.add(_amount)).mul(accBonePerShare).div(MULTIPLIER);
-
-        emit PositionMoved(_userAddrFrom, _userAddrTo, _amount);
+        emit Withdraw(_userFrom, _amount);
+        emit Deposit(_userTo, _amount);
+        emit PositionMoved(_userFrom, _userTo, _amount);
     }
 
     /**
      * @notice Calculates pending reward for user. Not taken into account unclaimed reward from BoneLockers.
-     * @notice Use getClaimableRewardAmountFromBoneLockers to calculate unclaimed reward from BoneLockers
+     * @notice Use getClaimableRewardFromBoneLocker to calculate unclaimed reward from BoneLockers
      */
-    function pendingReward(address _userAddr) public override view returns (uint256) {
-        uint256 lpDeposited = totalSupply();
-        if (lpDeposited == 0) {
+    function pendingReward(address _user) public override view returns (uint256) {
+        WSSLPUserProxy userProxy = usersProxies[_user];
+        if (address(userProxy) == address(0)) {
             return 0;
         }
 
-        uint256 userBalance = totalBalanceOf(_userAddr);
-        if (userBalance == 0) {
-            return 0;
-        }
-
-        uint256 currentBonesBalance = boneToken.balanceOf(address(this));
-        uint256 pendingBones = topDog.pendingBone(topDogPoolId, address(this)).mul(topDog.rewardMintPercent()).div(100);
-        uint256 addedBones = currentBonesBalance.sub(lastKnownBonesBalance).add(pendingBones);
-        uint256 accBonePerShareTemp = accBonePerShare.add(addedBones.mul(MULTIPLIER).div(lpDeposited));
-
-        return userBalance.mul(accBonePerShareTemp).div(MULTIPLIER).sub(rewardDebts[_userAddr]);
+        return userProxy.pendingReward(feeReceiver, feePercent);
     }
 
     /**
-     * @notice Claim pending reward for user. User must manually claim reward from BoneLockers before call of this method
+     * @notice Claim pending direct reward for user.
      * @notice Use claimRewardFromBoneLockers claim reward from BoneLockers
      */
-    function claimReward(address _userAddr) public override nonReentrant updatePool {
-        _claimRewardInternal(_userAddr);
-    }
+    function claimReward(address _user) public override nonReentrant {
+        WSSLPUserProxy userProxy = _requireUserProxy(_user);
 
-    function _claimRewardInternal(address _userAddr) internal {
-        uint256 userBalance = totalBalanceOf(_userAddr);
-        _sendPendingRewardInternal(_userAddr, userBalance);
-        rewardDebts[_userAddr] = userBalance.mul(accBonePerShare).div(MULTIPLIER);
+        userProxy.claimReward(feeReceiver, feePercent);
     }
 
     /**
-     * @notice Calculates approximate share of user in claimable bones from BoneLockers for this pool.
-     * @notice Not all this reward could be claimed at one call of `claimRewardFromBoneLockers` bcs of gas
-     * @param _userAddr user address
-     * @param _boneLockers array of bone lockers. Not expected that TopDog.boneLocker would be changes, but still
+     * @notice Get claimable amount from BoneLocker
+     * @param _user user address
+     * @param _boneLocker BoneLocker to check, pass zero address to check current
      */
-    function getClaimableRewardAmountFromBoneLockers(address _userAddr, IBoneLocker[] memory _boneLockers) public view returns (uint256)
-    {
-        uint256 userBalance = totalBalanceOf(_userAddr);
-        if (userBalance == 0) {
+    function getClaimableRewardFromBoneLocker(address _user, IBoneLocker _boneLocker) public view returns (uint256) {
+        WSSLPUserProxy userProxy = usersProxies[_user];
+        if (address(userProxy) == address(0)) {
             return 0;
         }
 
-        uint256 poolReward;
-        for (uint256 i = 0; i < _boneLockers.length; ++i) {
-            poolReward = poolReward.add(_boneLockers[i].getClaimableAmount(address(this)));
-        }
-
-        return poolReward.mul(userBalance).div(totalSupply());
+        return userProxy.getClaimableRewardFromBoneLocker(_boneLocker, feeReceiver, feePercent);
     }
 
     /**
-     * @notice Claim bones from BoneLockers FOR THIS POOL, not for user. User will get share from this amount
+     * @notice Claim bones from BoneLockers
      * @notice Since it could be a lot of pending rewards items parameters are used limit tx size
-     * @param _boneLockers array of bone lockers. Not expected that TopDog.boneLocker would be changes, but still
-     * @param _maxBoneLockerRewardsAtOneClaim max amount of rewards items to claim from each BoneLocker, see getBoneLockerRewardsCount
+     * @param _boneLocker BoneLocker to claim, pass zero address to claim from current
+     * @param _maxBoneLockerRewardsAtOneClaim max amount of rewards items to claim from BoneLocker, pass 0 to claim all rewards
      */
-    function claimRewardFromBoneLockers(IBoneLocker[] memory _boneLockers, uint256 _maxBoneLockerRewardsAtOneClaim) public nonReentrant {
-        for (uint256 i = 0; i < _boneLockers.length; ++i) {
-            (uint256 left, uint256 right) = _boneLockers[i].getLeftRightCounters(address(this));
-            if (right > left) {
-                if (right - left > _maxBoneLockerRewardsAtOneClaim) {
-                    right = left + _maxBoneLockerRewardsAtOneClaim;
-                }
-                _boneLockers[i].claimAll(right);
-            }
-        }
-    }
+    function claimRewardFromBoneLocker(address _user, IBoneLocker _boneLocker, uint256 _maxBoneLockerRewardsAtOneClaim) public nonReentrant {
+        WSSLPUserProxy userProxy = _requireUserProxy(_user);
 
-    function getBoneLockerRewardsCount(IBoneLocker[] memory _boneLockers) public view returns (uint256[] memory rewards)
-    {
-        rewards = new uint256[](_boneLockers.length);
-
-        for (uint256 locker_i = 0; locker_i < _boneLockers.length; ++locker_i) {
-            IBoneLocker locker = _boneLockers[locker_i];
-            (uint256 left, uint256 right) = locker.getLeftRightCounters(address(this));
-            uint256 i;
-            for (i = left; i < right; i++) {
-                (, uint256 ts,) = locker.lockInfoByUser(address(this), i);
-                if (block.timestamp < ts.add(locker.lockingPeriod())) {
-                    break;
-                }
-            }
-
-            rewards[locker_i] = i - left;
-        }
+        userProxy.claimRewardFromBoneLocker(_boneLocker, _maxBoneLockerRewardsAtOneClaim, feeReceiver, feePercent);
     }
 
     /**
@@ -308,58 +226,6 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         (IERC20 _sslpToken,,,) = topDog.poolInfo(topDogPoolId);
 
         return _sslpToken;
-    }
-
-    // Update reward variables to be up-to-date.
-    function _updatePool() internal {
-        uint256 lpDeposited = totalSupply();
-        if (lpDeposited == 0) {
-            return;
-        }
-
-        // getting current reward (no separate methods)
-        topDog.deposit(topDogPoolId, 0);
-
-        uint256 currentBonesBalance = boneToken.balanceOf(address(this));
-        uint256 addedBones = currentBonesBalance.sub(lastKnownBonesBalance);
-
-        if (feePercent > 0 && feeReceiver != address(0)) {
-            uint256 fee = addedBones.mul(feePercent).div(FEE_DENOMINATOR);
-            TransferHelper.safeTransfer(address(boneToken), feeReceiver, fee);
-
-            addedBones = addedBones.sub(fee);
-            currentBonesBalance = currentBonesBalance.sub(fee);
-        }
-
-        lastKnownBonesBalance = currentBonesBalance;
-        accBonePerShare = accBonePerShare.add(addedBones.mul(MULTIPLIER).div(lpDeposited));
-    }
-
-    function _sendPendingRewardInternal(address _userAddr, uint256 _userAmount) internal {
-        if (_userAmount == 0) {
-            return;
-        }
-
-        uint256 userBalance = totalBalanceOf(_userAddr);
-        uint256 pending = userBalance.mul(accBonePerShare).div(MULTIPLIER).sub(rewardDebts[_userAddr]);
-        if (pending == 0) {
-            return;
-        }
-
-        _safeBoneTransfer(_userAddr, pending);
-        lastKnownBonesBalance = boneToken.balanceOf(address(this));
-    }
-
-    /**
-     * @dev Safe bone transfer function, just in case if rounding error causes pool to not have enough BONEs.
-     */
-    function _safeBoneTransfer(address _to, uint256 _amount) internal {
-        uint256 boneBal = boneToken.balanceOf(address(this));
-        if (_amount > boneBal) {
-            TransferHelper.safeTransfer(address(boneToken), _to, boneBal);
-        } else {
-            TransferHelper.safeTransfer(address(boneToken), _to, _amount);
-        }
     }
 
     /**
@@ -399,18 +265,40 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         return IERC20WithOptional(address(ISushiSwapLpToken(getSsLpToken(_topDog, _topDogPoolId)).token1())).symbol();
     }
 
-    function totalBalanceOf(address account) public view returns (uint256) {
-        if (account == address(vault)) {
-            return 0;
-        }
-        uint256 collateralsOnVault = vault.collaterals(address(this), account);
-        return balanceOf(account).add(collateralsOnVault);
-    }
-
     /**
      * @dev No direct transfers between users allowed since we store positions info in userInfo.
      */
     function _transfer(address sender, address recipient, uint256 amount) internal override onlyVault {
         super._transfer(sender, recipient, amount);
+    }
+
+    function _requireUserProxy(address _user) internal view returns (WSSLPUserProxy userProxy) {
+        userProxy = usersProxies[_user];
+        require(address(userProxy) != address(0), "Unit Protocol Wrapped Assets: NO_DEPOSIT");
+    }
+
+    function _getOrCreateUserProxy(address _user, IERC20 sslpToken) internal returns (WSSLPUserProxy userProxy) {
+        userProxy = usersProxies[_user];
+        if (address(userProxy) == address(0)) {
+            // create new
+            userProxy = WSSLPUserProxy(createClone(userProxyImplementation));
+            userProxy.init(_user, sslpToken);
+
+            usersProxies[_user] = userProxy;
+        }
+    }
+
+    /**
+     * @dev see https://github.com/optionality/clone-factory/blob/master/contracts/CloneFactory.sol
+     */
+    function createClone(address target) internal returns (address result) {
+        bytes20 targetBytes = bytes20(target);
+        assembly {
+            let clone := mload(0x40)
+            mstore(clone, 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000000000000000000000)
+            mstore(add(clone, 0x14), targetBytes)
+            mstore(add(clone, 0x28), 0x5af43d82803e903d91602b57fd5bf30000000000000000000000000000000000)
+            result := create(0, clone, 0x37)
+        }
     }
 }

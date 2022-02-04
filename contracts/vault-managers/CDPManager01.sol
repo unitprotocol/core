@@ -217,7 +217,9 @@ contract CDPManager01 is BaseCDPManager {
       **/
     function unwrapAndExit(IWrappedAsset wrappedAsset, uint assetAmount, uint usdpAmount) public returns (uint) {
         usdpAmount = exit(address(wrappedAsset), assetAmount, usdpAmount);
-        wrappedAsset.withdraw(msg.sender, assetAmount);
+        if (assetAmount > 0) {
+            wrappedAsset.withdraw(msg.sender, assetAmount);
+        }
 
         return usdpAmount;
     }
