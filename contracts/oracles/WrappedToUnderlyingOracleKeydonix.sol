@@ -23,7 +23,7 @@ contract WrappedToUnderlyingOracleKeydonix is KeydonixOracleAbstract, Auth2 {
     event NewUnderlying(address indexed wrapped, address indexed underlying);
 
     constructor(address _vaultParameters, address _oracleRegistry) Auth2(_vaultParameters) {
-        require(_vaultParameters != address(0) && _oracleRegistry != address(0), "Unit Protocol: ZERO_ADDRESS");
+        require(_oracleRegistry != address(0), "Unit Protocol: ZERO_ADDRESS");
         oracleRegistry = IOracleRegistry(_oracleRegistry);
     }
 

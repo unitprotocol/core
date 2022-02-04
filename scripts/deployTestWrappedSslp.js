@@ -55,8 +55,6 @@ async function deploy() {
     //////// wrapped assets ////////////////////////////////////////////
     const wrappedSslpUsdt = await deployContract('WrappedShibaSwapLp', VAULT_PARAMETERS, TOP_DOG, 17, BONES_FEE)
     const wrappedSslpShib = await deployContract('WrappedShibaSwapLp', VAULT_PARAMETERS, TOP_DOG, 0,  BONES_FEE)
-    await wrappedSslpUsdt.connect(multisig).approveSslpToTopdog();
-    await wrappedSslpShib.connect(multisig).approveSslpToTopdog();
 
     console.log("wrappedSslpUsdt: " + wrappedSslpUsdt.address)
     console.log("sslp usdt: " + USDT_SSLP)

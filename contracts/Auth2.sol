@@ -19,6 +19,8 @@ contract Auth2 {
     VaultParameters public immutable vaultParameters;
 
     constructor(address _parameters) {
+        require(_parameters != address(0), "Unit Protocol: ZERO_ADDRESS");
+
         vaultParameters = VaultParameters(_parameters);
     }
 
