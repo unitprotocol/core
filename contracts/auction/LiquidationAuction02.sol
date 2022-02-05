@@ -14,7 +14,7 @@ import '../interfaces/IVaultParameters.sol';
 import '../interfaces/IWrappedToUnderlyingOracle.sol';
 import '../interfaces/wrapped-assets/IWrappedAsset.sol';
 
-import '../vault-managers/parameters/ParametersConstants.sol';
+import '../vault-managers/parameters/AssetParameters.sol';
 
 import '../helpers/ReentrancyGuard.sol';
 import '../helpers/SafeMath.sol';
@@ -90,14 +90,13 @@ contract LiquidationAuction02 is ReentrancyGuard {
         uint256 assetBoolParams = assetsBooleanParameters.getAll(asset);
 
         // ensure that at least 1 unit of token is transferred to cdp owner
-        bool forceTransferAsset = assetBoolParams & (1 << ParametersConstants.PARAM_FORCE_TRANSFER_ASSET_TO_OWNER_ON_LIQUIDATION) != 0;
-        if (collateralToOwner == 0 && forceTransferAsset) {
+        if (collateralToOwner == 0 && AssetParameters.needForceTransferAssetToOwnerOnLiquidation(assetBoolParams)) {
             collateralToOwner = 1;
             collateralToLiquidator = collateralToLiquidator.sub(1);
         }
 
         // manually move position since transfer doesn't do this
-        if (assetBoolParams & (1 << ParametersConstants.PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION) != 0) {
+        if (AssetParameters.needForceMoveWrappedAssetPositionOnLiquidation(assetBoolParams)) {
             IWrappedAsset(asset).movePosition(owner, msg.sender, collateralToLiquidator);
         }
 

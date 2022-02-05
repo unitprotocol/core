@@ -77,7 +77,7 @@ contract WSSLPUserProxy {
         _sendAllBonesToUser(_feeReceiver, _feePercent);
     }
 
-    function _calcFee(uint _amount, address _feeReceiver, uint256 _feePercent) internal view returns (uint amountWithoutFee, uint fee) {
+    function _calcFee(uint _amount, address _feeReceiver, uint256 _feePercent) internal pure returns (uint amountWithoutFee, uint fee) {
         if (_feePercent == 0 || _feeReceiver == address(0)) {
             return (_amount, 0);
         }
