@@ -89,13 +89,16 @@ contract CDPViewer {
         address[2] lpUnderlyings;
         uint128 balance;
         uint128 totalSupply;
+        uint8 decimals;
         address uniswapV2Factory;
 
         address underlyingToken;
+        uint256 underlyingTokenBalance;
         uint256 underlyingTokenTotalSupply;
+        uint8 underlyingTokenDecimals;
         address underlyingTokenUniswapV2Factory;
         address[2] underlyingTokenUnderlyings;
-        uint256 underlyingTokenBalance;
+
     }
 
 
@@ -173,6 +176,7 @@ contract CDPViewer {
         }
 
         r.totalSupply = uint128(IUniswapV2PairFull(asset).totalSupply());
+        r.decimals = uint8(IUniswapV2PairFull(asset).decimals());
         if (owner != address(0)) {
             r.balance = uint128(ERC20Like(asset).balanceOf(owner));
         }
@@ -183,10 +187,11 @@ contract CDPViewer {
 
             TokenDetails memory underlyingTokenDetails = getTokenDetails(r.underlyingToken, owner);
             r.underlyingTokenTotalSupply = underlyingTokenDetails.totalSupply;
+            r.underlyingTokenDecimals = underlyingTokenDetails.decimals;
+            r.underlyingTokenBalance = underlyingTokenDetails.balance;
             r.underlyingTokenUniswapV2Factory = underlyingTokenDetails.uniswapV2Factory;
             r.underlyingTokenUnderlyings[0] = underlyingTokenDetails.lpUnderlyings[0];
             r.underlyingTokenUnderlyings[1] = underlyingTokenDetails.lpUnderlyings[1];
-            r.underlyingTokenBalance = underlyingTokenDetails.balance;
         }
     }
 
