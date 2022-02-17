@@ -12,6 +12,7 @@ import "../interfaces/ICDPRegistry.sol";
 import '../interfaces/IToken.sol';
 import "../interfaces/vault-managers/parameters/IVaultManagerParameters.sol";
 import "../interfaces/vault-managers/parameters/IVaultManagerBorrowFeeParameters.sol";
+import "../interfaces/swappers/ISwappersRegistry.sol";
 
 import "../helpers/ReentrancyGuard.sol";
 import '../helpers/TransferHelper.sol';
@@ -28,10 +29,12 @@ abstract contract BaseCDPManager is ReentrancyGuard {
     using SafeMath for uint;
 
     IVault public immutable vault;
+    IVaultParameters public immutable vaultParameters;
     IVaultManagerParameters public immutable vaultManagerParameters;
+    IVaultManagerBorrowFeeParameters public immutable vaultManagerBorrowFeeParameters;
     IOracleRegistry public immutable oracleRegistry;
     ICDPRegistry public immutable cdpRegistry;
-    IVaultManagerBorrowFeeParameters public immutable vaultManagerBorrowFeeParameters;
+    ISwappersRegistry public immutable swappersRegistry;
     IERC20 public immutable usdp;
 
     uint public constant Q112 = 2 ** 112;
@@ -59,34 +62,44 @@ abstract contract BaseCDPManager is ReentrancyGuard {
 
     /**
      * @param _vaultManagerParameters The address of the contract with Vault manager parameters
+     * @param _vaultManagerBorrowFeeParameters The address of the vault manager borrow fee parameters
      * @param _oracleRegistry The address of the oracle registry
      * @param _cdpRegistry The address of the CDP registry
-     * @param _vaultManagerBorrowFeeParameters The address of the vault manager borrow fee parameters
+     * @param _swappersRegistry The address of the swappers registry
      **/
-    constructor(address _vaultManagerParameters, address _oracleRegistry, address _cdpRegistry, address _vaultManagerBorrowFeeParameters) {
+    constructor(
+        address _vaultManagerParameters,
+        address _vaultManagerBorrowFeeParameters,
+        address _oracleRegistry,
+        address _cdpRegistry,
+        address _swappersRegistry
+    ) {
         require(
             _vaultManagerParameters != address(0) &&
             _oracleRegistry != address(0) &&
             _cdpRegistry != address(0) &&
-            _vaultManagerBorrowFeeParameters != address(0),
-            "Unit Protocol: INVALID_ARGS"
+            _vaultManagerBorrowFeeParameters != address(0) &&
+            _swappersRegistry != address(0)
+            , "Unit Protocol: INVALID_ARGS"
         );
         vaultManagerParameters = IVaultManagerParameters(_vaultManagerParameters);
         IVault vaultLocal = IVault(IVaultParameters(IVaultManagerParameters(_vaultManagerParameters).vaultParameters()).vault());
         vault = vaultLocal;
         oracleRegistry = IOracleRegistry(_oracleRegistry);
         cdpRegistry = ICDPRegistry(_cdpRegistry);
+        swappersRegistry = ISwappersRegistry(_swappersRegistry);
         vaultManagerBorrowFeeParameters = IVaultManagerBorrowFeeParameters(_vaultManagerBorrowFeeParameters);
         usdp = IERC20(vaultLocal.usdp());
+        vaultParameters = IVaultParameters(vaultLocal.vaultParameters());
     }
 
     /**
      * @notice Charge borrow fee if needed
      */
-    function _chargeBorrowFee(address asset, address user, uint usdpAmount) internal {
-        uint borrowFee = vaultManagerBorrowFeeParameters.calcBorrowFeeAmount(asset, usdpAmount);
+    function _chargeBorrowFee(address asset, address user, uint usdpAmount) internal returns (uint borrowFee) {
+        borrowFee = vaultManagerBorrowFeeParameters.calcBorrowFeeAmount(asset, usdpAmount);
         if (borrowFee == 0) { // very small amount case
-            return;
+            return borrowFee;
         }
 
         // to fail with concrete reason, not with TRANSFER_FROM_FAILED from safeTransferFrom
@@ -134,8 +147,10 @@ abstract contract BaseCDPManager is ReentrancyGuard {
     }
 
     function _calcPrincipal(address asset, address owner, uint repayment) internal view returns (uint) {
-        uint fee = vault.stabilityFee(asset, owner) * (block.timestamp - vault.lastUpdate(asset, owner)) / 365 days;
-        return repayment * DENOMINATOR_1E5 / (DENOMINATOR_1E5 + fee);
+        uint multiplier = repayment;
+        uint fee = vault.calculateFee(asset, owner, multiplier);
+
+        return repayment * multiplier / (multiplier + fee);
     }
 
     /**
@@ -156,5 +171,51 @@ abstract contract BaseCDPManager is ReentrancyGuard {
         if (debt == 0) return false;
 
         return debt.mul(100).mul(Q112).div(usdValue_q112) >= vaultManagerParameters.liquidationRatio(asset);
+    }
+
+    function _ensureOracle(address asset) internal view virtual returns (uint oracleType) {
+        oracleType = oracleRegistry.oracleTypeByAsset(asset);
+        require(oracleType != 0, "Unit Protocol: INVALID_ORACLE_TYPE");
+
+        address oracle = oracleRegistry.oracleByType(oracleType);
+        require(oracle != address(0), "Unit Protocol: DISABLED_ORACLE");
+    }
+
+    function _mintUsdp(address _asset, address _owner, uint _amount) internal returns (uint usdpAmountToUser) {
+        uint oracleType = _ensureOracle(_asset);
+
+        bool spawned = vault.debts(_asset, _owner) != 0;
+        if (spawned) {
+            require(vault.oracleType(_asset, _owner) == oracleType, "Unit Protocol: INCONSISTENT_USER_ORACLE_TYPE");
+        } else {
+            vault.spawn(_asset, _owner, oracleType);
+        }
+
+        vault.borrow(_asset, _owner, _amount);
+        uint borrowFee = _chargeBorrowFee(_asset, _owner, _amount);
+
+        return _amount.sub(borrowFee);
+    }
+
+    function _swapUsdpToAssetAndCheck(ISwapper swapper, address _asset, uint _usdpAmountToSwap, uint _minSwappedAssetAmount) internal returns(uint swappedAssetAmount) {
+        uint assetBalanceBeforeSwap = IERC20(_asset).balanceOf(msg.sender);
+        uint usdpBalanceBeforeSwap = usdp.balanceOf(msg.sender);
+
+        swappedAssetAmount = swapper.swapUsdpToAsset(msg.sender, _asset, _usdpAmountToSwap, _minSwappedAssetAmount);
+
+        require(swappedAssetAmount >= _minSwappedAssetAmount, "Unit Protocol: INVALID_SWAP");
+        require(IERC20(_asset).balanceOf(msg.sender) == assetBalanceBeforeSwap.add(swappedAssetAmount), "Unit Protocol: INVALID_SWAP");
+        require(usdp.balanceOf(msg.sender) == usdpBalanceBeforeSwap.sub(_usdpAmountToSwap), "Unit Protocol: INVALID_SWAP");
+    }
+
+    function _swapAssetToUsdpAndCheck(ISwapper swapper, address _asset, uint _assetAmountToSwap, uint _minSwappedUsdpAmount) internal returns(uint swappedUsdpAmount) {
+        uint assetBalanceBeforeSwap = IERC20(_asset).balanceOf(msg.sender);
+        uint usdpBalanceBeforeSwap = usdp.balanceOf(msg.sender);
+
+        swappedUsdpAmount = swapper.swapAssetToUsdp(msg.sender, _asset, _assetAmountToSwap, _minSwappedUsdpAmount);
+
+        require(swappedUsdpAmount >= _minSwappedUsdpAmount, "Unit Protocol: INVALID_SWAP");
+        require(IERC20(_asset).balanceOf(msg.sender) == assetBalanceBeforeSwap.sub(_assetAmountToSwap), "Unit Protocol: INVALID_SWAP");
+        require(usdp.balanceOf(msg.sender) == usdpBalanceBeforeSwap.add(swappedUsdpAmount), "Unit Protocol: INVALID_SWAP");
     }
 }

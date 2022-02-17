@@ -12,7 +12,12 @@ async function deployContract(contract, ...args) {
     return deployedContract;
 }
 
+function getRandomSigner() {
+    return new ethers.Wallet(ethers.Wallet.createRandom().privateKey, ethers.provider);
+}
+
 module.exports = {
     attachContract,
     deployContract,
+    getRandomSigner,
 }

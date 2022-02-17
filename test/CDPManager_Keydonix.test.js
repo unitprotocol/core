@@ -111,7 +111,7 @@ const time = require('./helpers/time');
 					const repayment = usdpAmount.div(new BN(2))
 					// get some usdp to cover fee
 					await this.utils.updatePrice();
-					await this.usdp.mintForTests(deployer, ether('2'));
+					await this.usdp.tests_mint(deployer, ether('2'));
 
 					// repay debt partially
 					await this.utils.repay(this.mainCollateral, repayment);

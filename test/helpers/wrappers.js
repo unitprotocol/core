@@ -80,7 +80,7 @@ module.exports = function(context, mode) {
 			const totalDebt = await context.vault.getTotalDebt(main.address, user);
 
 			// mint usdp to cover initial borrow fee
-			await context.usdp.mintForTests(user, context.utils.calcBorrowFee(totalDebt));
+			await context.usdp.tests_mint(user, context.utils.calcBorrowFee(totalDebt));
 
 			await context.usdp.approve(context.vault.address, totalDebt);
 			const mainAmount = await context.vault.collaterals(main.address, user);
@@ -123,7 +123,7 @@ module.exports = function(context, mode) {
 			const totalDebt = await context.vault.getTotalDebt(main.address, user);
 
 			// mint usdp to cover initial borrow fee
-			await context.usdp.mintForTests(user, context.utils.calcBorrowFee(totalDebt));
+			await context.usdp.tests_mint(user, context.utils.calcBorrowFee(totalDebt));
 
 			await context.usdp.approve(context.vault.address, totalDebt);
 			const mainAmount = await context.vault.collaterals(main.address, user);

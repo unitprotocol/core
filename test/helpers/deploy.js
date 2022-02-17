@@ -21,11 +21,15 @@ const SHIBA_TOPDOG_DIRECT_BONES_USER_PERCENT = EthersBN("33");
 const CASE_WRAPPED_TO_UNDERLYING_SIMPLE = 1;
 const CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN = 2;
 const CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN = 3;
+const CASE_CHAINLINK = 4;
+const CASE_KEYDONIX_MAIN_ASSET = 5;
 
 const PREPARE_ORACLES_METHODS = {
     [CASE_WRAPPED_TO_UNDERLYING_SIMPLE]: prepareWrappedToUnderlyingOracle,
     [CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN]: prepareWrappedToUnderlyingOracleWrappedLPToken,
     [CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN]: prepareKeydonixWrappedToUnderlyingOracleWrappedLPToken,
+    [CASE_CHAINLINK]: prepareChainlinkOracle,
+    [CASE_KEYDONIX_MAIN_ASSET]: prepareKeydonixMainAssetOracle,
 }
 
 /**
@@ -39,15 +43,18 @@ const PREPARE_ORACLES_METHODS = {
  *
  * - isKeydonix - need to pass additional keydonix proofs
  *
+ * built-in prices:
+ * - usd/weth = 250
+ * - any other asset/usd = 500
  *
- * @param _oracle_case - case for oracle preparation, see CASE_* constants
+ * @param _oracleCase - case for oracle preparation, see CASE_* constants
  */
-async function prepareCoreContracts(context, _oracle_case) {
+async function prepareCoreContracts(context, _oracleCase, oracleParams = {}) {
     if (!context.deployer) {
         context.deployer = (await ethers.getSigners())[0]
     }
 
-    context.weth = await deployContract("WETH");
+    context.weth = await deployContract("WETHMock");
     context.foundation = await deployContract("FoundationMock");
 
     const deployedAddresses = await deployCore(context);
@@ -61,6 +68,7 @@ async function prepareCoreContracts(context, _oracle_case) {
     context.wrappedToUnderlyingOracle = await attachContract("WrappedToUnderlyingOracle", deployedAddresses.WrappedToUnderlyingOracle);
     context.vaultManagerParameters = await attachContract("VaultManagerParameters", deployedAddresses.VaultManagerParameters);
     context.liquidationAuction = await attachContract("LiquidationAuction02", deployedAddresses.LiquidationAuction02);
+    context.swappersRegistry = await attachContract("SwappersRegistry", deployedAddresses.SwappersRegistry);
 
     context.cdpManager = await attachContract("CDPManager01", deployedAddresses.CDPManager01);
     context.cdpManagerKeydonix = await attachContract("CDPManager01_Fallback", deployedAddresses.CDPManager01_Fallback);
@@ -73,18 +81,35 @@ async function prepareCoreContracts(context, _oracle_case) {
         [], [],
     )
 
-    if (_oracle_case) {
-        await prepareOracle(context, _oracle_case);
+    context.swapper = await deployContract("SwapperMock", context.usdp.address);
+    await context.swappersRegistry.add(context.swapper.address)
+
+    if (_oracleCase) {
+        await prepareOracle(context, _oracleCase, oracleParams);
+
+        await context.vaultManagerParameters.setCollateral(
+            context.collateral.address,
+            '0', // stability fee // todo replace in tests for stability dee
+            '13', // liquidation fee
+            '75', // initial collateralization
+            '76', // liquidation ratio
+            '0', // liquidation discount (3 decimals)
+            '100', // devaluation period in blocks
+            ether('100000'), // debt limit
+            [context.collateralOracleType], // enabled oracles
+            0,
+            0,
+        );
     }
 }
 
 /**
- * @param _oracle_case - case for oracle preparation, see CASE_* constants
+ * @param _oracleCase - case for oracle preparation, see CASE_* constants
  * 
  * context:
  * - bonesFeeReceiver
  */
-async function prepareWrappedSSLP(context, _oracle_case) {
+async function prepareWrappedSSLP(context, _oracleCase) {
     await prepareCoreContracts(context); // oracles will be prepared below
 
     context.tokenA = await deployContract("EmptyToken", 'TokenA descr', 'tokenA', 18, ether('100'), context.deployer.address);
@@ -124,17 +149,17 @@ async function prepareWrappedSSLP(context, _oracle_case) {
     context.wrappedSslp1 = await attachContract("WrappedShibaSwapLp", deployedAddresses1.WrappedShibaSwapLp)
     await context.wrappedSslp1.setFee(0); // to simplify most tests. Fee must be tested separately
 
-    await prepareOracle(context, _oracle_case, {
-        wrappedAsset: context.wrappedSslp0,
-        underlyingAsset: context.sslpToken0
+    await prepareOracle(context, _oracleCase, {
+        collateral: context.wrappedSslp0,
+        collateralUnderlying: await attachContract('IERC20', await context.sslpToken0.token0())
     });
 
     await context.vaultManagerParameters.setCollateral(
         context.collateral.address,
         '0', // stability fee // todo replace in tests for stability dee
         '13', // liquidation fee
-        '67', // initial collateralization
-        '68', // liquidation ratio
+        '75', // initial collateralization
+        '76', // liquidation ratio
         '0', // liquidation discount (3 decimals)
         '100', // devaluation period in blocks
         ether('100000'), // debt limit
@@ -172,10 +197,17 @@ async function deployWrappedSSLP(context, topDogPoolId) {
 }
 
 /**
- * @param _oracle_case - case for oracle preparation, see CASE_* constants
+ * @param _oracleCase - case for oracle preparation, see CASE_* constants
+ * @param params - values to overwrite context
+ *  - collateral
+ *  - collateralUnderlying
+ *  could be fn, context must be passed
  */
-async function prepareOracle(context, _oracle_case, params = {}) {
-    await PREPARE_ORACLES_METHODS[_oracle_case](context, params);
+async function prepareOracle(context, _oracleCase, params = {}) {
+    if (typeof params.collateral == 'function') { // todo other vars
+        params.collateral = params.collateral(context)
+    }
+    await PREPARE_ORACLES_METHODS[_oracleCase](context, params);
 }
 
 async function prepareWrappedToUnderlyingOracle(context) {
@@ -191,7 +223,7 @@ async function prepareWrappedToUnderlyingOracle(context) {
     await context.wrappedToUnderlyingOracle.setUnderlying(context.collateral.address, context.collateralUnderlying.address)
 
     await context.oracleRegistry.setOracleTypeForAsset(context.collateralUnderlying.address, ORACLE_TYPE_CHAINLINK_MAIN_ASSET);
-    const chainlinkAggregator = await deployContract("ChainlinkAggregator_Mock", 1e8.toString(), 8);
+    const chainlinkAggregator = await deployContract("ChainlinkAggregator_Mock", 500e8.toString(), 8);
     await context.chainlinkOracleMainAsset.setAggregators(
         [context.collateralUnderlying.address], [chainlinkAggregator.address],
         [], []
@@ -201,15 +233,15 @@ async function prepareWrappedToUnderlyingOracle(context) {
 /**
  * here in fact underlyingAsset is must be used as pool, but for oracle purposes we will create new pool (since we use mock for lp)
  *
- * for convenience 1 eth = 0.5 usd, 1 underlying token = 0.5 usd, so 1 lp token = 1 usd
+ * 1 eth = 250 usd, 1 underlying token = 250 usd, so 1 lp token = 500 usd (250+250)
  */
-async function prepareWrappedToUnderlyingOracleWrappedLPToken(context, {wrappedAsset, underlyingAsset}) {
-    context.collateral = wrappedAsset;
-    context.collateralUnderlying = await attachContract('IERC20', await underlyingAsset.token0());
+async function prepareWrappedToUnderlyingOracleWrappedLPToken(context, {collateral, collateralUnderlying}) {
+    context.collateral = collateral;
+    context.collateralUnderlying = collateralUnderlying;
 
     context.collateralOracleType = ORACLE_TYPE_WRAPPED_TO_UNDERLYING;
 
-    const [uniswapFactory, poolAddress] = await prepareUniswapV2Pool(context);
+    const [uniswapFactory, poolAddress] = await prepareUniswapV2Pool(context, context.collateralUnderlying);
 
     await context.oracleRegistry.setOracleTypeForAsset(context.collateral.address, ORACLE_TYPE_WRAPPED_TO_UNDERLYING);
     await context.wrappedToUnderlyingOracle.setUnderlying(context.collateral.address, poolAddress);
@@ -219,20 +251,25 @@ async function prepareWrappedToUnderlyingOracleWrappedLPToken(context, {wrappedA
     await context.oracleRegistry.setOracleTypeForAsset(poolAddress, ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN);
 
     await context.oracleRegistry.setOracleTypeForAsset(context.collateralUnderlying.address, ORACLE_TYPE_CHAINLINK_MAIN_ASSET);
-    const chainlinkAggregator = await deployContract("ChainlinkAggregator_Mock", 5e7.toString(), 8);
+    const chainlinkAggregator = await deployContract("ChainlinkAggregator_Mock", 250e8.toString(), 8);
     await context.chainlinkOracleMainAsset.setAggregators(
         [context.collateralUnderlying.address], [chainlinkAggregator.address],
         [], []
     );
 }
 
-async function prepareKeydonixWrappedToUnderlyingOracleWrappedLPToken(context, {wrappedAsset, underlyingAsset}) {
-    context.collateral = wrappedAsset;
-    context.collateralUnderlying = await attachContract('IERC20', await underlyingAsset.token0());
+/**
+ * here in fact underlyingAsset is must be used as pool, but for oracle purposes we will create new pool (since we use mock for lp)
+ *
+ * 1 eth = 250 usd, 1 underlying token = 250 usd, so 1 lp token = 500 usd (250+250)
+ */
+async function prepareKeydonixWrappedToUnderlyingOracleWrappedLPToken(context, {collateral, collateralUnderlying}) {
+    context.collateral = collateral;
+    context.collateralUnderlying = collateralUnderlying;
 
     context.collateralOracleType = ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING;
 
-    const [uniswapFactory, poolAddress] = await prepareUniswapV2Pool(context);
+    const [uniswapFactory, poolAddress] = await prepareUniswapV2Pool(context, context.collateralUnderlying);
 
     const oracleKeydonixWrappedToUnderlying = await deployContract('WrappedToUnderlyingOracleKeydonix', context.vaultParameters.address, context.oracleRegistry.address);
     await context.oracleRegistry.setOracle(ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING, oracleKeydonixWrappedToUnderlying.address);
@@ -254,14 +291,38 @@ async function prepareKeydonixWrappedToUnderlyingOracleWrappedLPToken(context, {
     ]);
 }
 
-async function prepareUniswapV2Pool(context) {
-    context.chainLinkEthUsdAggregator = await deployContract("ChainlinkAggregator_Mock", 5e7, 8); // rewrite ethusd aggregator for price = 0.5/eth
-    context.chainlinkOracleMainAsset.setAggregators(
-        [context.weth.address],
-        [context.chainLinkEthUsdAggregator.address],
-        [], [],
-    )
+async function prepareChainlinkOracle(context, {collateral}) {
+    context.collateral = collateral ?? await deployContract("DummyToken", "Wrapper token", "wtoken", 18, ether('100000000000'));
+    context.collateralOracleType = ORACLE_TYPE_CHAINLINK_MAIN_ASSET;
 
+    await context.oracleRegistry.setOracleTypeForAsset(context.collateral.address, context.collateralOracleType);
+
+    if (context.collateral !== context.weth) { // for weth we already have set aggregator
+        const chainlinkAggregator = await deployContract("ChainlinkAggregator_Mock", 500e8.toString(), 8);
+        await context.chainlinkOracleMainAsset.setAggregators(
+            [context.collateral.address], [chainlinkAggregator.address],
+            [], []
+        );
+    }
+}
+
+async function prepareKeydonixMainAssetOracle(context, {collateral}) {
+    context.collateral = collateral ?? await deployContract("DummyToken", "Token", "token", 18, ether('100000'));
+    context.collateralOracleType = ORACLE_TYPE_UNISWAP_V2_KEYDONIX_MAIN_ASSET;
+
+    // pool token/eth. 1eth=$250. with deposit 0.5 token vs 1 eth we will have 1 token = 2*eth price = 500
+    const [uniswapFactory, poolAddress] = await prepareUniswapV2Pool(context, context.collateral, '0.5');
+
+    const oracleKeydonixMainAsset = await deployContract('KeydonixOracleMainAsset_Mock', uniswapFactory.address, context.weth.address, context.chainLinkEthUsdAggregator.address);
+    await context.oracleRegistry.setOracle(ORACLE_TYPE_UNISWAP_V2_KEYDONIX_MAIN_ASSET, oracleKeydonixMainAsset.address);
+    await context.oracleRegistry.setOracleTypeForAsset(context.collateral.address, ORACLE_TYPE_UNISWAP_V2_KEYDONIX_MAIN_ASSET);
+
+    await context.oracleRegistry.setKeydonixOracleTypes([
+        ORACLE_TYPE_UNISWAP_V2_KEYDONIX_MAIN_ASSET,
+    ]);
+}
+
+async function prepareUniswapV2Pool(context, token, tokenAmountToPool = 1) {
     const deployResult = await context.deployer.sendTransaction({
         data: UniswapV2FactoryDeployCode
     });
@@ -272,24 +333,24 @@ async function prepareUniswapV2Pool(context) {
     await context.weth.deposit({value: ether('1')});
     await context.weth.approve(uniswapRouter.address, ether('100'));
 
-    await poolDeposit(context, uniswapRouter, context.collateralUnderlying, 1);
+    await poolDeposit(context, uniswapRouter, token, tokenAmountToPool);
 
     return [
         uniswapFactory,
-        await uniswapFactory.getPair(context.weth.address, context.collateralUnderlying.address),
+        await uniswapFactory.getPair(context.weth.address, token.address),
     ]
 }
 
-async function poolDeposit(context, uniswapRouter, token, collateralAmount) {
-    collateralAmount = ether(collateralAmount.toString());
+async function poolDeposit(context, uniswapRouter, token, tokenAmountToPool) {
+    tokenAmountToPool = ether(tokenAmountToPool.toString());
     const ethAmount = ether('1');
-    await token.approve(uniswapRouter.address, collateralAmount);
+    await token.approve(uniswapRouter.address, tokenAmountToPool);
     await uniswapRouter.addLiquidity(
         token.address,
         context.weth.address,
-        collateralAmount,
+        tokenAmountToPool,
         ethAmount,
-        collateralAmount,
+        tokenAmountToPool,
         ethAmount,
         context.deployer.address,
         1e18.toString(), // deadline
@@ -306,4 +367,6 @@ module.exports = {
     CASE_WRAPPED_TO_UNDERLYING_SIMPLE,
     CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN,
     CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN,
+    CASE_CHAINLINK,
+    CASE_KEYDONIX_MAIN_ASSET,
 }
