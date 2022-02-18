@@ -1,6 +1,5 @@
 const {prepareCoreContracts} = require("./helpers/deploy");
-const {deployContract} = require("./helpers/ethersUtils");
-const BN = ethers.BigNumber.from;
+const {deployContract, BN} = require("./helpers/ethersUtils");
 
 let context;
 describe("AssetsBooleanParameters", function () {

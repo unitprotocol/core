@@ -4,9 +4,7 @@ const {
     prepareCoreContracts, CASE_CHAINLINK, CASE_KEYDONIX_MAIN_ASSET
 } = require("./helpers/deploy");
 const {cdpManagerWrapper} = require("./helpers/cdpManagerWrappers");
-
-ether = ethers.utils.parseUnits;
-BN = ethers.BigNumber.from
+const {ether, BN} = require("./helpers/ethersUtils");
 
 const oracleCases = [
     [CASE_CHAINLINK, 'cdp manager'],

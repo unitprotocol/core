@@ -7,6 +7,7 @@ pragma solidity 0.7.6;
 
 
 import "../interfaces/swappers/ISwapper.sol";
+import "./AbstractSwapper.sol";
 import "../interfaces/ICurveWith3crvPool.sol";
 import "../interfaces/ICurveTricrypto2Pool.sol";
 import "../helpers/SafeMath.sol";
@@ -21,7 +22,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /**
  * @dev swap usdp/weth
  */
-contract SwapperWethViaCurve is ISwapper, ReentrancyGuard, Auth2 {
+contract SwapperWethViaCurve is AbstractSwapper {
     using SafeMath for uint;
 
     IERC20 public immutable WETH;
@@ -41,7 +42,7 @@ contract SwapperWethViaCurve is ISwapper, ReentrancyGuard, Auth2 {
         address _vaultParameters, address _weth,  address _usdp, address _usdt,
         address _usdp3crvPool, int128 _usdp3crvPoolUsdpIndex, int128 _usdp3crvPoolUsdtIndex,
         address _tricrypto2Pool, uint256 _tricrypto2PoolUsdtIndex, uint256 _tricrypto2PoolWethIndex
-    ) Auth2(_vaultParameters) {
+    ) AbstractSwapper(_vaultParameters) {
         require(
             _weth != address(0)
             && _usdp != address(0)
@@ -93,11 +94,10 @@ contract SwapperWethViaCurve is ISwapper, ReentrancyGuard, Auth2 {
         predictedUsdpAmount = USDP_3CRV_POOL.get_dy_underlying(USDP_3CRV_POOL_USDT, USDP_3CRV_POOL_USDP, usdtAmount);
     }
 
-    function swapUsdpToAsset(address _user, address _asset, uint256 _usdpAmount, uint256 _minAssetAmount)
-        external override nonReentrant returns (uint swappedAssetAmount)
+    function _swapUsdpToAsset(address _user, address _asset, uint256 _usdpAmount, uint256 _minAssetAmount)
+        internal override returns (uint swappedAssetAmount)
     {
         require(_asset == address(WETH), "Unit Protocol Swappers: UNSUPPORTED_ASSET");
-        require(msg.sender == _user || vaultParameters.canModifyVault(msg.sender), "Unit Protocol Swappers: AUTH_FAILED");
 
         // get USDP from user
         TransferHelper.safeTransferFrom(address(USDP), _user, address(this), _usdpAmount);
@@ -112,15 +112,13 @@ contract SwapperWethViaCurve is ISwapper, ReentrancyGuard, Auth2 {
         // WETH -> user
         TransferHelper.safeTransfer(address(WETH), _user, swappedAssetAmount);
 
-        require(swappedAssetAmount >= _minAssetAmount, "Unit Protocol Swapper: INVALID_SWAP");
         return swappedAssetAmount;
     }
 
-    function swapAssetToUsdp(address _user, address _asset, uint256 _assetAmount, uint256 _minUsdpAmount)
-        external override nonReentrant returns (uint swappedUsdpAmount)
+    function _swapAssetToUsdp(address _user, address _asset, uint256 _assetAmount, uint256 _minUsdpAmount)
+        internal override returns (uint swappedUsdpAmount)
     {
         require(_asset == address(WETH), "Unit Protocol Swappers: UNSUPPORTED_ASSET");
-        require(msg.sender == _user || vaultParameters.canModifyVault(msg.sender), "Unit Protocol Swappers: AUTH_FAILED");
 
         // get WETH from user
         TransferHelper.safeTransferFrom(address(WETH), _user, address(this), _assetAmount);
@@ -135,7 +133,6 @@ contract SwapperWethViaCurve is ISwapper, ReentrancyGuard, Auth2 {
         // USDP -> user
         TransferHelper.safeTransfer(address(USDP), _user, swappedUsdpAmount);
 
-        require(swappedUsdpAmount >= _minUsdpAmount, "Unit Protocol Swappers: INVALID_SWAP");
         return swappedUsdpAmount;
     }
 }

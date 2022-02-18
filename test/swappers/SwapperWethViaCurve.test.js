@@ -1,11 +1,7 @@
 const {expect} = require("chai");
 const {ethers} = require("hardhat");
-const {deployContract, attachContract, getRandomSigner} = require("../../test/helpers/ethersUtils");
+const {deployContract, attachContract, getRandomSigner, ether} = require("../../test/helpers/ethersUtils");
 const {prepareCoreContracts} = require("../../test/helpers/deploy");
-
-const ether = ethers.utils.parseEther;
-const BN = ethers.BigNumber.from
-const Q112 = BN('2').pow(BN('112'));
 
 let context = {};
 describe("SwapperWethViaCurve", function () {

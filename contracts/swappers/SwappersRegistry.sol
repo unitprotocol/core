@@ -42,7 +42,7 @@ contract SwappersRegistry is ISwappersRegistry, Auth2 {
     }
 
     function add(ISwapper _swapper) public onlyManager {
-        require(address(_swapper) != address(0), "Unit Protocol: ZERO_ADDRESS");
+        require(address(_swapper) != address(0), "Unit Protocol Swappers: ZERO_ADDRESS");
 
         swappers.push(_swapper);
         swappersIds[_swapper] = swappers.length - 1;
@@ -51,7 +51,7 @@ contract SwappersRegistry is ISwappersRegistry, Auth2 {
     }
 
     function remove(ISwapper _swapper) public onlyManager {
-        require(address(_swapper) != address(0), "Unit Protocol: ZERO_ADDRESS");
+        require(address(_swapper) != address(0), "Unit Protocol Swappers: ZERO_ADDRESS");
 
         uint id = swappersIds[_swapper];
         delete swappersIds[_swapper];

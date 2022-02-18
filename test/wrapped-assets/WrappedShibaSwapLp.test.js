@@ -5,13 +5,10 @@ const {
     CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN
 } = require("../helpers/deploy");
 const {directBonesReward, lockedBonesReward, fullBonesReward} = require("./helpers/TopDogLogic");
-const {deployContract, attachContract} = require("../helpers/ethersUtils");
+const {deployContract, attachContract, ether, BN} = require("../helpers/ethersUtils");
 const {PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION} = require("../../lib/constants");
 const {cdpManagerWrapper} = require("../helpers/cdpManagerWrappers");
 const {ZERO_ADDRESS} = require("../helpers/deployUtils");
-
-ether = ethers.utils.parseUnits;
-BN = ethers.BigNumber.from
 
 const EPSILON = BN('400000');
 
