@@ -94,7 +94,7 @@ contract SwapperWethViaCurve is AbstractSwapper {
         predictedUsdpAmount = USDP_3CRV_POOL.get_dy_underlying(USDP_3CRV_POOL_USDT, USDP_3CRV_POOL_USDP, usdtAmount);
     }
 
-    function _swapUsdpToAsset(address _user, address _asset, uint256 _usdpAmount, uint256 _minAssetAmount)
+    function _swapUsdpToAsset(address _user, address _asset, uint256 _usdpAmount, uint256 /** _minAssetAmount */)
         internal override returns (uint swappedAssetAmount)
     {
         require(_asset == address(WETH), "Unit Protocol Swappers: UNSUPPORTED_ASSET");
@@ -115,7 +115,7 @@ contract SwapperWethViaCurve is AbstractSwapper {
         return swappedAssetAmount;
     }
 
-    function _swapAssetToUsdp(address _user, address _asset, uint256 _assetAmount, uint256 _minUsdpAmount)
+    function _swapAssetToUsdp(address _user, address _asset, uint256 _assetAmount, uint256 /** _minUsdpAmount */)
         internal override returns (uint swappedUsdpAmount)
     {
         require(_asset == address(WETH), "Unit Protocol Swappers: UNSUPPORTED_ASSET");

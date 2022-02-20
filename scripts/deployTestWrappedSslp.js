@@ -6,8 +6,8 @@
 // connect with dapp
 
 const {deployContract, attachContract} = require("../test/helpers/ethersUtils");
-const {ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING, ORACLE_TYPE_WRAPPED_TO_UNDERLYING,
-    ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN, ORACLE_TYPE_UNISWAP_V2_KEYDONIX_POOL_TOKEN,
+const {ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX, ORACLE_TYPE_WRAPPED_TO_UNDERLYING,
+    ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN, ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN_KEYDONIX,
     PARAM_FORCE_TRANSFER_ASSET_TO_OWNER_ON_LIQUIDATION, PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION
 } = require("../lib/constants");
 
@@ -71,13 +71,13 @@ async function deploy() {
     await wrappedOracle.connect(multisig).setUnderlying(wrappedSslpUsdt.address, USDT_SSLP);
     await wrappedKeydonixOracle.connect(multisig).setUnderlying(wrappedSslpShib.address, SHIB_SSLP);
 
-    await oracleRegistry.connect(multisig).setOracle(ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING, wrappedKeydonixOracle.address);
+    await oracleRegistry.connect(multisig).setOracle(ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX, wrappedKeydonixOracle.address);
 
     await oracleRegistry.connect(multisig).setOracleTypeForAsset(wrappedSslpUsdt.address, ORACLE_TYPE_WRAPPED_TO_UNDERLYING)
-    await oracleRegistry.connect(multisig).setOracleTypeForAsset(wrappedSslpShib.address, ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING)
+    await oracleRegistry.connect(multisig).setOracleTypeForAsset(wrappedSslpShib.address, ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX)
 
     await oracleRegistry.connect(multisig).setOracleTypeForAsset(USDT_SSLP, ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN)
-    await oracleRegistry.connect(multisig).setOracleTypeForAsset(SHIB_SSLP, ORACLE_TYPE_UNISWAP_V2_KEYDONIX_POOL_TOKEN)
+    await oracleRegistry.connect(multisig).setOracleTypeForAsset(SHIB_SSLP, ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN_KEYDONIX)
 
     // console.log('oracles check')
     // const price = BigInt((await wrappedOracle.assetToUsd(wrappedSslpUsdt.address, '1000000000000000000')).toString()) / (BigInt(2)**BigInt(112)) / (BigInt(10)**BigInt(18));

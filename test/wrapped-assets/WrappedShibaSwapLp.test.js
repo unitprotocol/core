@@ -2,7 +2,7 @@ const {expect} = require("chai");
 const {ethers} = require("hardhat");
 const {
     prepareWrappedSSLP, CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN,
-    CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN
+    CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN_KEYDONIX
 } = require("../helpers/deploy");
 const {directBonesReward, lockedBonesReward, fullBonesReward} = require("./helpers/TopDogLogic");
 const {deployContract, attachContract, ether, BN} = require("../helpers/ethersUtils");
@@ -14,7 +14,7 @@ const EPSILON = BN('400000');
 
 const oracleCases = [
     [CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN, 'cdp manager'],
-    [CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN, 'cdp manager keydonix'],
+    [CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN_KEYDONIX, 'cdp manager keydonix'],
 ]
 
 let context = {};

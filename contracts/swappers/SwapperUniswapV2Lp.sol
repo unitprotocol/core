@@ -77,7 +77,7 @@ contract SwapperUniswapV2Lp is AbstractSwapper {
 
     function predictAssetOut(address _asset, uint256 _usdpAmountIn) external view override returns (uint predictedAssetAmount) {
         IUniswapV2PairFull pair = IUniswapV2PairFull(_asset);
-        (uint256 pairWethId,, address underlyingToken) = UniswapV2Helper.getTokenInfo(pair, address(WETH));
+        (uint256 pairWethId,,) = UniswapV2Helper.getTokenInfo(pair, address(WETH));
 
         // USDP -> USDT
         uint usdtAmount = USDP_3CRV_POOL.get_dy_underlying(USDP_3CRV_POOL_USDP, USDP_3CRV_POOL_USDT, _usdpAmountIn);
@@ -95,7 +95,7 @@ contract SwapperUniswapV2Lp is AbstractSwapper {
 
     function predictUsdpOut(address _asset, uint256 _assetAmountIn) external view override returns (uint predictedUsdpAmount) {
         IUniswapV2PairFull pair = IUniswapV2PairFull(_asset);
-        (uint256 pairWethId, uint pairTokenId, address underlyingToken) = UniswapV2Helper.getTokenInfo(pair, address(WETH));
+        (uint256 pairWethId, uint pairTokenId,) = UniswapV2Helper.getTokenInfo(pair, address(WETH));
 
         // LP tokens -> WETH + LP underlying token
         (uint amount0, uint amount1) = UniswapV2Helper.calculateTokensAmountAfterWithdrawLp(pair, _assetAmountIn);
@@ -111,7 +111,7 @@ contract SwapperUniswapV2Lp is AbstractSwapper {
         predictedUsdpAmount = USDP_3CRV_POOL.get_dy_underlying(USDP_3CRV_POOL_USDT, USDP_3CRV_POOL_USDP, usdtAmount);
     }
 
-    function _swapUsdpToAsset(address _user, address _asset, uint256 _usdpAmount, uint256 _minAssetAmount)
+    function _swapUsdpToAsset(address _user, address _asset, uint256 _usdpAmount, uint256 /** _minAssetAmount */)
         internal override returns (uint swappedAssetAmount)
     {
         IUniswapV2PairFull pair = IUniswapV2PairFull(_asset);
@@ -140,7 +140,7 @@ contract SwapperUniswapV2Lp is AbstractSwapper {
         return swappedAssetAmount;
     }
 
-    function _swapAssetToUsdp(address _user, address _asset, uint256 _assetAmount, uint256 _minUsdpAmount)
+    function _swapAssetToUsdp(address _user, address _asset, uint256 _assetAmount, uint256 /** _minUsdpAmount */)
         internal override returns (uint swappedUsdpAmount)
     {
         IUniswapV2PairFull pair = IUniswapV2PairFull(_asset);

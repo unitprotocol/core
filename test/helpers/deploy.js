@@ -2,10 +2,10 @@ const {createDeployment: createWrappedSSLPDeployment} = require("../../lib/deplo
 const {createDeployment: createCoreDeployment} = require("../../lib/deployments/core");
 const {runDeployment, loadHRE} = require("../helpers/deployUtils");
 const {ethers} = require("hardhat");
-const {attachContract, deployContract} = require("./ethersUtils");
+const {attachContract, deployContract, Q112} = require("./ethersUtils");
 const {ORACLE_TYPE_CHAINLINK_MAIN_ASSET, ORACLE_TYPE_WRAPPED_TO_UNDERLYING, ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN,
-    ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING, ORACLE_TYPE_UNISWAP_V2_KEYDONIX_POOL_TOKEN,
-    ORACLE_TYPE_UNISWAP_V2_KEYDONIX_MAIN_ASSET
+    ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX, ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN_KEYDONIX,
+    ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX
 } = require("../../lib/constants");
 const UniswapV2FactoryDeployCode = require("./UniswapV2DeployCode");
 const EthersBN = ethers.BigNumber.from;
@@ -18,18 +18,20 @@ const BORROW_FEE_RECEIVER_ADDRESS = '0x0000000000000000000000000000000123456789'
 const SHIBA_TOPDOG_BONES_PER_BLOCK = ether("50");
 const SHIBA_TOPDOG_DIRECT_BONES_USER_PERCENT = EthersBN("33");
 
-const CASE_WRAPPED_TO_UNDERLYING_SIMPLE = 1;
+const CASE_WRAPPED_TO_UNDERLYING_CHAINLINK = 1;
 const CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN = 2;
-const CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN = 3;
+const CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN_KEYDONIX = 3;
 const CASE_CHAINLINK = 4;
-const CASE_KEYDONIX_MAIN_ASSET = 5;
+const CASE_UNISWAP_V2_MAIN_ASSET_KEYDONIX = 5;
+const CASE_WRAPPED_TO_UNDERLYING_SIMPLE_KEYDONIX = 6;
 
 const PREPARE_ORACLES_METHODS = {
-    [CASE_WRAPPED_TO_UNDERLYING_SIMPLE]: prepareWrappedToUnderlyingOracle,
+    [CASE_WRAPPED_TO_UNDERLYING_CHAINLINK]: prepareWrappedToUnderlyingOracle,
+    [CASE_WRAPPED_TO_UNDERLYING_SIMPLE_KEYDONIX]: prepareWrappedToUnderlyingOracleKeydonix,
     [CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN]: prepareWrappedToUnderlyingOracleWrappedLPToken,
-    [CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN]: prepareKeydonixWrappedToUnderlyingOracleWrappedLPToken,
+    [CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN_KEYDONIX]: prepareWrappedToUnderlyingOracleWrappedLPTokenKeydonix,
     [CASE_CHAINLINK]: prepareChainlinkOracle,
-    [CASE_KEYDONIX_MAIN_ASSET]: prepareKeydonixMainAssetOracle,
+    [CASE_UNISWAP_V2_MAIN_ASSET_KEYDONIX]: prepareUniswapV2MainAssetOracleKeydonix,
 }
 
 /**
@@ -40,6 +42,7 @@ const PREPARE_ORACLES_METHODS = {
  *   - wrapped to underlying - underlying token
  *   - pool token - one of the pool tokens (not weth)
  *   - wrapped to underlying where underlying one is pool token - one of the pool tokens (not weth)
+ * - collateralWrappedAssetUnderlying - underlying token of wrapped asset
  *
  * - isKeydonix - need to pass additional keydonix proofs
  *
@@ -151,7 +154,8 @@ async function prepareWrappedSSLP(context, _oracleCase) {
 
     await prepareOracle(context, _oracleCase, {
         collateral: context.wrappedSslp0,
-        collateralUnderlying: await attachContract('IERC20', await context.sslpToken0.token0())
+        collateralUnderlying: await attachContract('IERC20', await context.sslpToken0.token0()),
+        collateralWrappedAssetUnderlying: context.sslpToken0,
     });
 
     await context.vaultManagerParameters.setCollateral(
@@ -201,6 +205,7 @@ async function deployWrappedSSLP(context, topDogPoolId) {
  * @param params - values to overwrite context
  *  - collateral
  *  - collateralUnderlying
+ *  - collateralWrappedAssetUnderlying
  *  could be fn, context must be passed
  */
 async function prepareOracle(context, _oracleCase, params = {}) {
@@ -210,14 +215,15 @@ async function prepareOracle(context, _oracleCase, params = {}) {
     await PREPARE_ORACLES_METHODS[_oracleCase](context, params);
 }
 
-async function prepareWrappedToUnderlyingOracle(context) {
+async function prepareWrappedToUnderlyingOracle(context, {collateral}) {
     // todo check if curveLpOracle exist as additional oracle case (see WrappedToUnderlyingOracle section in utils)
 
     // wrapped token
-    context.collateral = await deployContract("DummyToken", "Wrapper token", "wtoken", 18, ether('100000000000'));
+    context.collateral = collateral ?? await deployContract("DummyToken", "Wrapper token", "wtoken", 18, ether('100000000000'));
     context.collateralOracleType = ORACLE_TYPE_WRAPPED_TO_UNDERLYING;
     // real token
     context.collateralUnderlying = await deployContract("DummyToken", "STAKE clone", "STAKE", 18, ether('1000000'));
+    context.collateralWrappedAssetUnderlying = context.collateralUnderlying; // in case of usage with wrapped assets
 
     await context.oracleRegistry.setOracleTypeForAsset(context.collateral.address, ORACLE_TYPE_WRAPPED_TO_UNDERLYING);
     await context.wrappedToUnderlyingOracle.setUnderlying(context.collateral.address, context.collateralUnderlying.address)
@@ -230,14 +236,38 @@ async function prepareWrappedToUnderlyingOracle(context) {
     );
 }
 
+async function prepareWrappedToUnderlyingOracleKeydonix(context, {collateral}) {
+    // wrapped token
+    context.collateral = collateral ?? await deployContract("DummyToken", "Wrapper token", "wtoken", 18, ether('100000000000'));
+    context.collateralOracleType = ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX;
+    context.collateralUnderlying = await deployContract("DummyToken", "STAKE clone", "STAKE", 18, ether('1000000'));
+    context.collateralWrappedAssetUnderlying = context.collateralUnderlying; // in case of usage with wrapped assets
+
+    const wrappedToUnderlyingOracleKeydonix = await deployContract('WrappedToUnderlyingOracleKeydonix', context.vaultParameters.address, context.oracleRegistry.address);
+    await context.oracleRegistry.setOracle(ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX, wrappedToUnderlyingOracleKeydonix.address);
+    await context.oracleRegistry.setOracleTypeForAsset(context.collateral.address, ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX);
+    await wrappedToUnderlyingOracleKeydonix.setUnderlying(context.collateral.address, context.collateralUnderlying.address)
+
+    const oracleKeydonix = await deployContract('KeydonixSimpleOracle_Mock');
+    await oracleKeydonix.setRate(Q112.mul(500));
+    await context.oracleRegistry.setOracle(ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX, oracleKeydonix.address); // just some keydonix type
+    await context.oracleRegistry.setOracleTypeForAsset(context.collateralUnderlying.address, ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX);
+
+    await context.oracleRegistry.setKeydonixOracleTypes([
+        ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX,
+        ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX
+    ]);
+}
+
 /**
  * here in fact underlyingAsset is must be used as pool, but for oracle purposes we will create new pool (since we use mock for lp)
  *
  * 1 eth = 250 usd, 1 underlying token = 250 usd, so 1 lp token = 500 usd (250+250)
  */
-async function prepareWrappedToUnderlyingOracleWrappedLPToken(context, {collateral, collateralUnderlying}) {
+async function prepareWrappedToUnderlyingOracleWrappedLPToken(context, {collateral, collateralUnderlying, collateralWrappedAssetUnderlying}) {
     context.collateral = collateral;
     context.collateralUnderlying = collateralUnderlying;
+    context.collateralWrappedAssetUnderlying = collateralWrappedAssetUnderlying;
 
     context.collateralOracleType = ORACLE_TYPE_WRAPPED_TO_UNDERLYING;
 
@@ -263,31 +293,32 @@ async function prepareWrappedToUnderlyingOracleWrappedLPToken(context, {collater
  *
  * 1 eth = 250 usd, 1 underlying token = 250 usd, so 1 lp token = 500 usd (250+250)
  */
-async function prepareKeydonixWrappedToUnderlyingOracleWrappedLPToken(context, {collateral, collateralUnderlying}) {
+async function prepareWrappedToUnderlyingOracleWrappedLPTokenKeydonix(context, {collateral, collateralUnderlying, collateralWrappedAssetUnderlying}) {
     context.collateral = collateral;
     context.collateralUnderlying = collateralUnderlying;
+    context.collateralWrappedAssetUnderlying = collateralWrappedAssetUnderlying;
 
-    context.collateralOracleType = ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING;
+    context.collateralOracleType = ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX;
 
     const [uniswapFactory, poolAddress] = await prepareUniswapV2Pool(context, context.collateralUnderlying);
 
     const oracleKeydonixWrappedToUnderlying = await deployContract('WrappedToUnderlyingOracleKeydonix', context.vaultParameters.address, context.oracleRegistry.address);
-    await context.oracleRegistry.setOracle(ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING, oracleKeydonixWrappedToUnderlying.address);
-    await context.oracleRegistry.setOracleTypeForAsset(context.collateral.address, ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING);
+    await context.oracleRegistry.setOracle(ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX, oracleKeydonixWrappedToUnderlying.address);
+    await context.oracleRegistry.setOracleTypeForAsset(context.collateral.address, ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX);
     await oracleKeydonixWrappedToUnderlying.setUnderlying(context.collateral.address, poolAddress)
 
     const oracleKeydonixMainAsset = await deployContract('KeydonixOracleMainAsset_Mock', uniswapFactory.address, context.weth.address, context.chainLinkEthUsdAggregator.address);
-    await context.oracleRegistry.setOracle(ORACLE_TYPE_UNISWAP_V2_KEYDONIX_MAIN_ASSET, oracleKeydonixMainAsset.address);
-    await context.oracleRegistry.setOracleTypeForAsset(context.collateralUnderlying.address, ORACLE_TYPE_UNISWAP_V2_KEYDONIX_MAIN_ASSET);
+    await context.oracleRegistry.setOracle(ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX, oracleKeydonixMainAsset.address);
+    await context.oracleRegistry.setOracleTypeForAsset(context.collateralUnderlying.address, ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX);
 
     const oracleKeydonixPoolToken = await deployContract('KeydonixOraclePoolToken_Mock', oracleKeydonixMainAsset.address);
-    await context.oracleRegistry.setOracle(ORACLE_TYPE_UNISWAP_V2_KEYDONIX_POOL_TOKEN, oracleKeydonixPoolToken.address);
-    await context.oracleRegistry.setOracleTypeForAsset(poolAddress, ORACLE_TYPE_UNISWAP_V2_KEYDONIX_POOL_TOKEN);
+    await context.oracleRegistry.setOracle(ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN_KEYDONIX, oracleKeydonixPoolToken.address);
+    await context.oracleRegistry.setOracleTypeForAsset(poolAddress, ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN_KEYDONIX);
 
     await context.oracleRegistry.setKeydonixOracleTypes([
-        ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING,
-        ORACLE_TYPE_UNISWAP_V2_KEYDONIX_MAIN_ASSET,
-        ORACLE_TYPE_UNISWAP_V2_KEYDONIX_POOL_TOKEN,
+        ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX,
+        ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX,
+        ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN_KEYDONIX,
     ]);
 }
 
@@ -306,19 +337,19 @@ async function prepareChainlinkOracle(context, {collateral}) {
     }
 }
 
-async function prepareKeydonixMainAssetOracle(context, {collateral}) {
+async function prepareUniswapV2MainAssetOracleKeydonix(context, {collateral}) {
     context.collateral = collateral ?? await deployContract("DummyToken", "Token", "token", 18, ether('100000'));
-    context.collateralOracleType = ORACLE_TYPE_UNISWAP_V2_KEYDONIX_MAIN_ASSET;
+    context.collateralOracleType = ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX;
 
     // pool token/eth. 1eth=$250. with deposit 0.5 token vs 1 eth we will have 1 token = 2*eth price = 500
     const [uniswapFactory, poolAddress] = await prepareUniswapV2Pool(context, context.collateral, '0.5');
 
     const oracleKeydonixMainAsset = await deployContract('KeydonixOracleMainAsset_Mock', uniswapFactory.address, context.weth.address, context.chainLinkEthUsdAggregator.address);
-    await context.oracleRegistry.setOracle(ORACLE_TYPE_UNISWAP_V2_KEYDONIX_MAIN_ASSET, oracleKeydonixMainAsset.address);
-    await context.oracleRegistry.setOracleTypeForAsset(context.collateral.address, ORACLE_TYPE_UNISWAP_V2_KEYDONIX_MAIN_ASSET);
+    await context.oracleRegistry.setOracle(ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX, oracleKeydonixMainAsset.address);
+    await context.oracleRegistry.setOracleTypeForAsset(context.collateral.address, ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX);
 
     await context.oracleRegistry.setKeydonixOracleTypes([
-        ORACLE_TYPE_UNISWAP_V2_KEYDONIX_MAIN_ASSET,
+        ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX,
     ]);
 }
 
@@ -331,7 +362,6 @@ async function prepareUniswapV2Pool(context, token, tokenAmountToPool = 1) {
     const uniswapRouter = await deployContract('UniswapV2Router02', uniswapFactory.address, context.weth.address)
 
     await context.weth.deposit({value: ether('1')});
-    await context.weth.approve(uniswapRouter.address, ether('100'));
 
     await poolDeposit(context, uniswapRouter, token, tokenAmountToPool);
 
@@ -345,6 +375,7 @@ async function poolDeposit(context, uniswapRouter, token, tokenAmountToPool) {
     tokenAmountToPool = ether(tokenAmountToPool.toString());
     const ethAmount = ether('1');
     await token.approve(uniswapRouter.address, tokenAmountToPool);
+    await context.weth.approve(uniswapRouter.address, ethAmount);
     await uniswapRouter.addLiquidity(
         token.address,
         context.weth.address,
@@ -364,9 +395,10 @@ module.exports = {
     SHIBA_TOPDOG_BONES_PER_BLOCK,
     SHIBA_TOPDOG_DIRECT_BONES_USER_PERCENT,
 
-    CASE_WRAPPED_TO_UNDERLYING_SIMPLE,
+    CASE_WRAPPED_TO_UNDERLYING_CHAINLINK,
     CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN,
-    CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN,
+    CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN_KEYDONIX,
     CASE_CHAINLINK,
-    CASE_KEYDONIX_MAIN_ASSET,
+    CASE_UNISWAP_V2_MAIN_ASSET_KEYDONIX,
+    CASE_WRAPPED_TO_UNDERLYING_SIMPLE_KEYDONIX,
 }

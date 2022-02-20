@@ -74,7 +74,7 @@ library UniswapV2Helper {
         uint amountBDesired,
         uint amountAMin,
         uint amountBMin
-    ) internal returns (uint amountA, uint amountB) {
+    ) internal view returns (uint amountA, uint amountB) {
         (uint112 reserveA, uint112 reserveB, ) = IUniswapV2PairFull(pair).getReserves();
         require(reserveA > 0 && reserveB > 0, 'Unit Protocol Swappers: ZERO_RESERVES');
 

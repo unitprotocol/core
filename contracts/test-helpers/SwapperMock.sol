@@ -10,7 +10,7 @@ import "./IAssetTestsMint.sol";
 import "../helpers/TransferHelper.sol";
 
 /**
- * @title SimpleOracle_Mock
+ * @title SwapperMock
  * @dev Used in tests
  **/
 contract SwapperMock is ISwapper {
