@@ -161,7 +161,7 @@ async function deploy() {
     // await network.provider.send("evm_mine");
     // console.log('claimable bones after 2 blocks: ', (await wrappedSslpUsdt.pendingReward(testWallet.address)).toString())
     // console.log('bones fees wallet balance before claim: ', (await bone.balanceOf(BONES_FEE)).toString())
-    // await wrappedSslpUsdt.claimReward(testWallet.address)
+    // await wrappedSslpUsdt.connect(testWallet).claimReward(testWallet.address)
     // console.log("balance of bone: ", (await bone.balanceOf(TEST_WALLET)).toString())
     // console.log('bones fees wallet balance after claim: ', (await bone.balanceOf(BONES_FEE)).toString())
 
