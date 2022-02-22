@@ -24,8 +24,6 @@ import "../../interfaces/wrapped-assets/ISushiSwapLpToken.sol";
 contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     using SafeMath for uint256;
 
-    uint256 public constant MULTIPLIER = 1e12;
-
     bytes32 public constant override isUnitProtocolWrappedAsset = keccak256("UnitProtocolWrappedAsset");
 
     IVault public immutable vault;
@@ -36,9 +34,10 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     address public immutable userProxyImplementation;
     mapping(address => WSSLPUserProxy) public usersProxies;
 
-    uint256 public feePercent = 10;
-    uint256 public constant FEE_DENOMINATOR = 100;
+    mapping (address => mapping (bytes4 => bool)) allowedBoneLockersSelectors;
+
     address public feeReceiver;
+    uint8 public feePercent = 10;
 
     constructor(
         address _vaultParameters,
@@ -86,12 +85,26 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         emit FeeReceiverChanged(_feeReceiver);
     }
 
-    function setFee(uint256 _feePercent) public onlyManager {
+    function setFee(uint8 _feePercent) public onlyManager {
         require(_feePercent <= 50, "Unit Protocol Wrapped Assets: INVALID_FEE");
         feePercent = _feePercent;
 
         emit FeeChanged(_feePercent);
     }
+
+    /**
+     * @dev in case of change bone locker to unsupported by current methods one
+     */
+    function setAllowedBoneLockerSelector(address _boneLocker, bytes4 _selector, bool _isAllowed) public onlyManager {
+        allowedBoneLockersSelectors[_boneLocker][_selector] = _isAllowed;
+
+        if (_isAllowed) {
+            emit AllowedBoneLockerSelectorAdded(_boneLocker, _selector);
+        } else {
+             emit AllowedBoneLockerSelectorRemoved(_boneLocker, _selector);
+        }
+    }
+
 
     /**
      * @notice Approve sslp token to spend from user proxy (in case of change sslp)
@@ -187,9 +200,10 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
      * @notice Use claimRewardFromBoneLockers claim reward from BoneLockers
      */
     function claimReward(address _user) public override nonReentrant {
-        WSSLPUserProxy userProxy = _requireUserProxy(_user);
+        require(_user == msg.sender, "Unit Protocol Wrapped Assets: AUTH_FAILED");
 
-        userProxy.claimReward(feeReceiver, feePercent);
+        WSSLPUserProxy userProxy = _requireUserProxy(_user);
+        userProxy.claimReward(_user, feeReceiver, feePercent);
     }
 
     /**
@@ -212,10 +226,9 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
      * @param _boneLocker BoneLocker to claim, pass zero address to claim from current
      * @param _maxBoneLockerRewardsAtOneClaim max amount of rewards items to claim from BoneLocker, pass 0 to claim all rewards
      */
-    function claimRewardFromBoneLocker(address _user, IBoneLocker _boneLocker, uint256 _maxBoneLockerRewardsAtOneClaim) public nonReentrant {
-        WSSLPUserProxy userProxy = _requireUserProxy(_user);
-
-        userProxy.claimRewardFromBoneLocker(_boneLocker, _maxBoneLockerRewardsAtOneClaim, feeReceiver, feePercent);
+    function claimRewardFromBoneLocker(IBoneLocker _boneLocker, uint256 _maxBoneLockerRewardsAtOneClaim) public nonReentrant {
+        WSSLPUserProxy userProxy = _requireUserProxy(msg.sender);
+        userProxy.claimRewardFromBoneLocker(msg.sender, _boneLocker, _maxBoneLockerRewardsAtOneClaim, feeReceiver, feePercent);
     }
 
     /**
@@ -226,6 +239,45 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         (IERC20 _sslpToken,,,) = topDog.poolInfo(topDogPoolId);
 
         return _sslpToken;
+    }
+
+    /**
+     * @notice Withdraw tokens from topdog to user proxy without caring about rewards. EMERGENCY ONLY.
+     * @notice To withdraw tokens from user proxy to user use `withdrawToken`
+     */
+    function emergencyWithdraw() public nonReentrant {
+        WSSLPUserProxy userProxy = _requireUserProxy(msg.sender);
+
+        uint amount = userProxy.getDepositedAmount();
+        _burn(msg.sender, amount);
+        assert(balanceOf(msg.sender) == 0);
+
+        userProxy.emergencyWithdraw();
+
+        emit EmergencyWithdraw(msg.sender, amount);
+    }
+
+    function withdrawToken(address _token, uint _amount) public nonReentrant {
+        WSSLPUserProxy userProxy = _requireUserProxy(msg.sender);
+        userProxy.withdrawToken(_token, msg.sender, _amount);
+
+        emit TokenWithdraw(msg.sender, _token, _amount);
+    }
+
+    function readBoneLocker(address _user, address _boneLocker, bytes calldata _callData) public view returns (bool success, bytes memory data) {
+        WSSLPUserProxy userProxy = _requireUserProxy(_user);
+        (success, data) = userProxy.readBoneLocker(_boneLocker, _callData);
+    }
+
+    function callBoneLocker(address _boneLocker, bytes calldata _callData) public nonReentrant returns (bool success, bytes memory data) {
+        bytes4 selector;
+        assembly {
+            selector := calldataload(_callData.offset)
+        }
+        require(allowedBoneLockersSelectors[_boneLocker][selector], "Unit Protocol Wrapped Assets: UNSUPPORTED_SELECTOR");
+
+        WSSLPUserProxy userProxy = _requireUserProxy(msg.sender);
+        (success, data) = userProxy.callBoneLocker(_boneLocker, _callData);
     }
 
     /**
@@ -269,6 +321,7 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
      * @dev No direct transfers between users allowed since we store positions info in userInfo.
      */
     function _transfer(address sender, address recipient, uint256 amount) internal override onlyVault {
+        require(sender == address(vault) || recipient == address(vault), "Unit Protocol Wrapped Assets: AUTH_FAILED");
         super._transfer(sender, recipient, amount);
     }
 

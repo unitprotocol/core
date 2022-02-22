@@ -92,7 +92,7 @@ contract TopDog_Mock is ITopDog, Ownable, ReentrancyGuard {
     // Info of each pool.
     PoolInfo[] public override poolInfo;
     // Info of each user that stakes LP tokens.
-    mapping (uint256 => mapping (address => UserInfo)) public userInfo;
+    mapping (uint256 => mapping (address => UserInfo)) public override userInfo;
     // Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
     // The block number when BONE mining starts.
@@ -324,7 +324,7 @@ contract TopDog_Mock is ITopDog, Ownable, ReentrancyGuard {
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
-    function emergencyWithdraw(uint256 _pid) public {
+    function emergencyWithdraw(uint256 _pid) public override {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         uint256 amount = user.amount;
