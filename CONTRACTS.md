@@ -9,8 +9,10 @@
 | [SushiSwap](https://github.com/sushiswap/sushiswap/blob/master/contracts/uniswapv2/UniswapV2Factory.sol) ([PancakeV2](https://github.com/pancakeswap/pancake-swap-core/blob/master/contracts/PancakeFactory.sol)) Factory | [0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac](https://etherscan.io/address/0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac#code)      | [0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73](https://bscscan.com/address/0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73#code)      | - |
 | Network token / USD Chainlink Aggregator | [0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419](https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419#code) ([frontend](https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd)) | [0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE](https://bscscan.com/address/0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE#code) ([frontend](https://data.chain.link/bsc/mainnet/crypto-usd/bnb-usd)) | [0xf4766552D15AE4d256Ad41B6cf2933482B0680dc](https://ftmscan.com/address/0xf4766552D15AE4d256Ad41B6cf2933482B0680dc) ([frontend](https://data.chain.link/fantom/mainnet/crypto-usd/ftm-usd)) |
 | DUCK      | [0x92E187a03B6CD19CB6AF293ba17F2745Fd2357D5](https://etherscan.io/address/0x92E187a03B6CD19CB6AF293ba17F2745Fd2357D5#code)      | - | - |
-| QDUCK      | [0xE85d5FE256F5f5c9E446502aE994fDA12fd6700a](https://etherscan.io/address/0xE85d5FE256F5f5c9E446502aE994fDA12fd6700a#code)      | - | - |
-| [FeeDistribution](https://github.com/unitprotocol/fee-distribution)      | [0x3f93dE882dA8150Dc98a3a1F4626E80E3282df46](https://etherscan.io/address/0x3f93dE882dA8150Dc98a3a1F4626E80E3282df46#code)      | - | - |
+| [veDUCK](https://github.com/unitprotocol/vested-duck)  | [0x48DdD27a4d54CD3e8c34F34F7e66e998442DBcE3](https://etherscan.io/address/0x48DdD27a4d54CD3e8c34F34F7e66e998442DBcE3#code)      | - | - |
+| [veDistribution](https://github.com/unitprotocol/vested-duck) | [0x9f2138ccb930f0654B2C40E7e29FF8291452Eed8](https://etherscan.io/address/0x9f2138ccb930f0654B2C40E7e29FF8291452Eed8#code)      | - | - |
+| QDUCK (deprecated) | [0xE85d5FE256F5f5c9E446502aE994fDA12fd6700a](https://etherscan.io/address/0xE85d5FE256F5f5c9E446502aE994fDA12fd6700a#code)      | - | - |
+| [FeeDistribution (deprecated)](https://github.com/unitprotocol/fee-distribution)      | [0x3f93dE882dA8150Dc98a3a1F4626E80E3282df46](https://etherscan.io/address/0x3f93dE882dA8150Dc98a3a1F4626E80E3282df46#code)      | - | - |
 
 ### Core
 
