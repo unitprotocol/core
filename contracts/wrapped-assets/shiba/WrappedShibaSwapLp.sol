@@ -259,7 +259,7 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
 
     function withdrawToken(address _token, uint _amount) public nonReentrant {
         WSSLPUserProxy userProxy = _requireUserProxy(msg.sender);
-        userProxy.withdrawToken(_token, msg.sender, _amount);
+        userProxy.withdrawToken(_token, msg.sender, _amount, feeReceiver, feePercent);
 
         emit TokenWithdraw(msg.sender, _token, _amount);
     }
@@ -335,7 +335,7 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         if (address(userProxy) == address(0)) {
             // create new
             userProxy = WSSLPUserProxy(createClone(userProxyImplementation));
-            userProxy.init(_user, sslpToken);
+            userProxy.approveSslpToTopDog(sslpToken);
 
             usersProxies[_user] = userProxy;
         }

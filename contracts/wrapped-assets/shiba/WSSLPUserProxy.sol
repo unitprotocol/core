@@ -23,8 +23,6 @@ contract WSSLPUserProxy {
     uint256 public immutable topDogPoolId;
     IERC20 public immutable boneToken;
 
-    address user;
-
     modifier onlyManager() {
         require(msg.sender == manager, "Unit Protocol Wrapped Assets: AUTH_FAILED");
         _;
@@ -37,13 +35,6 @@ contract WSSLPUserProxy {
         topDogPoolId = _topDogPoolId;
 
         boneToken = _topDog.bone();
-    }
-
-    function init(address _user, IERC20 _sslpToken) public onlyManager {
-        require(user == address(0), "Unit Protocol Wrapped Assets: ALREADY_INITIALIZED");
-
-        user = _user;
-        TransferHelper.safeApprove(address(_sslpToken), address(topDog), type(uint256).max);
     }
 
     /**
@@ -88,7 +79,11 @@ contract WSSLPUserProxy {
     function _sendAllBonesToUser(address _user, address _feeReceiver, uint8 _feePercent) internal {
         uint balance = boneToken.balanceOf(address(this));
 
-        (uint amountWithoutFee, uint fee) = _calcFee(balance, _feeReceiver, _feePercent);
+        _sendBonesToUser(_user, balance, _feeReceiver, _feePercent);
+    }
+
+    function _sendBonesToUser(address _user, uint _amount, address _feeReceiver, uint8 _feePercent) internal {
+        (uint amountWithoutFee, uint fee) = _calcFee(_amount, _feeReceiver, _feePercent);
 
         if (fee > 0) {
             TransferHelper.safeTransfer(address(boneToken), _feeReceiver, fee);
@@ -127,8 +122,12 @@ contract WSSLPUserProxy {
         topDog.emergencyWithdraw(topDogPoolId);
     }
 
-    function withdrawToken(address _token, address _to, uint _amount) public onlyManager {
-        TransferHelper.safeTransfer(_token, _to, _amount);
+    function withdrawToken(address _token, address _user, uint _amount, address _feeReceiver, uint8 _feePercent) public onlyManager {
+        if (_token == address(boneToken)) {
+            _sendBonesToUser(_user, _amount, _feeReceiver, _feePercent);
+        } else {
+            TransferHelper.safeTransfer(_token, _user, _amount);
+        }
     }
 
     function readBoneLocker(address _boneLocker, bytes calldata _callData) public view returns (bool success, bytes memory data) {

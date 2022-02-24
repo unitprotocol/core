@@ -153,6 +153,71 @@ describe("WrappedShibaSwapLp", function () {
                 expect(await bonesBalance(context.user1)).to.be.equal(0);
             });
 
+            it("withdraw bone token from proxy (with fee)", async function () {
+                await context.wrappedSslp0.setFee(10);
+
+                const lockAmount = ether('0.4');
+                await prepareUserForJoin(context.user1, ether('1'));
+
+                await context.wrappedSslp0.connect(context.user1).deposit(context.user1.address, lockAmount);
+                await context.wrappedSslp0.connect(context.user1).deposit(context.user1.address, lockAmount);
+                const user1ProxyAddr = await context.wrappedSslp0.usersProxies(context.user1.address);
+
+                // part of bones balances
+                const proxyBonesBalance1 = await bonesBalance(user1ProxyAddr);
+                await context.wrappedSslp0.connect(context.user1).withdrawToken(context.boneToken.address, proxyBonesBalance1.div(2));
+                const proxyBonesBalance2 = await bonesBalance(user1ProxyAddr);
+                const userBonesBalance2 = await bonesBalance(context.user1);
+                const feeReceiverBonesBalance2 = await bonesBalance(context.bonesFeeReceiver);
+
+                expect(proxyBonesBalance2).to.be.equal(proxyBonesBalance1.div(2));
+                expect(userBonesBalance2).to.be.equal(proxyBonesBalance1.div(2).mul(90).div(100));
+                expect(feeReceiverBonesBalance2).to.be.equal(proxyBonesBalance1.div(2).mul(10).div(100));
+
+                // all
+                await context.wrappedSslp0.connect(context.user1).withdrawToken(context.boneToken.address, proxyBonesBalance2);
+                const proxyBonesBalance3 = await bonesBalance(user1ProxyAddr);
+                const userBonesBalance3 = await bonesBalance(context.user1);
+                const feeReceiverBonesBalance3 = await bonesBalance(context.bonesFeeReceiver);
+
+                expect(proxyBonesBalance3).to.be.equal(0);
+                expect(userBonesBalance3).to.be.equal(proxyBonesBalance1.mul(90).div(100));
+                expect(feeReceiverBonesBalance3).to.be.equal(proxyBonesBalance1.mul(10).div(100));
+            });
+
+            it("withdraw some token from proxy (with fee)", async function () {
+                await context.wrappedSslp0.setFee(10);
+
+                const lockAmount = ether('0.4');
+                await prepareUserForJoin(context.user1, ether('1'));
+
+                await context.wrappedSslp0.connect(context.user1).deposit(context.user1.address, lockAmount);
+                const user1ProxyAddr = await context.wrappedSslp0.usersProxies(context.user1.address);
+
+                const amount = ether('1');
+                await context.sslpToken1.transfer(user1ProxyAddr, amount);
+
+                // part of balances
+                await context.wrappedSslp0.connect(context.user1).withdrawToken(context.sslpToken1.address, amount.div(2));
+                const proxyBalance2 = await context.sslpToken1.balanceOf(user1ProxyAddr);
+                const userBalance2 = await context.sslpToken1.balanceOf(context.user1.address);
+                const feeReceiverBalance2 = await context.sslpToken1.balanceOf(context.bonesFeeReceiver.address);
+
+                expect(proxyBalance2).to.be.equal(amount.div(2));
+                expect(userBalance2).to.be.equal(amount.div(2));
+                expect(feeReceiverBalance2).to.be.equal(0);
+
+                // all
+                await context.wrappedSslp0.connect(context.user1).withdrawToken(context.sslpToken1.address, amount.div(2));
+                const proxyBalance3 = await context.sslpToken1.balanceOf(user1ProxyAddr);
+                const userBalance3 = await context.sslpToken1.balanceOf(context.user1.address);
+                const feeReceiverBalance3 = await context.sslpToken1.balanceOf(context.bonesFeeReceiver.address);
+
+                expect(proxyBalance3).to.be.equal(0);
+                expect(userBalance3).to.be.equal(amount);
+                expect(feeReceiverBalance3).to.be.equal(0);
+            });
+
             it("no emergency withdrawal allowed with unit position", async function () {
                 const lockAmount = ether('0.4');
                 await prepareUserForJoin(context.user1, ether('1'));
@@ -195,10 +260,6 @@ describe("WrappedShibaSwapLp", function () {
                 const user1Proxy = await attachContract('WSSLPUserProxy', user1ProxyAddr);
 
                 await expect(
-                    user1Proxy.init(context.user1.address, context.user2.address)
-                ).to.be.revertedWith("AUTH_FAILED");
-
-                await expect(
                     user1Proxy.approveSslpToTopDog(context.sslpToken0.address)
                 ).to.be.revertedWith("AUTH_FAILED");
 
@@ -223,7 +284,7 @@ describe("WrappedShibaSwapLp", function () {
                 ).to.be.revertedWith("AUTH_FAILED");
 
                 await expect(
-                    user1Proxy.withdrawToken(context.sslpToken0.address, context.user1.address, 10)
+                    user1Proxy.withdrawToken(context.sslpToken0.address, context.user1.address, 100, context.bonesFeeReceiver.address, 10)
                 ).to.be.revertedWith("AUTH_FAILED");
             });
         });
