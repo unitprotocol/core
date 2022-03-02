@@ -52,10 +52,10 @@ contract AssetsBooleanParameters is Auth2, IAssetsBooleanParameters {
 
         if (_value) {
             values[_asset] |= (1 << _param);
-            ValueSet(_asset, _param, values[_asset]);
+            emit ValueSet(_asset, _param, values[_asset]);
         } else {
             values[_asset] &= ~(1 << _param);
-            ValueUnset(_asset, _param, values[_asset]);
+            emit ValueUnset(_asset, _param, values[_asset]);
         }
     }
 }
