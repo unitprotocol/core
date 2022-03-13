@@ -1,5 +1,8 @@
 require("dotenv").config({ path: require("find-config")(".env") });
 const { types } = require("hardhat/config")
+const {createDeployment: createCoreDeployment} = require("./lib/deployments/core");
+const {createDeployment: createWrappedSSLPDeployment} = require("./lib/deployments/wrappedSSLP");
+const {runDeployment} = require("./test/helpers/deployUtils");
 
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-waffle");
@@ -20,11 +23,8 @@ task('deploy', 'Runs a core deployment')
     .setAction(async (taskArgs) => {
         await hre.run("compile");
 
-        const {createDeployment} = require('./lib/deployments/core');
-        const {runDeployment} = require('./test/helpers/deployUtils');
-
         const deployer = taskArgs.deployer ? taskArgs.deployer : (await ethers.getSigners())[0].address;
-        const deployment = await createDeployment({
+        const deployment = await createCoreDeployment({
             deployer,
             foundation: taskArgs.foundation,
             manager: taskArgs.manager,
@@ -32,6 +32,31 @@ task('deploy', 'Runs a core deployment')
             baseBorrowFeePercent: taskArgs.baseBorrowFeePercent,
             borrowFeeReceiver: taskArgs.borrowFeeReceiver,
             withHelpers: true,
+        });
+
+        const deployed = await runDeployment(deployment, {deployer, verify: !taskArgs.noVerify});
+
+        console.log('Success!', deployed);
+    });
+
+task('deployWrappedSslp', 'Deploy wrapped sslp')
+    .addParam('manager', 'Address of a manager account/contract')
+    .addParam('vaultParameters', 'Address of VaultParameters')
+    .addParam('topDogPoolId', 'id of pool in TopDog (each pool is for concrete sslp)', 0, types.int)
+    .addParam('feeReceiver', 'Address of fee receiver')
+    .addOptionalParam('topDog', 'Address of topDog', '0x94235659cf8b805b2c658f9ea2d6d6ddbb17c8d7', types.string)
+    .addOptionalParam('noVerify', 'Skip contracts verification on *scan block explorer', false, types.boolean)
+    .setAction(async (taskArgs) => {
+        await hre.run("compile");
+
+        const deployer = taskArgs.deployer ? taskArgs.deployer : (await ethers.getSigners())[0].address;
+        const deployment = await createWrappedSSLPDeployment({
+            deployer,
+            manager: taskArgs.manager,
+            vaultParameters: taskArgs.vaultParameters,
+            topDog: taskArgs.topDog,
+            topDogPoolId: taskArgs.topDogPoolId,
+            feeReceiver: taskArgs.feeReceiver,
         });
 
         const deployed = await runDeployment(deployment, {deployer, verify: !taskArgs.noVerify});

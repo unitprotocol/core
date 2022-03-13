@@ -8,12 +8,10 @@ pragma experimental ABIEncoderV2;
 
 import "../helpers/SafeMath.sol";
 import "../interfaces/IAggregator.sol";
+import "../interfaces/IERC20WithOptional.sol";
 import "../VaultParameters.sol";
 import "../oracles/OracleSimple.sol";
 
-interface ERC20 {
-    function decimals() external view returns(uint8);
-}
 
 /**
  * @title ChainlinkOracleMainAsset_Mock
@@ -92,7 +90,7 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
         (, int256 answer, , uint256 updatedAt, ) = agg.latestRoundData();
         require(updatedAt > block.timestamp - 24 hours, "Unit Protocol: STALE_CHAINLINK_PRICE");
         require(answer >= 0, "Unit Protocol: NEGATIVE_CHAINLINK_PRICE");
-        int decimals = 18 - int(ERC20(asset).decimals()) - int(agg.decimals());
+        int decimals = 18 - int(IERC20WithOptional(asset).decimals()) - int(agg.decimals());
         if (decimals < 0) {
             return amount.mul(uint(answer)).mul(Q112).div(10 ** uint(-decimals));
         } else {
@@ -125,7 +123,7 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
         (, int256 answer, , uint256 updatedAt, ) = agg.latestRoundData();
         require(updatedAt > block.timestamp - 24 hours, "Unit Protocol: STALE_CHAINLINK_PRICE");
         require(answer >= 0, "Unit Protocol: NEGATIVE_CHAINLINK_PRICE");
-        int decimals = 18 - int(ERC20(asset).decimals()) - int(agg.decimals());
+        int decimals = 18 - int(IERC20WithOptional(asset).decimals()) - int(agg.decimals());
         if (decimals < 0) {
             return amount.mul(uint(answer)).mul(Q112).div(10 ** uint(-decimals));
         } else {

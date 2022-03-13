@@ -31,7 +31,7 @@ const CDPManager = artifacts.require('CDPManager01');
 const CDPManagerFallback = artifacts.require('CDPManager01_Fallback');
 const LiquidationAuction = artifacts.require('LiquidationAuction02');
 const CDPRegistry = artifacts.require('CDPRegistry');
-const ForceTransferAssetStore = artifacts.require('ForceTransferAssetStore');
+const AssetsBooleanParameters = artifacts.require('AssetsBooleanParameters');
 const CollateralRegistry = artifacts.require('CollateralRegistry');
 const CyTokenOracle = artifacts.require('CyTokenOracle');
 const YvTokenOracle = artifacts.require('YvTokenOracle');
@@ -41,30 +41,18 @@ const StETHStableSwapOracle = artifacts.require('StETHStableSwapOracle');
 const StETHCurvePool = artifacts.require('StETHCurvePool');
 
 const { ether } = require('openzeppelin-test-helpers');
-const { calculateAddressAtNonce, deployContractBytecode, runDeployment } = require('./deployUtils');
+const { calculateAddressAtNonce, deployContractBytecode, runDeployment, loadHRE } = require('./deployUtils');
 const { createDeployment } = require('../../lib/deployments/core');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
 const getWrapper = require('./wrappers');
+const {PARAM_FORCE_TRANSFER_ASSET_TO_OWNER_ON_LIQUIDATION} = require("../../lib/constants");
 
 const MAX_UINT = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
 
 const BASE_BORROW_FEE = new BN(123); // 123 basis points = 1.23% = 0.0123
 const BASIS_POINTS_IN_1 = new BN('10000'); // 1 = 100.00% = 10000 basis points
 const BORROW_FEE_RECEIVER_ADDRESS = '0x0000000000000000000000000000000123456789';
-
-let _hre;
-const _loadHRE = async function() {
-	if (_hre === undefined) {
-		if (!process.env.HARDHAT_NETWORK)
-			process.env.HARDHAT_NETWORK = 'localhost';
-		_hre = require("hardhat");
-
-		await _hre.run("compile");
-	}
-
-	return _hre;
-}
 
 
 async function expectRevert(promise, expectedError) {
@@ -207,7 +195,7 @@ module.exports = (context, mode) => {
 				borrowFeeReceiver: BORROW_FEE_RECEIVER_ADDRESS,
 			  testEnvironment: true,
 			});
-			const hre = await _loadHRE();
+			const hre = await loadHRE();
 			const deployed = await runDeployment(deployment, {hre, deployer: context.deployer});
 			context.deployed = deployed;
 
@@ -215,7 +203,7 @@ module.exports = (context, mode) => {
 			context.vaultParameters = await VaultParameters.at(deployed.VaultParameters);
 			context.vault = await Vault.at(deployed.Vault);
 			context.oracleRegistry = await OracleRegistry.at(deployed.OracleRegistry);
-			context.forceTransferAssetStore = await ForceTransferAssetStore.at(deployed.ForceTransferAssetStore);
+			context.assetsBooleanParameters = await AssetsBooleanParameters.at(deployed.AssetsBooleanParameters);
 			context.chainlinkOracleMainAsset = await ChainlinkOracleMainAsset.at(deployed.ChainlinkedOracleMainAsset);
 
 			// This web3 doesn't care about cache invalidation and non-trivial workflows, so we'll do it the hard way.
@@ -231,7 +219,7 @@ module.exports = (context, mode) => {
 
 			context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address, context.weth.address)
 
-			context.forceTransferAssetStore = await ForceTransferAssetStore.new(context.vaultParameters.address, []);
+			context.assetsBooleanParameters = await AssetsBooleanParameters.new(context.vaultParameters.address, [], []);
 		}
 
 		let mainAssetOracleType, poolTokenOracleType
@@ -390,7 +378,7 @@ module.exports = (context, mode) => {
 
 			context.wrappedAsset = await DummyToken.new("Wrapper Curve LP", "WCLP", 18, ether('100000000000'))
 
-			await context.forceTransferAssetStore.add(context.wrappedAsset.address);
+			await context.assetsBooleanParameters.set(context.wrappedAsset.address, PARAM_FORCE_TRANSFER_ASSET_TO_OWNER_ON_LIQUIDATION, true);
 
 			await context.wrappedToUnderlyingOracle.setUnderlying(context.wrappedAsset.address, context.mainCollateral.address)
 
@@ -510,7 +498,7 @@ module.exports = (context, mode) => {
 			context.liquidationAuction = await LiquidationAuction.new(
 				context.vaultManagerParameters.address,
 				context.cdpRegistry.address,
-				context.forceTransferAssetStore.address
+				context.assetsBooleanParameters.address
 			);
 		}
 
