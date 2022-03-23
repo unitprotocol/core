@@ -14,7 +14,7 @@ import "../oracles/KeydonixOracleAbstract.sol";
  **/
 contract KeydonixSimpleOracle_Mock is KeydonixOracleAbstract {
 
-    function assetToUsd(address /* asset */, uint amount, ProofDataStruct memory proofData) public override view returns (uint) {
+    function assetToUsd(address /* asset */, uint amount, ProofDataStruct memory proofData) public override pure returns (uint) {
         require(keccak256(proofData.block) == keccak256(hex"01"), "Unit Protocol: proofData.block");
         require(keccak256(proofData.accountProofNodesRlp) == keccak256(hex"02"), "Unit Protocol: proofData.accountProofNodesRlp");
         require(keccak256(proofData.reserveAndTimestampProofNodesRlp) == keccak256(hex"03"), "Unit Protocol: proofData.reserveAndTimestampProofNodesRlp");
