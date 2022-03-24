@@ -12,7 +12,7 @@ const VaultManagerBorrowFeeParameters = artifacts.require('VaultManagerBorrowFee
 const AssetParametersViewer = artifacts.require('AssetParametersViewer');
 const AssetsBooleanParameters = artifacts.require('AssetsBooleanParameters');
 
-contract.only('Parameters', function([
+contract('Parameters', function([
 	deployer,
 	secondAccount,
 	thirdAccount,
