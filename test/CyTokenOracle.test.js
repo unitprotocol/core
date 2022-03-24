@@ -4,7 +4,7 @@ const utils = require('./helpers/utils')
 
 const Q112 = new BN('2').pow(new BN('112'))
 
-contract('CyTokenOracle', function([account1]) {
+contract.skip('CyTokenOracle', function([account1]) {
 	// deploy & initial settings
 	beforeEach(async function() {
 		this.utils = utils(this, 'cyWETHsample')

@@ -11,7 +11,7 @@ const time = require('./helpers/time');
 [
 	'keydonixPoolToken',
 ].forEach(oracleMode =>
-	contract(`CDPManager with ${oracleMode} oracle`, function([
+	contract.skip(`CDPManager with ${oracleMode} oracle`, function([
 		deployer,
 	]) {
 		// deploy & initial settings
