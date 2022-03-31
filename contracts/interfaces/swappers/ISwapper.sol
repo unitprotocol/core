@@ -29,4 +29,18 @@ interface ISwapper {
      * @dev usdp must be sent to user after swap
      */
     function swapAssetToUsdp(address _user, address _asset, uint256 _assetAmount, uint256 _minUsdpAmount) external returns (uint swappedUsdpAmount);
+
+    /**
+     * @notice DO NOT SEND tokens to contract manually. For usage in contracts only.
+     * @dev for gas saving with usage in contracts tokens must be send directly to contract instead
+     * @dev asset must be sent to user after swap
+     */
+    function swapUsdpToAssetWithDirectSending(address _user, address _asset, uint256 _usdpAmount, uint256 _minAssetAmount) external returns (uint swappedAssetAmount);
+
+    /**
+     * @notice DO NOT SEND tokens to contract manually. For usage in contracts only.
+     * @dev for gas saving with usage in contracts tokens must be send directly to contract instead
+     * @dev usdp must be sent to user after swap
+     */
+    function swapAssetToUsdpWithDirectSending(address _user, address _asset, uint256 _assetAmount, uint256 _minUsdpAmount) external returns (uint swappedUsdpAmount);
 }

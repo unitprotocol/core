@@ -44,63 +44,16 @@ library UniswapV2Helper {
     }
 
     /**
-     * @dev modified version from UniswapV2Router02 to use existing pair address + direct transfers of token
-     * see https://docs.uniswap.org/protocol/V2/guides/smart-contract-integration/providing-liquidity
-     * see https://github.com/Uniswap/v2-periphery/blob/master/contracts/UniswapV2Router02.sol
-     */
-    function addLiquidity(
-        address pair,
-        address tokenA,
-        address tokenB,
-        uint amountADesired,
-        uint amountBDesired,
-        uint amountAMin,
-        uint amountBMin,
-        address to
-    ) internal returns (uint amountA, uint amountB, uint liquidity) {
-        (amountA, amountB) = _addLiquidity(pair, amountADesired, amountBDesired, amountAMin, amountBMin);
-        TransferHelper.safeTransfer(tokenA, pair, amountA);
-        TransferHelper.safeTransfer(tokenB, pair, amountB);
-        liquidity = IUniswapV2PairFull(pair).mint(to);
-    }
-
-    /**
-     * @dev modified version from UniswapV2Router02 to use existing pair address
-     * see https://github.com/Uniswap/v2-periphery/blob/master/contracts/UniswapV2Router02.sol
-     */
-    function _addLiquidity(
-        address pair,
-        uint amountADesired,
-        uint amountBDesired,
-        uint amountAMin,
-        uint amountBMin
-    ) internal view returns (uint amountA, uint amountB) {
-        (uint112 reserveA, uint112 reserveB, ) = IUniswapV2PairFull(pair).getReserves();
-        require(reserveA > 0 && reserveB > 0, 'Unit Protocol Swappers: ZERO_RESERVES');
-
-        uint amountBOptimal = quote(amountADesired, reserveA, reserveB);
-        if (amountBOptimal <= amountBDesired) {
-            require(amountBOptimal >= amountBMin, 'Unit Protocol Swappers: INSUFFICIENT_B_AMOUNT');
-            (amountA, amountB) = (amountADesired, amountBOptimal);
-        } else {
-            uint amountAOptimal = quote(amountBDesired, reserveB, reserveA);
-            assert(amountAOptimal <= amountADesired);
-            require(amountAOptimal >= amountAMin, 'Unit Protocol Swappers: INSUFFICIENT_A_AMOUNT');
-            (amountA, amountB) = (amountAOptimal, amountBDesired);
-        }
-    }
-
-    /**
      * see pair._mintFee in pair contract https://github.com/Uniswap/v2-core/blob/master/contracts/UniswapV2Pair.sol
      */
-    function getLPAmountAddedDuringFeeMint(IUniswapV2PairFull pair, uint112 _reserve0, uint112 _reserve1) internal view returns (uint) {
+    function getLPAmountAddedDuringFeeMint(IUniswapV2PairFull pair, uint _reserve0, uint _reserve1) internal view returns (uint) {
         address feeTo = IUniswapV2Factory(pair.factory()).feeTo();
         bool feeOn = feeTo != address(0);
 
         uint _kLast = pair.kLast(); // gas savings
         if (feeOn) {
             if (_kLast != 0) {
-                uint rootK = Math.sqrt(uint(_reserve0).mul(_reserve1));
+                uint rootK = Math.sqrt(_reserve0.mul(_reserve1));
                 uint rootKLast = Math.sqrt(_kLast);
                 if (rootK > rootKLast) {
                     uint numerator = pair.totalSupply().mul(rootK.sub(rootKLast));
@@ -117,12 +70,20 @@ library UniswapV2Helper {
     /**
      * see pair.mint in pair contract https://github.com/Uniswap/v2-core/blob/master/contracts/UniswapV2Pair.sol
      */
-    function calculateLpAmountAfterDepositTokens(IUniswapV2PairFull pair, uint amount0, uint amount1) internal view returns (uint) {
-        (uint112 _reserve0, uint112 _reserve1,) = pair.getReserves();
+    function calculateLpAmountAfterDepositTokens(IUniswapV2PairFull _pair, uint _amount0, uint _amount1) internal view returns (uint) {
+        (uint112 reserve0, uint112 reserve1,) = _pair.getReserves();
+        return calculateLpAmountAfterDepositTokens(_pair, _amount0, _amount1, reserve0, reserve1);
+    }
 
-        uint _totalSupply = pair.totalSupply().add(getLPAmountAddedDuringFeeMint(pair, _reserve0, _reserve1));
+    function calculateLpAmountAfterDepositTokens(
+        IUniswapV2PairFull _pair, uint _amount0, uint _amount1, uint _reserve0, uint _reserve1
+    ) internal view returns (uint) {
+        uint _totalSupply = _pair.totalSupply().add(getLPAmountAddedDuringFeeMint(_pair, _reserve0, _reserve1));
+        if (_totalSupply == 0) {
+            return Math.sqrt(_amount0.mul(_amount1)).sub(_pair.MINIMUM_LIQUIDITY());
+        }
 
-        return Math.min(amount0.mul(_totalSupply) / _reserve0, amount1.mul(_totalSupply) / _reserve1);
+        return Math.min(_amount0.mul(_totalSupply) / _reserve0, _amount1.mul(_totalSupply) / _reserve1);
     }
 
     /**
@@ -153,6 +114,10 @@ library UniswapV2Helper {
     function calcAmountOutByTokenId(IUniswapV2PairFull _pair, uint _tokenId, uint _amount) internal view returns (uint) {
         (uint112 reserve0, uint112 reserve1, ) = _pair.getReserves();
 
+        return calcAmountOutByTokenId(_pair, _tokenId, _amount, uint(reserve0), uint(reserve1));
+    }
+
+    function calcAmountOutByTokenId(IUniswapV2PairFull _pair, uint _tokenId, uint _amount, uint reserve0, uint reserve1) internal view returns (uint) {
         uint256 reserveIn;
         uint256 reserveOut;
         if (_tokenId == 0) {
@@ -164,5 +129,69 @@ library UniswapV2Helper {
         }
 
         return UniswapV2Helper.getAmountOut(_amount, reserveIn, reserveOut);
+    }
+
+    /**
+     * @dev In case we want to get pair LP tokens but we have weth only
+     * @dev - First we swap `wethToSwap` tokens
+     * @dev - then we deposit `_wethAmount-wethToSwap` and `exchangedTokenAmount` to pair
+     */
+    function calcWethToSwapBeforeMint(IUniswapV2PairFull _pair, uint _wethAmount, uint _pairWethId) internal view returns (uint wethToSwap) {
+        (uint112 reserve0, uint112 reserve1, ) = _pair.getReserves();
+        uint wethReserve = _pairWethId == 0 ? uint(reserve0) : uint(reserve1);
+
+        return Math.sqrt(
+            wethReserve.mul(
+                wethReserve.mul(3988009).add(
+                    _wethAmount.mul(3988000)
+                )
+            )
+        ).sub(
+            wethReserve.mul(1997)
+        ).div(1994);
+
+        /*
+            we have several equations
+            ```
+            syms wethToChange  wethReserve tokenReserve wethAmount wethToAdd tokenChanged tokenToAdd wethReserve2 tokenReserve2
+            % we have `wethAmount` amount, `wethToChange` we want to change for `tokenChanged`, `wethToAdd` we will deposit for minting LP
+            eqn1 = wethAmount == wethToChange + wethToAdd
+            % all `tokenChanged` which we got from exchange we want to deposit for minting LP
+            eqn2 = tokenToAdd == tokenChanged
+            % formula from swap
+            eqn3 = ((wethReserve + wethToChange) * 1000 - wethToChange * 3) * (tokenReserve - tokenChanged) * 1000 = wethReserve * tokenReserve * 1000 * 1000
+            % after change we have such reserves:
+            eqn4 = wethReserve2 == (wethReserve + wethToChange)
+            eqn5 = tokenReserve2 == (tokenReserve - tokenChanged)
+            % depositing in current reserves ratio (both parts of min must be equal `Math.min(amount0.mul(_totalSupply) / _reserve0, amount1.mul(_totalSupply) / _reserve1);`)
+            eqn6 = wethToAdd / tokenToAdd == wethReserve2 / tokenReserve2
+            S = solve(eqn6, wethToChange)
+            ```
+
+            lets transform equations to substitute variables in eqn6
+            step 1:
+            ```
+            syms wethToChange  wethReserve tokenReserve wethAmount wethToAdd tokenChanged tokenToAdd wethReserve2 tokenReserve2
+            eqn1 = wethToAdd == (wethAmount - wethToChange)
+            eqn2 = tokenToAdd == tokenChanged
+            %eqn3 = ((wethReserve + wethToChange) * 1000 - wethToChange * 3) * (tokenReserve - tokenChanged) = wethReserve * tokenReserve * 1000
+            %eqn3 = (wethReserve * 1000 + wethToChange * 997) * (tokenReserve - tokenChanged) = wethReserve * tokenReserve * 1000
+            %eqn3 = (tokenReserve - tokenChanged) = wethReserve * tokenReserve * 1000 / (wethReserve * 1000 + wethToChange * 997)
+            eqn3 = tokenChanged = (tokenReserve - wethReserve * tokenReserve * 1000 / (wethReserve * 1000 + wethToChange * 997))
+            eqn4 = wethReserve2 == (wethReserve + wethToChange)
+            eqn5 = tokenReserve2 == (tokenReserve - tokenChanged)
+            eqn6 = wethToAdd / tokenChanged == (wethReserve + wethToChange) / (tokenReserve - tokenChanged)
+            S = solve(eqn6, wethToChange)
+            ```
+
+            step 2: substitute variables from eqn1-eqn5 in eqn6
+            ```
+            syms wethToChange  wethReserve tokenReserve wethAmount wethToAdd tokenChanged tokenToAdd wethReserve2 tokenReserve2
+            eqn6 = (wethAmount - wethToChange) / (tokenReserve - wethReserve * tokenReserve * 1000 / (wethReserve * 1000 + wethToChange * 997)) == (wethReserve + wethToChange) / (tokenReserve - (tokenReserve - wethReserve * tokenReserve * 1000 / (wethReserve * 1000 + wethToChange * 997)))
+            S = solve(eqn6, wethToChange)
+            ```
+
+            result = sqrt(wethReserve*(3988009*wethReserve + 3988000*wethAmount))/1994 - (1997*wethReserve)/1994
+        */
     }
 }

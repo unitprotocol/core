@@ -129,6 +129,6 @@ module.exports = {
     },
 
     mocha: {
-        timeout: 180000, // requests to form network could be slow
+        timeout: 180000, // requests to fork network could be slow
     },
 };

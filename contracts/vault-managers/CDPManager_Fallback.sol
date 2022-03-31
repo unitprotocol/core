@@ -329,6 +329,7 @@ contract CDPManager01_Fallback is BaseCDPManager {
         _ensurePositionCollateralization(asset, msg.sender, proofData);
 
         emit Join(asset, msg.sender, totalAssetAmount, usdpAmount);
+        emit JoinWithLeverage(asset, msg.sender, assetAmount, totalAssetAmount, usdpAmount);
     }
 
     function _exitWithDeleverage(
@@ -374,6 +375,7 @@ contract CDPManager01_Fallback is BaseCDPManager {
         }
 
         emit Exit(asset, msg.sender, assetAmountToWithdraw, usdpAmount);
+        emit ExitWithDeleverage(asset, msg.sender, assetAmountToUser, assetAmountToSwap, usdpAmount);
 
         return usdpAmount;
     }

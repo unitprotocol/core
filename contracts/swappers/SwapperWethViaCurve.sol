@@ -8,8 +8,9 @@ pragma solidity 0.7.6;
 
 import "../interfaces/swappers/ISwapper.sol";
 import "./AbstractSwapper.sol";
-import "../interfaces/ICurveWith3crvPool.sol";
-import "../interfaces/ICurveTricrypto2Pool.sol";
+import "./helpers/CurveHelper.sol";
+import "../interfaces/curve/ICurvePoolMeta.sol";
+import "../interfaces/curve/ICurvePoolCrypto.sol";
 import "../helpers/SafeMath.sol";
 import "../helpers/IUniswapV2PairFull.sol";
 import '../helpers/TransferHelper.sol';
@@ -24,54 +25,52 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 contract SwapperWethViaCurve is AbstractSwapper {
     using SafeMath for uint;
+    using CurveHelper for ICurvePoolMeta;
+    using CurveHelper for ICurvePoolCrypto;
+    using TransferHelper for address;
 
     IERC20 public immutable WETH;
-    IERC20 public immutable USDP;
     IERC20 public immutable USDT;
 
-    ICurveWith3crvPool public immutable USDP_3CRV_POOL;
+    ICurvePoolMeta public immutable USDP_3CRV_POOL;
     int128 public immutable USDP_3CRV_POOL_USDP;
     int128 public immutable USDP_3CRV_POOL_USDT;
 
-    ICurveTricrypto2Pool public immutable TRICRYPTO2_POOL;
+    ICurvePoolCrypto public immutable TRICRYPTO2_POOL;
     uint256 public immutable TRICRYPTO2_USDT;
     uint256 public immutable TRICRYPTO2_WETH;
 
 
     constructor(
         address _vaultParameters, address _weth,  address _usdp, address _usdt,
-        address _usdp3crvPool, int128 _usdp3crvPoolUsdpIndex, int128 _usdp3crvPoolUsdtIndex,
-        address _tricrypto2Pool, uint256 _tricrypto2PoolUsdtIndex, uint256 _tricrypto2PoolWethIndex
-    ) AbstractSwapper(_vaultParameters) {
+        address _usdp3crvPool, address _tricrypto2Pool
+    ) AbstractSwapper(_vaultParameters, _usdp) {
         require(
             _weth != address(0)
-            && _usdp != address(0)
             && _usdt != address(0)
             && _usdp3crvPool != address(0)
             && _tricrypto2Pool != address(0)
             , "Unit Protocol Swappers: ZERO_ADDRESS"
         );
-        require(_usdp3crvPoolUsdpIndex != _usdp3crvPoolUsdtIndex && _tricrypto2PoolUsdtIndex != _tricrypto2PoolWethIndex, "Unit Protocol Swappers: INVALID_TOKENS_INDEXES");
 
         WETH = IERC20(_weth);
-        USDP = IERC20(_usdp);
         USDT = IERC20(_usdt);
 
-        USDP_3CRV_POOL = ICurveWith3crvPool(_usdp3crvPool);
-        USDP_3CRV_POOL_USDP = _usdp3crvPoolUsdpIndex;
-        USDP_3CRV_POOL_USDT = _usdp3crvPoolUsdtIndex;
+        USDP_3CRV_POOL = ICurvePoolMeta(_usdp3crvPool);
+        USDP_3CRV_POOL_USDP = ICurvePoolMeta(_usdp3crvPool).getCoinIndexInMetaPool(_usdp);
+        USDP_3CRV_POOL_USDT = ICurvePoolMeta(_usdp3crvPool).getCoinIndexInMetaPool(_usdt);
 
-        TRICRYPTO2_POOL = ICurveTricrypto2Pool(_tricrypto2Pool);
-        TRICRYPTO2_USDT = _tricrypto2PoolUsdtIndex;
-        TRICRYPTO2_WETH = _tricrypto2PoolWethIndex;
+        TRICRYPTO2_POOL = ICurvePoolCrypto(_tricrypto2Pool);
+        TRICRYPTO2_USDT = uint(ICurvePoolCrypto(_tricrypto2Pool).getCoinIndexInPool(_usdt));
+        TRICRYPTO2_WETH = uint(ICurvePoolCrypto(_tricrypto2Pool).getCoinIndexInPool(_weth));
 
         // for usdp to weth
-        TransferHelper.safeApprove(_usdp, _usdp3crvPool, type(uint256).max);
-        TransferHelper.safeApprove(_usdt, _tricrypto2Pool, type(uint256).max);
+        _usdp.safeApprove(_usdp3crvPool, type(uint256).max);
+        _usdt.safeApprove(_tricrypto2Pool, type(uint256).max);
 
         // for weth to usdp
-        TransferHelper.safeApprove(_weth, _tricrypto2Pool, type(uint256).max);
-        TransferHelper.safeApprove(_usdt, _usdp3crvPool, type(uint256).max);
+        _weth.safeApprove(_tricrypto2Pool, type(uint256).max);
+        _usdt.safeApprove(_usdp3crvPool, type(uint256).max);
     }
 
     function predictAssetOut(address _asset, uint256 _usdpAmountIn) external view override returns (uint predictedAssetAmount) {
@@ -84,6 +83,9 @@ contract SwapperWethViaCurve is AbstractSwapper {
         predictedAssetAmount = TRICRYPTO2_POOL.get_dy(TRICRYPTO2_USDT, TRICRYPTO2_WETH, usdtAmount);
     }
 
+    /**
+     * @dev calculates with some small (~0.005%) error bcs of approximate calculations of fee in get_dy_underlying
+     */
     function predictUsdpOut(address _asset, uint256 _assetAmountIn) external view override returns (uint predictedUsdpAmount) {
         require(_asset == address(WETH), "Unit Protocol Swappers: UNSUPPORTED_ASSET");
 
@@ -99,20 +101,15 @@ contract SwapperWethViaCurve is AbstractSwapper {
     {
         require(_asset == address(WETH), "Unit Protocol Swappers: UNSUPPORTED_ASSET");
 
-        // get USDP from user
-        TransferHelper.safeTransferFrom(address(USDP), _user, address(this), _usdpAmount);
-
         // USDP -> USDT
         uint usdtAmount = USDP_3CRV_POOL.exchange_underlying(USDP_3CRV_POOL_USDP, USDP_3CRV_POOL_USDT, _usdpAmount, 0);
 
         // USDT -> WETH
-        TRICRYPTO2_POOL.exchange(TRICRYPTO2_USDT, TRICRYPTO2_WETH, usdtAmount, 0, false);
+        TRICRYPTO2_POOL.exchange(TRICRYPTO2_USDT, TRICRYPTO2_WETH, usdtAmount, 0);
         swappedAssetAmount = WETH.balanceOf(address(this));
 
         // WETH -> user
-        TransferHelper.safeTransfer(address(WETH), _user, swappedAssetAmount);
-
-        return swappedAssetAmount;
+        address(WETH).safeTransfer(_user, swappedAssetAmount);
     }
 
     function _swapAssetToUsdp(address _user, address _asset, uint256 _assetAmount, uint256 /** _minUsdpAmount */)
@@ -120,19 +117,14 @@ contract SwapperWethViaCurve is AbstractSwapper {
     {
         require(_asset == address(WETH), "Unit Protocol Swappers: UNSUPPORTED_ASSET");
 
-        // get WETH from user
-        TransferHelper.safeTransferFrom(address(WETH), _user, address(this), _assetAmount);
-
         // WETH -> USDT
-        TRICRYPTO2_POOL.exchange(TRICRYPTO2_WETH, TRICRYPTO2_USDT, _assetAmount, 0, false);
+        TRICRYPTO2_POOL.exchange(TRICRYPTO2_WETH, TRICRYPTO2_USDT, _assetAmount, 0);
         uint usdtAmount = USDT.balanceOf(address(this));
 
         // USDT -> USDP
         swappedUsdpAmount = USDP_3CRV_POOL.exchange_underlying(USDP_3CRV_POOL_USDT, USDP_3CRV_POOL_USDP, usdtAmount, 0);
 
         // USDP -> user
-        TransferHelper.safeTransfer(address(USDP), _user, swappedUsdpAmount);
-
-        return swappedUsdpAmount;
+        address(USDP).safeTransfer(_user, swappedUsdpAmount);
     }
 }

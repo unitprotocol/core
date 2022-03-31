@@ -22,7 +22,6 @@ LP_TOKENS.forEach(params =>
             context.weth = await attachContract('WETHMock', WETH);
             context.usdp = await attachContract('USDP', USDP);
             context.lp = await attachContract('IUniswapV2PairFull', params[0]);
-            context.chainlinkOracle = await attachContract('IOracleUsd', ORACLE_CHAINLINK);
             context.lpTokenOracle = await attachContract('IOracleUsd', ORACLE_POOL_TOKEN);
 
 
@@ -33,8 +32,8 @@ LP_TOKENS.forEach(params =>
         });
 
         it("tests of swap and unswap", async function () {
-            const amountWeth = ether('50');
-            const amountUsdp = ether('100000');
+            const amountWeth = ether('500');
+            const amountUsdp = ether('1000000');
 
             await getUsdp(amountWeth, amountUsdp);
             ///////////////////
@@ -71,7 +70,7 @@ LP_TOKENS.forEach(params =>
 
 async function getUsdp(amountWeth, amountUsdp) {
     // get usdp for future swaps
-    await ethers.provider.send("hardhat_setBalance", [context.user1.address, '0x21E19E0C9BAB2400000' /* 10000Ether */]);
+    await ethers.provider.send("hardhat_setBalance", [context.user1.address, '0x152d02c7e14af6800000' /* 100000Ether */]);
     await context.weth.connect(context.user1).deposit({value: amountWeth.mul(2)});
     await context.weth.connect(context.user1).approve(context.swapperWeth.address, amountWeth);
     await context.swapperWeth.connect(context.user1).swapAssetToUsdp(context.user1.address, context.weth.address, amountWeth, amountUsdp);

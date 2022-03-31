@@ -15,11 +15,15 @@ describe("SwapperWethViaCurve", function () {
         context.usdp = await deployContract("EmptyToken", 'usdp', 'usdp', 18, ether('100'), context.deployer.address);
         context.usdt = await deployContract("EmptyToken", 'usdt', 'usdt', 18, ether('100'), context.deployer.address);
 
+        context.curvePool1 = await deployContract("CurvePool");
+        await context.curvePool1.setPool(0, [context.weth.address, context.usdp.address, context.usdt.address]);
+        context.curvePool2 = await deployContract("CurvePool");
+        await context.curvePool2.setPool(0, [context.weth.address, context.usdp.address, context.usdt.address]);
+
         context.swapper = await deployContract(
             'SwapperWethViaCurve',
             context.vaultParameters.address, context.weth.address, context.usdp.address, context.usdt.address,
-            context.weth.address, 1, 3, // just some contract, we will not test logic or success cases
-            context.weth.address, 1, 3
+            context.curvePool1.address, context.curvePool2.address
         );
     });
 
@@ -34,16 +38,32 @@ describe("SwapperWethViaCurve", function () {
 
         await expect(
             context.swapper.connect(context.user1).swapUsdpToAsset(context.user1.address, context.usdp.address, ether('1'), ether('1'))
+        ).to.be.revertedWith("TRANSFER_FROM_FAILED");
+
+        await context.usdp.tests_mint(context.user1.address, ether('2'));
+        await context.usdp.connect(context.user1).approve(context.swapper.address, ether('2'));
+        await expect(
+            context.swapper.connect(context.user1).swapUsdpToAsset(context.user1.address, context.usdp.address, ether('1'), ether('1'))
         ).to.be.revertedWith("UNSUPPORTED_ASSET");
 
+        await context.usdp.tests_mint(context.user2.address, ether('2'));
+        await context.usdp.connect(context.user2).approve(context.swapper.address, ether('2'));
         await expect(
             context.swapper.connect(context.user1).swapUsdpToAsset(context.user2.address, context.weth.address, ether('1'), ether('1'))
         ).to.be.revertedWith("AUTH_FAILED");
 
         await expect(
-            context.swapper.connect(context.user1).swapAssetToUsdp(context.user1.address, context.usdp.address, ether('1'), ether('1'))
+            context.swapper.connect(context.user1).swapAssetToUsdp(context.user1.address, context.usdt.address, ether('1'), ether('1'))
+        ).to.be.revertedWith("TRANSFER_FROM_FAILED");
+
+        await context.usdt.tests_mint(context.user1.address, ether('2'));
+        await context.usdt.connect(context.user1).approve(context.swapper.address, ether('2'));
+        await expect(
+            context.swapper.connect(context.user1).swapAssetToUsdp(context.user1.address, context.usdt.address, ether('1'), ether('1'))
         ).to.be.revertedWith("UNSUPPORTED_ASSET");
 
+        await context.weth.tests_mint(context.user2.address, ether('2'));
+        await context.weth.connect(context.user2).approve(context.swapper.address, ether('2'));
         await expect(
             context.swapper.connect(context.user1).swapAssetToUsdp(context.user2.address, context.weth.address, ether('1'), ether('1'))
         ).to.be.revertedWith("AUTH_FAILED");

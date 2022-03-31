@@ -46,9 +46,19 @@ abstract contract BaseCDPManager is ReentrancyGuard {
     event Join(address indexed asset, address indexed owner, uint main, uint usdp);
 
     /**
+     * @dev Log joins with leverage
+     **/
+    event JoinWithLeverage(address indexed asset, address indexed owner, uint userAssetAmount, uint totalAssetAmount, uint usdp);
+
+    /**
      * @dev Trigger when exits are happened
     **/
     event Exit(address indexed asset, address indexed owner, uint main, uint usdp);
+
+    /**
+     * @dev Log exit with deleverage
+     **/
+    event ExitWithDeleverage(address indexed asset, address indexed owner, uint assetToUser, uint assetToSwap, uint usdp);
 
     /**
      * @dev Trigger when liquidations are initiated
@@ -146,11 +156,23 @@ abstract contract BaseCDPManager is ReentrancyGuard {
         return collateralLiqPrice / vault.collaterals(asset, owner) / 10 ** (18 - IToken(asset).decimals());
     }
 
+    /**
+     * @dev Returned asset amount + charged stability fee on this amount = repayment (in fact <= repayment bcs of rounding error)
+     */
     function _calcPrincipal(address asset, address owner, uint repayment) internal view returns (uint) {
         uint multiplier = repayment;
         uint fee = vault.calculateFee(asset, owner, multiplier);
 
         return repayment * multiplier / (multiplier + fee);
+        /*
+            x + fee(x) = repayment
+            x + x * feePercent * pastTime / 365 days / denominator = repayment
+            x * (1 + feePercent * pastTime / 365 days / denominator) = repayment
+            x * (1 + fee(1)) = repayment
+            x = repayment / (1 + fee(1))
+            With usage in such way we have huge rounding error on small pastTime
+            Will multipy numerator and denominator of right part with big enough number. Repayment is good enough for this purposes
+        */
     }
 
     /**
@@ -203,9 +225,9 @@ abstract contract BaseCDPManager is ReentrancyGuard {
 
         swappedAssetAmount = swapper.swapUsdpToAsset(msg.sender, _asset, _usdpAmountToSwap, _minSwappedAssetAmount);
 
-        require(swappedAssetAmount >= _minSwappedAssetAmount, "Unit Protocol: INVALID_SWAP");
-        require(IERC20(_asset).balanceOf(msg.sender) == assetBalanceBeforeSwap.add(swappedAssetAmount), "Unit Protocol: INVALID_SWAP");
-        require(usdp.balanceOf(msg.sender) == usdpBalanceBeforeSwap.sub(_usdpAmountToSwap), "Unit Protocol: INVALID_SWAP");
+        require(swappedAssetAmount >= _minSwappedAssetAmount, "Unit Protocol: SWAPPED_AMOUNT_LESS_THAN_EXPECTED_MINIMUM");
+        require(IERC20(_asset).balanceOf(msg.sender) == assetBalanceBeforeSwap.add(swappedAssetAmount), "Unit Protocol: INVALID_SWAPPED_ASSET_AMOUNT_RETURNED");
+        require(usdp.balanceOf(msg.sender) == usdpBalanceBeforeSwap.sub(_usdpAmountToSwap), "Unit Protocol: INVALID_USDP_AMOUNT_GOT_FOR_SWAP_BY_SWAPPER");
     }
 
     function _swapAssetToUsdpAndCheck(ISwapper swapper, address _asset, uint _assetAmountToSwap, uint _minSwappedUsdpAmount) internal returns(uint swappedUsdpAmount) {
@@ -214,8 +236,8 @@ abstract contract BaseCDPManager is ReentrancyGuard {
 
         swappedUsdpAmount = swapper.swapAssetToUsdp(msg.sender, _asset, _assetAmountToSwap, _minSwappedUsdpAmount);
 
-        require(swappedUsdpAmount >= _minSwappedUsdpAmount, "Unit Protocol: INVALID_SWAP");
-        require(IERC20(_asset).balanceOf(msg.sender) == assetBalanceBeforeSwap.sub(_assetAmountToSwap), "Unit Protocol: INVALID_SWAP");
-        require(usdp.balanceOf(msg.sender) == usdpBalanceBeforeSwap.add(swappedUsdpAmount), "Unit Protocol: INVALID_SWAP");
+        require(swappedUsdpAmount >= _minSwappedUsdpAmount, "Unit Protocol: SWAPPED_AMOUNT_LESS_THAN_EXPECTED_MINIMUM");
+        require(IERC20(_asset).balanceOf(msg.sender) == assetBalanceBeforeSwap.sub(_assetAmountToSwap), "Unit Protocol: INVALID_ASSET_AMOUNT_GOT_FOR_SWAP_BY_SWAPPER");
+        require(usdp.balanceOf(msg.sender) == usdpBalanceBeforeSwap.add(swappedUsdpAmount), "Unit Protocol: INVALID_SWAPPED_ASSET_AMOUNT_RETURNED");
     }
 }

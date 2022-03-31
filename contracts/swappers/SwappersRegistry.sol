@@ -12,7 +12,12 @@ import "../Auth2.sol";
 
 contract SwappersRegistry is ISwappersRegistry, Auth2 {
 
-    mapping(ISwapper => uint) internal swappersIds;
+    struct SwapperInfo {
+        uint240 id;
+        bool isExist;
+    }
+
+    mapping(ISwapper => SwapperInfo) internal swappersInfo;
     ISwapper[] internal swappers;
 
     constructor(address _vaultParameters) Auth2(_vaultParameters) {}
@@ -22,19 +27,17 @@ contract SwappersRegistry is ISwappersRegistry, Auth2 {
     }
 
     function getSwapperId(ISwapper _swapper) external view override returns (uint) {
-        return swappersIds[_swapper];
+        require(hasSwapper(_swapper), "Unit Protocol Swappers: SWAPPER_IS_NOT_EXIST");
+
+        return uint(swappersInfo[_swapper].id);
     }
 
     function getSwapper(uint _id) external view override returns (ISwapper) {
         return swappers[_id];
     }
 
-    function hasSwapper(ISwapper _swapper) external view override returns (bool) {
-        if (swappers.length == 0) {
-            return false;
-        }
-
-        return swappers[ swappersIds[_swapper] ] == _swapper;
+    function hasSwapper(ISwapper _swapper) public view override returns (bool) {
+        return swappersInfo[_swapper].isExist;
     }
 
     function getSwappers() external view override returns (ISwapper[] memory) {
@@ -43,24 +46,26 @@ contract SwappersRegistry is ISwappersRegistry, Auth2 {
 
     function add(ISwapper _swapper) public onlyManager {
         require(address(_swapper) != address(0), "Unit Protocol Swappers: ZERO_ADDRESS");
+        require(!hasSwapper(_swapper), "Unit Protocol Swappers: SWAPPER_ALREADY_EXISTS");
 
         swappers.push(_swapper);
-        swappersIds[_swapper] = swappers.length - 1;
+        swappersInfo[_swapper] = SwapperInfo(uint240(swappers.length - 1), true);
 
         emit SwapperAdded(_swapper);
     }
 
     function remove(ISwapper _swapper) public onlyManager {
         require(address(_swapper) != address(0), "Unit Protocol Swappers: ZERO_ADDRESS");
+        require(hasSwapper(_swapper), "Unit Protocol Swappers: SWAPPER_IS_NOT_EXIST");
 
-        uint id = swappersIds[_swapper];
-        delete swappersIds[_swapper];
+        uint id = uint(swappersInfo[_swapper].id);
+        delete swappersInfo[_swapper];
 
         uint lastId = swappers.length - 1;
         if (id != lastId) {
             ISwapper lastSwapper = swappers[lastId];
             swappers[id] = lastSwapper;
-            swappersIds[lastSwapper] = id;
+            swappersInfo[lastSwapper] = SwapperInfo(uint240(id), true);
         }
         swappers.pop();
 
