@@ -24,7 +24,7 @@ const BONE_ADDR = '0x9813037ee2218799597d83d4a5b6f3b6778218d9'
 const USDT_SSLP = '0x703b120F15Ab77B986a24c6f9262364d02f9432f'
 const SHIB_SSLP = '0xCF6dAAB95c476106ECa715D48DE4b13287ffDEAa'
 const TEST_WALLET = '0x8442e4fcbba519b4f4c1ea1fce57a5379c55906c'
-const BONES_FEE = '0x0000000000000000000000000000000000000003'
+const BONES_FEE = '0xB3E75687652D33D6F5CaD5B113619641E4F6535B'
 
 async function deploy() {
     const [deployer, ] = await ethers.getSigners();
@@ -43,7 +43,7 @@ async function deploy() {
     await ethers.provider.send("hardhat_setBalance", [MULTISIG_ADDR, '0x3635c9adc5dea00000' /* 1000Ether */]);
 
     const vaultParameters = await attachContract('VaultParameters', VAULT_PARAMETERS);
-    const cdpViewer = await deployContract('CDPViewer', VAULT_MANAGER_PARAMETERS, ORACLE_REGISTRY, VAULT_MANAGER_BORROW_FEE_PARAMETERS);
+    const cdpViewer = await attachContract('CDPViewer', "0x68af7bd6f3e2fb480b251cb1b508bbb406e8e21d");
     console.log("cdpViewer: " + cdpViewer.address)
 
     const swappersRegistry = await deployContract("SwappersRegistry", VAULT_PARAMETERS);
@@ -58,8 +58,8 @@ async function deploy() {
 
 
     //////// wrapped assets ////////////////////////////////////////////
-    const wrappedSslpUsdt = await deployContract('WrappedShibaSwapLp', VAULT_PARAMETERS, TOP_DOG, 17, BONES_FEE)
-    const wrappedSslpShib = await deployContract('WrappedShibaSwapLp', VAULT_PARAMETERS, TOP_DOG, 0,  BONES_FEE)
+    const wrappedSslpUsdt = await attachContract('WrappedShibaSwapLp', "0xce5147182624fd121d0ce974847a8dbfca9358b7")
+    const wrappedSslpShib = await attachContract('WrappedShibaSwapLp', "0xa854f514f420a2b7b5d9ce65215da9204cdf2cae")
 
     console.log("wrappedSslpUsdt: " + wrappedSslpUsdt.address)
     console.log("sslp usdt: " + USDT_SSLP)
@@ -70,16 +70,16 @@ async function deploy() {
 
     //////// oracles ////////////////////////////////////////////
     const oracleRegistry = await attachContract('OracleRegistry', ORACLE_REGISTRY);
-    const wrappedKeydonixOracle = await deployContract('WrappedToUnderlyingOracleKeydonix', VAULT_PARAMETERS, ORACLE_REGISTRY);
+    const wrappedKeydonixOracle = await attachContract('WrappedToUnderlyingOracleKeydonix', "0xfF536BB145177D3E8E9A84fFF148B0e42282BF40");
     const wrappedOracle = await attachContract('WrappedToUnderlyingOracle', WRAPPED_ORACLE);
 
-    await wrappedOracle.connect(multisig).setUnderlying(wrappedSslpUsdt.address, USDT_SSLP);
-    await wrappedKeydonixOracle.connect(multisig).setUnderlying(wrappedSslpShib.address, SHIB_SSLP);
+    await wrappedOracle.connect(multisig).setUnderlying(wrappedSslpUsdt.address, USDT_SSLP);//tx
+    await wrappedKeydonixOracle.connect(multisig).setUnderlying(wrappedSslpShib.address, SHIB_SSLP);//tx
 
-    await oracleRegistry.connect(multisig).setOracle(ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX, wrappedKeydonixOracle.address);
+    await oracleRegistry.connect(multisig).setOracle(ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX, wrappedKeydonixOracle.address);//tx
 
-    await oracleRegistry.connect(multisig).setOracleTypeForAsset(wrappedSslpUsdt.address, ORACLE_TYPE_WRAPPED_TO_UNDERLYING)
-    await oracleRegistry.connect(multisig).setOracleTypeForAsset(wrappedSslpShib.address, ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX)
+    await oracleRegistry.connect(multisig).setOracleTypeForAsset(wrappedSslpUsdt.address, ORACLE_TYPE_WRAPPED_TO_UNDERLYING)//tx
+    await oracleRegistry.connect(multisig).setOracleTypeForAsset(wrappedSslpShib.address, ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX)//tx
 
     await oracleRegistry.connect(multisig).setOracleTypeForAsset(USDT_SSLP, ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN)
     await oracleRegistry.connect(multisig).setOracleTypeForAsset(SHIB_SSLP, ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN_KEYDONIX)
@@ -96,7 +96,7 @@ async function deploy() {
     //////// collaterals ////////////////////////////////////////////
     const vaultManagerParameters = await attachContract('VaultManagerParameters', VAULT_MANAGER_PARAMETERS);
 
-    await vaultManagerParameters.connect(multisig).setCollateral(
+    await vaultManagerParameters.connect(multisig).setCollateral(//tx
         wrappedSslpUsdt.address,
         '900', // stability fee
         '5', // liquidation fee
@@ -109,7 +109,7 @@ async function deploy() {
         0,
         0,
     );
-    await vaultManagerParameters.connect(multisig).setCollateral(
+    await vaultManagerParameters.connect(multisig).setCollateral(//tx
         wrappedSslpShib.address,
         '900', // stability fee
         '5', // liquidation fee
@@ -118,7 +118,7 @@ async function deploy() {
         '0', // liquidation discount (3 decimals)
         '100', // devaluation period in blocks
         '1000000000000000000000', // debt limit
-        [ORACLE_TYPE_WRAPPED_TO_UNDERLYING], // enabled oracles
+        [ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX], // enabled oracles
         0,
         0,
     );
@@ -130,17 +130,15 @@ async function deploy() {
 
 
     //////// auction ////////////////////////////////////////////
-    const parameters = await deployContract(
+    const parameters = await attachContract(
         'AssetsBooleanParameters',
-        VAULT_PARAMETERS,
-        ['0x4bfB2FA13097E5312B19585042FdbF3562dC8676', '0x988AAf8B36173Af7Ad3FEB36EfEc0988Fbd06d07'],
-        [PARAM_FORCE_TRANSFER_ASSET_TO_OWNER_ON_LIQUIDATION, PARAM_FORCE_TRANSFER_ASSET_TO_OWNER_ON_LIQUIDATION]
+        "0xcc33c2840b65c0a4ac4015c650dd20dc3eb2081d"
     );
 
-    await parameters.connect(multisig).set(wrappedSslpShib.address, PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION, true);
-    await parameters.connect(multisig).set(wrappedSslpUsdt.address, PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION, true);
+    await parameters.connect(multisig).set(wrappedSslpShib.address, PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION, true);//tx
+    await parameters.connect(multisig).set(wrappedSslpUsdt.address, PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION, true);//tx
 
-    const auction = await deployContract('LiquidationAuction02', VAULT_MANAGER_PARAMETERS, CDP_REGISTRY, parameters.address)
+    const auction = await attachContract('LiquidationAuction02', "0x9cCbb2F03184720Eef5f8fA768425AF06604Daf4")
     console.log("liquidation auction: ", auction.address)
     //////// end of auction ////////////////////////////////////////////
 
@@ -170,6 +168,7 @@ async function deploy() {
     //
     // await usdtSslp.connect(testWallet).approve(wrappedSslpUsdt.address, '1000000000000000000000');
     // await wrappedSslpUsdt.connect(testWallet).approve(VAULT, '1000000000000000000000');
+    // await usdp.connect(testWallet).approve(cdpManager.address, '1000000000000000000000');
     //
     // await cdpManager.connect(testWallet).wrapAndJoin(wrappedSslpUsdt.address, balance, '50000000000000000000');
     //
@@ -178,13 +177,14 @@ async function deploy() {
     // await network.provider.send("evm_mine");
     // console.log('claimable bones after 2 blocks: ', (await wrappedSslpUsdt.pendingReward(testWallet.address)).toString())
     // console.log('bones fees wallet balance before claim: ', (await bone.balanceOf(BONES_FEE)).toString())
-    // await wrappedSslpUsdt.claimReward(testWallet.address)
+    // await wrappedSslpUsdt.connect(testWallet).claimReward(testWallet.address)
     // console.log("balance of bone: ", (await bone.balanceOf(TEST_WALLET)).toString())
     // console.log('bones fees wallet balance after claim: ', (await bone.balanceOf(BONES_FEE)).toString())
     //////// end of wsslp simple case ////////////////////////////////////////////
 
     //////// weth leverage ////////////////////////////////////////////
     // console.log('-- check simple leverage')
+    // await vaultParameters.connect(multisig).setTokenDebtLimit(weth.address, ether('10000000'));
     // const assetAmount = ether('1');
     // const usdpAmount = ether('3000'); // leverage >2 atm
     //
@@ -229,15 +229,15 @@ async function deploy() {
     //
     //
     // assert(wethBalance3.sub(wethBalance2).eq(assetAmount.div(2)));
-    // assert(usdpBalance3.eq(usdpBalance2));
+    // assert(usdpBalance3.eq(usdpBalance2) || usdpBalance3.sub(1).eq(usdpBalance2)); // principal could be less then repayment (by1)
     // assert(vaultPosition3.add(assetAmount).eq(vaultPosition2));
     //////// end of wsslp simple case ////////////////////////////////////////////
 
 
     //////// wrapped asset leverage ////////////////////////////////////////////
     // console.log('-- check simple leverage')
-    // const assetAmount = ether('0.00000076');
-    // const usdpAmount = ether('100'); // leverage >2 atm
+    // const assetAmount = ether('0.0000005');
+    // const usdpAmount = ether('150'); // leverage >2 atm
     //
     // const wsslpBalance1 = await wrappedSslpUsdt.balanceOf(TEST_WALLET);
     // const sslpBalance1 = await sslpUsdt.balanceOf(TEST_WALLET);
@@ -283,7 +283,7 @@ async function deploy() {
     //
     //
     // assert(sslpBalance3.sub(sslpBalance2).eq(assetAmount.div(2)));
-    // assert(usdpBalance3.eq(usdpBalance2));
+    // assert(usdpBalance3.eq(usdpBalance2) || usdpBalance3.sub(1).eq(usdpBalance2));
     // assert(vaultPosition3.add(assetAmount).eq(vaultPosition2));
     //////// end of wrapped asset leverage ////////////////////////////////////////////
 }
