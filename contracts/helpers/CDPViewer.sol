@@ -88,6 +88,15 @@ contract CDPViewer {
         address[2] lpUnderlyings;
         uint128 balance;
         uint128 totalSupply;
+        uint8 decimals;
+        address uniswapV2Factory;
+
+        address underlyingToken;
+        uint256 underlyingTokenBalance;
+        uint256 underlyingTokenTotalSupply;
+        uint8 underlyingTokenDecimals;
+        address underlyingTokenUniswapV2Factory;
+        address[2] underlyingTokenUnderlyings;
     }
 
 
@@ -144,14 +153,43 @@ contract CDPViewer {
         view
         returns (TokenDetails memory r)
     {
-        try IUniswapV2PairFull(asset).token0() returns(address token0) {
-            r.lpUnderlyings[0] = token0;
-            r.lpUnderlyings[1] = IUniswapV2PairFull(asset).token1();
-            r.totalSupply = uint128(IUniswapV2PairFull(asset).totalSupply());
-        } catch (bytes memory) { }
+        address token0;
+        address token1;
 
-        if (owner == address(0)) return r;
-        r.balance = uint128(ERC20Like(asset).balanceOf(owner));
+        (bool success, bytes memory data) = asset.staticcall{gas:20000}(abi.encodeWithSignature("token0()"));
+        if (success && data.length == 32) { // check in this way (and not try/catch) since some tokens has fallback functions
+            token0 = bytesToAddress(data);
+
+            (success, data) = asset.staticcall{gas:20000}(abi.encodeWithSignature("token1()"));
+            if (success && data.length == 32) {
+                token1 = bytesToAddress(data);
+
+                (success, data) = asset.staticcall{gas:20000}(abi.encodeWithSignature("factory()"));
+                if (success && data.length == 32) {
+                    r.lpUnderlyings[0] = token0;
+                    r.lpUnderlyings[1] = token1;
+                    r.uniswapV2Factory = bytesToAddress(data);
+                }
+            }
+        }
+
+        r.totalSupply = uint128(IUniswapV2PairFull(asset).totalSupply());
+        r.decimals = uint8(IUniswapV2PairFull(asset).decimals());
+        if (owner != address(0)) {
+            r.balance = uint128(ERC20Like(asset).balanceOf(owner));
+        }
+    }
+
+    function bytesToAddress(bytes memory _bytes) private pure returns (address addr) {
+        assembly {
+          addr := mload(add(_bytes, 32))
+        }
+    }
+
+    function bytesToBytes32(bytes memory _bytes) private pure returns (bytes32 _bytes32) {
+        assembly {
+          _bytes32 := mload(add(_bytes, 32))
+        }
     }
 
     /**

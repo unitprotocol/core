@@ -17,10 +17,10 @@ contract USDP is Auth {
     using SafeMath for uint;
 
     // name of the token
-    string public constant name = "USDP Stablecoin";
+    string public constant name = "USG Stablecoin";
 
     // symbol of the token
-    string public constant symbol = "USDP";
+    string public constant symbol = "USG";
 
     // version of the token
     string public constant version = "1";
