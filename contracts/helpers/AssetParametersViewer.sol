@@ -8,6 +8,7 @@ pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "../interfaces/IVaultParameters.sol";
+import "../interfaces/IForceTransferAssetStore.sol";
 import "../interfaces/vault-managers/parameters/IVaultManagerParameters.sol";
 import "../interfaces/vault-managers/parameters/IVaultManagerBorrowFeeParameters.sol";
 
@@ -24,8 +25,9 @@ contract AssetParametersViewer {
 
     IVaultManagerParameters public immutable vaultManagerParameters;
     IVaultManagerBorrowFeeParameters public immutable vaultManagerBorrowFeeParameters;
+    IForceTransferAssetStore public immutable forceTransferAssetStore;
 
-    struct AssetParameters {
+    struct AssetParametersStruct {
         // asset address
         address asset;
 
@@ -53,16 +55,25 @@ contract AssetParametersViewer {
         // Oracle types enabled for this asset
         uint[] oracles;
 
+        // unused, for backward compatibility
+        uint minColPercent;
+        uint maxColPercent;
+
         // Percentage with 2 decimals (basis points)
         uint borrowFee;
+
+        // Boolean parameters
+        bool forceTransferAssetToOwnerOnLiquidation;
+        bool forceMoveWrappedAssetPositionOnLiquidation;
     }
 
 
-    constructor(address _vaultManagerParameters, address _vaultManagerBorrowFeeParameters) {
+    constructor(address _vaultManagerParameters, address _vaultManagerBorrowFeeParameters, address _forceTransferAssetStore) {
         IVaultManagerParameters vmp = IVaultManagerParameters(_vaultManagerParameters);
         vaultManagerParameters = vmp;
         vaultParameters = IVaultParameters(vmp.vaultParameters());
         vaultManagerBorrowFeeParameters = IVaultManagerBorrowFeeParameters(_vaultManagerBorrowFeeParameters);
+        forceTransferAssetStore = IForceTransferAssetStore(_forceTransferAssetStore);
     }
 
     /**
@@ -73,7 +84,7 @@ contract AssetParametersViewer {
     function getAssetParameters(address asset, uint maxOracleTypesToSearch)
         public
         view
-        returns (AssetParameters memory r)
+        returns (AssetParametersStruct memory r)
     {
         r.asset = asset;
         r.stabilityFee = vaultParameters.stabilityFee(asset);
@@ -87,6 +98,9 @@ contract AssetParametersViewer {
         r.tokenDebtLimit = vaultParameters.tokenDebtLimit(asset);
 
         r.borrowFee = vaultManagerBorrowFeeParameters.getBorrowFee(asset);
+
+        r.forceTransferAssetToOwnerOnLiquidation = forceTransferAssetStore.shouldForceTransfer(asset);
+        r.forceMoveWrappedAssetPositionOnLiquidation = false;
 
         // Memory arrays can't be reallocated so we'll overprovision
         uint[] memory foundOracleTypes = new uint[](maxOracleTypesToSearch);
@@ -112,10 +126,10 @@ contract AssetParametersViewer {
     function getMultiAssetParameters(address[] calldata assets, uint maxOracleTypesToSearch)
         external
         view
-        returns (AssetParameters[] memory r)
+        returns (AssetParametersStruct[] memory r)
     {
         uint length = assets.length;
-        r = new AssetParameters[](length);
+        r = new AssetParametersStruct[](length);
         for (uint i = 0; i < length; ++i) {
             r[i] = getAssetParameters(assets[i], maxOracleTypesToSearch);
         }
