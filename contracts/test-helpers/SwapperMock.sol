@@ -54,7 +54,7 @@ contract SwapperMock is ISwapper {
         return _minAssetAmount;
     }
 
-    function swapAssetToUsdpWithDirectSending(address _user, address _asset, uint256 _assetAmount, uint256 _minUsdpAmount) external override returns (uint swappedUsdpAmount) {
+    function swapAssetToUsdpWithDirectSending(address _user, address /* _asset */, uint256 _assetAmount, uint256 _minUsdpAmount) external override returns (uint swappedUsdpAmount) {
         require(_minUsdpAmount == _assetAmount * assetToUsdpRate); // in _minAssetAmount we must send result of prediction. In tests the same
         IAssetTestsMint(USDP).tests_mint(_user, _minUsdpAmount);
         return _minUsdpAmount;

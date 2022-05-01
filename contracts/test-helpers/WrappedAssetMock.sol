@@ -54,7 +54,7 @@ contract WrappedAssetMock is ERC20, IWrappedAsset {
     /**
      * @notice get pending reward amount for user if reward is supported
      */
-    function pendingReward(address /** _userAddr */) external view override returns (uint256) {
+    function pendingReward(address /** _userAddr */) external pure override returns (uint256) {
         return 0;
     }
 

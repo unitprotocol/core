@@ -117,7 +117,7 @@ library UniswapV2Helper {
         return calcAmountOutByTokenId(_pair, _tokenId, _amount, uint(reserve0), uint(reserve1));
     }
 
-    function calcAmountOutByTokenId(IUniswapV2PairFull _pair, uint _tokenId, uint _amount, uint reserve0, uint reserve1) internal view returns (uint) {
+    function calcAmountOutByTokenId(IUniswapV2PairFull /* _pair */, uint _tokenId, uint _amount, uint reserve0, uint reserve1) internal pure returns (uint) {
         uint256 reserveIn;
         uint256 reserveOut;
         if (_tokenId == 0) {
