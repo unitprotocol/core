@@ -9,6 +9,7 @@ const {deployContract, attachContract, ether, BN} = require("../helpers/ethersUt
 const {PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION} = require("../../lib/constants");
 const {cdpManagerWrapper} = require("../helpers/cdpManagerWrappers");
 const {ZERO_ADDRESS} = require("../helpers/deployUtils");
+const Abi = require('@ethersproject/abi');
 
 const EPSILON = BN('400000');
 
@@ -110,6 +111,138 @@ describe("WrappedShibaSwapLp", function () {
 
                 // transfer allowance for vault tested in liquidation cases
             });
+
+            it("simple deposit/withdraw", async function () {
+                const lockAmount = ether('0.4');
+                await prepareUserForJoin(context.user1, ether('1'));
+
+                await context.wrappedSslp0.connect(context.user1).deposit(context.user1.address, lockAmount);
+                expect(await context.sslpToken0.balanceOf(context.user1.address)).to.be.equal(ether('0.6'));
+                expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(lockAmount);
+
+
+                await context.wrappedSslp0.connect(context.user1).withdraw(context.user1.address, lockAmount);
+                expect(await context.sslpToken0.balanceOf(context.user1.address)).to.be.equal(ether('1'));
+                expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(0);
+
+                expect(await bonesBalance(context.user1)).to.be.equal(0);
+                await claimReward(context.user1)
+                expect(await bonesBalance(context.user1)).not.to.be.equal(0);
+            });
+
+            it("emergency withdraw + withdraw any token", async function () {
+                const lockAmount = ether('0.4');
+                await prepareUserForJoin(context.user1, ether('1'));
+
+                await context.wrappedSslp0.connect(context.user1).deposit(context.user1.address, lockAmount);
+                expect(await context.sslpToken0.balanceOf(context.user1.address)).to.be.equal(ether('0.6'));
+                expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(lockAmount);
+
+                await context.wrappedSslp0.connect(context.user1).emergencyWithdraw();
+                expect(await context.sslpToken0.balanceOf(context.user1.address)).to.be.equal(ether('0.6'));
+                expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(0);
+
+                await context.wrappedSslp0.connect(context.user1).withdrawToken(context.sslpToken0.address, lockAmount);
+                expect(await context.sslpToken0.balanceOf(context.user1.address)).to.be.equal(ether('1'));
+                expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(0);
+
+                expect(await bonesBalance(context.user1)).to.be.equal(0);
+                await claimReward(context.user1)
+                expect(await bonesBalance(context.user1)).to.be.equal(0);
+            });
+
+            it("withdraw bone token from proxy (with fee)", async function () {
+                await context.wrappedSslp0.setFee(10);
+
+                const lockAmount = ether('0.4');
+                await prepareUserForJoin(context.user1, ether('1'));
+
+                await context.wrappedSslp0.connect(context.user1).deposit(context.user1.address, lockAmount);
+                await context.wrappedSslp0.connect(context.user1).deposit(context.user1.address, lockAmount);
+                const user1ProxyAddr = await context.wrappedSslp0.usersProxies(context.user1.address);
+
+                // part of bones balances
+                const proxyBonesBalance1 = await bonesBalance(user1ProxyAddr);
+                await context.wrappedSslp0.connect(context.user1).withdrawToken(context.boneToken.address, proxyBonesBalance1.div(2));
+                const proxyBonesBalance2 = await bonesBalance(user1ProxyAddr);
+                const userBonesBalance2 = await bonesBalance(context.user1);
+                const feeReceiverBonesBalance2 = await bonesBalance(context.bonesFeeReceiver);
+
+                expect(proxyBonesBalance2).to.be.equal(proxyBonesBalance1.div(2));
+                expect(userBonesBalance2).to.be.equal(proxyBonesBalance1.div(2).mul(90).div(100));
+                expect(feeReceiverBonesBalance2).to.be.equal(proxyBonesBalance1.div(2).mul(10).div(100));
+
+                // all
+                await context.wrappedSslp0.connect(context.user1).withdrawToken(context.boneToken.address, proxyBonesBalance2);
+                const proxyBonesBalance3 = await bonesBalance(user1ProxyAddr);
+                const userBonesBalance3 = await bonesBalance(context.user1);
+                const feeReceiverBonesBalance3 = await bonesBalance(context.bonesFeeReceiver);
+
+                expect(proxyBonesBalance3).to.be.equal(0);
+                expect(userBonesBalance3).to.be.equal(proxyBonesBalance1.mul(90).div(100));
+                expect(feeReceiverBonesBalance3).to.be.equal(proxyBonesBalance1.mul(10).div(100));
+            });
+
+            it("withdraw some token from proxy (with fee)", async function () {
+                await context.wrappedSslp0.setFee(10);
+
+                const lockAmount = ether('0.4');
+                await prepareUserForJoin(context.user1, ether('1'));
+
+                await context.wrappedSslp0.connect(context.user1).deposit(context.user1.address, lockAmount);
+                const user1ProxyAddr = await context.wrappedSslp0.usersProxies(context.user1.address);
+
+                const amount = ether('1');
+                await context.sslpToken1.transfer(user1ProxyAddr, amount);
+
+                // part of balances
+                await context.wrappedSslp0.connect(context.user1).withdrawToken(context.sslpToken1.address, amount.div(2));
+                const proxyBalance2 = await context.sslpToken1.balanceOf(user1ProxyAddr);
+                const userBalance2 = await context.sslpToken1.balanceOf(context.user1.address);
+                const feeReceiverBalance2 = await context.sslpToken1.balanceOf(context.bonesFeeReceiver.address);
+
+                expect(proxyBalance2).to.be.equal(amount.div(2));
+                expect(userBalance2).to.be.equal(amount.div(2));
+                expect(feeReceiverBalance2).to.be.equal(0);
+
+                // all
+                await context.wrappedSslp0.connect(context.user1).withdrawToken(context.sslpToken1.address, amount.div(2));
+                const proxyBalance3 = await context.sslpToken1.balanceOf(user1ProxyAddr);
+                const userBalance3 = await context.sslpToken1.balanceOf(context.user1.address);
+                const feeReceiverBalance3 = await context.sslpToken1.balanceOf(context.bonesFeeReceiver.address);
+
+                expect(proxyBalance3).to.be.equal(0);
+                expect(userBalance3).to.be.equal(amount);
+                expect(feeReceiverBalance3).to.be.equal(0);
+            });
+
+            it("no emergency withdrawal allowed with unit position", async function () {
+                const lockAmount = ether('0.4');
+                await prepareUserForJoin(context.user1, ether('1'));
+
+                await wrapAndJoin(context.user1, lockAmount, 0);
+
+                await expect(
+                    context.wrappedSslp0.connect(context.user1).emergencyWithdraw()
+                ).to.be.revertedWith("burn amount exceeds balance");
+
+                await cdpManagerWrapper.exit(context, context.user1, context.wrappedSslp0, lockAmount.div(2), 0);
+
+                await expect(
+                    context.wrappedSslp0.connect(context.user1).emergencyWithdraw()
+                ).to.be.revertedWith("burn amount exceeds balance");
+
+                // full exit from unit, user got all wrapped tokens
+                await cdpManagerWrapper.exit(context, context.user1, context.wrappedSslp0, lockAmount.div(2), 0);
+                expect(await context.sslpToken0.balanceOf(context.user1.address)).to.be.equal(ether('0.6'));
+                expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(ether('0.4'));
+
+                await context.wrappedSslp0.connect(context.user1).emergencyWithdraw()
+                await context.wrappedSslp0.connect(context.user1).withdrawToken(context.sslpToken0.address, lockAmount);
+                expect(await context.sslpToken0.balanceOf(context.user1.address)).to.be.equal(ether('1'));
+                expect(await context.wrappedSslp0.balanceOf(context.user1.address)).to.be.equal(0);
+
+            });
         });
 
         describe("proxies direct calls", function () {
@@ -125,10 +258,6 @@ describe("WrappedShibaSwapLp", function () {
                 const user1Proxy = await attachContract('WSSLPUserProxy', user1ProxyAddr);
 
                 await expect(
-                    user1Proxy.init(context.user1.address, context.user2.address)
-                ).to.be.revertedWith("AUTH_FAILED");
-
-                await expect(
                     user1Proxy.approveSslpToTopDog(context.sslpToken0.address)
                 ).to.be.revertedWith("AUTH_FAILED");
 
@@ -141,11 +270,19 @@ describe("WrappedShibaSwapLp", function () {
                 ).to.be.revertedWith("AUTH_FAILED");
 
                 await expect(
-                    user1Proxy.claimReward(context.user1.address, ether('1'))
+                    user1Proxy.claimReward(context.user1.address, context.user2.address, 30)
                 ).to.be.revertedWith("AUTH_FAILED");
 
                 await expect(
-                    user1Proxy.claimRewardFromBoneLocker(context.boneLocker1.address, ether('1'), context.user1.address, ether('1'))
+                    user1Proxy.claimRewardFromBoneLocker(context.user1.address, context.boneLocker1.address, ether('1'), context.user1.address, 30)
+                ).to.be.revertedWith("AUTH_FAILED");
+
+                await expect(
+                    user1Proxy.emergencyWithdraw()
+                ).to.be.revertedWith("AUTH_FAILED");
+
+                await expect(
+                    user1Proxy.withdrawToken(context.sslpToken0.address, context.user1.address, 100, context.bonesFeeReceiver.address, 10)
                 ).to.be.revertedWith("AUTH_FAILED");
             });
         });
@@ -203,17 +340,17 @@ describe("WrappedShibaSwapLp", function () {
                     .add(directBonesReward(withdrawal2Block, withdrawal3Block).div(1));
                 expect(await bonesBalance(user3Proxy)).to.be.closeTo(user3Reward, EPSILON);
 
-                await context.wrappedSslp0.connect(context.user1).claimReward(context.user1.address);
+                await claimReward(context.user1)
                 expect(await bonesBalance(context.user1)).to.be.closeTo(user1Reward, EPSILON);
                 expect(await bonesBalance(context.user2)).to.be.equal(0);
                 expect(await bonesBalance(context.user3)).to.be.equal(0);
 
-                await context.wrappedSslp0.connect(context.user1).claimReward(context.user2.address); // user1 claims for user2
+                await claimReward(context.user2)
                 expect(await bonesBalance(context.user1)).to.be.closeTo(user1Reward, EPSILON);
-                expect(await bonesBalance(context.user2)).to.be.closeTo(user2Reward, EPSILON); // reward was send to user 2
+                expect(await bonesBalance(context.user2)).to.be.closeTo(user2Reward, EPSILON);
                 expect(await bonesBalance(context.user3)).to.be.equal(0);
 
-                await context.wrappedSslp0.connect(context.user3).claimReward(context.user3.address);
+                await claimReward(context.user3)
                 expect(await bonesBalance(context.user1)).to.be.closeTo(user1Reward, EPSILON);
                 expect(await bonesBalance(context.user2)).to.be.closeTo(user2Reward, EPSILON);
                 expect(await bonesBalance(context.user3)).to.be.closeTo(user3Reward, EPSILON);
@@ -262,17 +399,17 @@ describe("WrappedShibaSwapLp", function () {
                     .add(directBonesReward(withdrawal2Block, withdrawal3Block));
                 expect(await bonesBalance(user3Proxy)).to.be.equal(user3Reward);
 
-                await context.wrappedSslp0.connect(context.user1).claimReward(context.user1.address);
+                await claimReward(context.user1)
                 expect(await bonesBalance(context.user1)).to.be.closeTo(user1Reward, EPSILON);
                 expect(await bonesBalance(context.user2)).to.be.equal(0);
                 expect(await bonesBalance(context.user3)).to.be.equal(0);
 
-                await context.wrappedSslp0.connect(context.user1).claimReward(context.user2.address); // user1 claims for user2
+                await claimReward(context.user2)
                 expect(await bonesBalance(context.user1)).to.be.closeTo(user1Reward, EPSILON);
-                expect(await bonesBalance(context.user2)).to.be.closeTo(user2Reward, EPSILON); // reward was send to user 2
+                expect(await bonesBalance(context.user2)).to.be.closeTo(user2Reward, EPSILON);
                 expect(await bonesBalance(context.user3)).to.be.equal(0);
 
-                await context.wrappedSslp0.connect(context.user3).claimReward(context.user3.address);
+                await claimReward(context.user3)
                 expect(await bonesBalance(context.user1)).to.be.closeTo(user1Reward, EPSILON);
                 expect(await bonesBalance(context.user2)).to.be.closeTo(user2Reward, EPSILON);
                 expect(await bonesBalance(context.user3)).to.be.closeTo(user3Reward, EPSILON);
@@ -303,7 +440,7 @@ describe("WrappedShibaSwapLp", function () {
                 const {blockNumber: block4} = await unwrapAndExit(context.user1, lockAmount, usdpAmount);
                 expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block1, block4));
 
-                await context.wrappedSslp0.claimReward(context.user1.address);
+                await claimReward(context.user1)
                 expect(await pendingReward(context.user1)).to.be.equal(0);
                 expect(await bonesBalance(context.user1)).to.be.equal(directBonesReward(block1, block4));
             })
@@ -331,7 +468,7 @@ describe("WrappedShibaSwapLp", function () {
                 const {blockNumber: block4} = await unwrapAndExit(context.user1, lockAmount, usdpAmount);
                 expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block1, block4).mul(90).div(100));
 
-                await context.wrappedSslp0.claimReward(context.user1.address);
+                await claimReward(context.user1)
                 expect(await pendingReward(context.user1)).to.be.equal(0);
                 expect(await bonesBalance(context.user1)).to.be.equal(directBonesReward(block1, block4).mul(90).div(100));
                 expect(await bonesBalance(context.bonesFeeReceiver)).to.be.equal(directBonesReward(block1, block4).mul(10).div(100));
@@ -353,7 +490,7 @@ describe("WrappedShibaSwapLp", function () {
                 const {blockNumber: block2} = await unwrapAndExit(context.user1, lockAmount, usdpAmount);
                 expect(await pendingReward(context.user1)).to.be.equal(directBonesReward(block1, block2));
 
-                await context.wrappedSslp0.claimReward(context.user1.address);
+                await claimReward(context.user1)
                 expect(await pendingReward(context.user1)).to.be.equal(0);
                 expect(await bonesBalance(context.user1)).to.be.equal(directBonesReward(block1, block2));
                 expect(await bonesBalance(context.bonesFeeReceiver)).to.be.equal(0);
@@ -570,6 +707,63 @@ describe("WrappedShibaSwapLp", function () {
                 );
             })
 
+            it('read/write of unsupported bone locker', async function () {
+                const lockAmount = ether('0.2');
+                const usdpAmount = ether('0.1');
+                await context.topDog.setLockingPeriod(3600, 3600); // topdog calls bonelocker inside
+
+                await prepareUserForJoin(context.user1, lockAmount.mul(5));
+                const {blockNumber: block1} = await wrapAndJoin(context.user1, lockAmount.div(2), usdpAmount.div(2));
+                const {blockNumber: block2} = await wrapAndJoin(context.user1, lockAmount.div(2), usdpAmount.div(2));
+                const user1Proxy = await context.wrappedSslp0.usersProxies(context.user1.address);
+
+                await network.provider.send("evm_increaseTime", [3601]);
+                await network.provider.send("evm_mine");
+
+                const boneLockerInterface =  new Abi.Interface([
+                    "function getClaimableAmount(address _user) view returns (uint)",
+                    "function claimAll(uint256 r)",
+                ]);
+                const fnGetClaimableAmount = boneLockerInterface.getFunction('getClaimableAmount')
+                const fnClaimAll = boneLockerInterface.getFunction('claimAll')
+
+                const callResult1 = await context.wrappedSslp0.readBoneLocker(
+                    context.user1.address,
+                    context.boneLocker1.address,
+                    boneLockerInterface.encodeFunctionData(fnGetClaimableAmount, [user1Proxy])
+                );
+                expect(callResult1.success).to.be.true;
+                expect(boneLockerInterface.decodeFunctionResult(fnGetClaimableAmount, callResult1.data)[0]).to.be.equal(await context.boneLocker1.getClaimableAmount(user1Proxy))
+
+                await expect(
+                    context.wrappedSslp0.connect(context.user1).callBoneLocker(
+                        context.boneLocker1.address,
+                        boneLockerInterface.encodeFunctionData(fnClaimAll, [1])
+                    )
+                ).to.be.revertedWith("UNSUPPORTED_SELECTOR");
+
+                await context.wrappedSslp0.connect(context.deployer).setAllowedBoneLockerSelector(
+                    context.boneLocker1.address, boneLockerInterface.getSighash(fnClaimAll), true
+                )
+
+                expect(await bonesBalance(user1Proxy)).to.be.equal(directBonesReward(block1, block2)); // sent from the second deposit
+                await context.wrappedSslp0.connect(context.user1).callBoneLocker(
+                    context.boneLocker1.address,
+                    boneLockerInterface.encodeFunctionData(fnClaimAll, [1])
+                )
+                expect(await bonesBalance(user1Proxy)).to.be.equal(fullBonesReward(block1, block2));
+
+                // recheck after disable
+                await context.wrappedSslp0.connect(context.deployer).setAllowedBoneLockerSelector(
+                    context.boneLocker1.address, boneLockerInterface.getSighash(fnClaimAll), false
+                )
+                await expect(
+                    context.wrappedSslp0.connect(context.user1).callBoneLocker(
+                        context.boneLocker1.address,
+                        boneLockerInterface.encodeFunctionData(fnClaimAll, [1])
+                    )
+                ).to.be.revertedWith("UNSUPPORTED_SELECTOR");
+            })
         });
 
         describe("topdog edge cases", function () {
@@ -784,6 +978,12 @@ describe("WrappedShibaSwapLp", function () {
                 ).to.be.revertedWith("INVALID_FEE");
 
                 expect(await context.wrappedSslp0.feePercent()).to.be.equal(0);
+            })
+
+            it('set allowed bone locker for manager only', async function () {
+                await expect(
+                  context.wrappedSslp0.connect(context.user3).setAllowedBoneLockerSelector(context.boneLocker1.address, '0x01020304', true)
+                ).to.be.revertedWith("AUTH_FAILED");
             })
         });
     })
@@ -1017,7 +1217,7 @@ async function bonesBalance(user) {
 }
 
 async function lockerClaimReward(user, locker = context.boneLocker1, maxRewardsAtOnce = 10) {
-    await context.wrappedSslp0.connect(context.user3).claimRewardFromBoneLocker(user.address, locker.address ? locker.address : locker, maxRewardsAtOnce); // everyone can claim
+    await context.wrappedSslp0.connect(user).claimRewardFromBoneLocker(locker.address ? locker.address : locker, maxRewardsAtOnce); // everyone can claim
 }
 
 async function lockerClaimableReward(user, locker = context.boneLocker1) {

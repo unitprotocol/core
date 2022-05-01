@@ -5,7 +5,6 @@
 */
 pragma solidity 0.7.6;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol"; // have to use OZ safemath since it is used in WSSLP
 
 import "../../interfaces/wrapped-assets/ITopDog.sol";
@@ -24,8 +23,6 @@ contract WSSLPUserProxy {
     uint256 public immutable topDogPoolId;
     IERC20 public immutable boneToken;
 
-    address user;
-
     modifier onlyManager() {
         require(msg.sender == manager, "Unit Protocol Wrapped Assets: AUTH_FAILED");
         _;
@@ -40,18 +37,11 @@ contract WSSLPUserProxy {
         boneToken = _topDog.bone();
     }
 
-    function init(address _user, IERC20 _sslpToken) public onlyManager {
-        require(user == address(0), "Unit Protocol Wrapped Assets: ALREADY_INITIALIZED");
-
-        user = _user;
-        _sslpToken.approve(address(topDog), uint256(-1));
-    }
-
     /**
      * @dev in case of change sslp
      */
     function approveSslpToTopDog(IERC20 _sslpToken) public onlyManager {
-        _sslpToken.approve(address(topDog), uint256(-1));
+        TransferHelper.safeApprove(address(_sslpToken), address(topDog), type(uint256).max);
     }
 
     function deposit(uint256 _amount) public onlyManager {
@@ -63,7 +53,7 @@ contract WSSLPUserProxy {
         TransferHelper.safeTransfer(address(_sslpToken), _sentTokensTo, _amount);
     }
 
-    function pendingReward(address _feeReceiver, uint256 _feePercent) public view returns (uint) {
+    function pendingReward(address _feeReceiver, uint8 _feePercent) public view returns (uint) {
         uint balance = boneToken.balanceOf(address(this));
         uint pending = topDog.pendingBone(topDogPoolId, address(this)).mul(topDog.rewardMintPercent()).div(100);
 
@@ -71,13 +61,13 @@ contract WSSLPUserProxy {
         return amountWithoutFee;
     }
 
-    function claimReward(address _feeReceiver, uint256 _feePercent) public onlyManager {
+    function claimReward(address _user, address _feeReceiver, uint8 _feePercent) public onlyManager {
         topDog.deposit(topDogPoolId, 0); // get current reward (no separate methods)
 
-        _sendAllBonesToUser(_feeReceiver, _feePercent);
+        _sendAllBonesToUser(_user, _feeReceiver, _feePercent);
     }
 
-    function _calcFee(uint _amount, address _feeReceiver, uint256 _feePercent) internal pure returns (uint amountWithoutFee, uint fee) {
+    function _calcFee(uint _amount, address _feeReceiver, uint8 _feePercent) internal pure returns (uint amountWithoutFee, uint fee) {
         if (_feePercent == 0 || _feeReceiver == address(0)) {
             return (_amount, 0);
         }
@@ -86,18 +76,22 @@ contract WSSLPUserProxy {
         return (_amount.sub(fee), fee);
     }
 
-    function _sendAllBonesToUser(address _feeReceiver, uint256 _feePercent) internal {
+    function _sendAllBonesToUser(address _user, address _feeReceiver, uint8 _feePercent) internal {
         uint balance = boneToken.balanceOf(address(this));
 
-        (uint amountWithoutFee, uint fee) = _calcFee(balance, _feeReceiver, _feePercent);
+        _sendBonesToUser(_user, balance, _feeReceiver, _feePercent);
+    }
+
+    function _sendBonesToUser(address _user, uint _amount, address _feeReceiver, uint8 _feePercent) internal {
+        (uint amountWithoutFee, uint fee) = _calcFee(_amount, _feeReceiver, _feePercent);
 
         if (fee > 0) {
             TransferHelper.safeTransfer(address(boneToken), _feeReceiver, fee);
         }
-        TransferHelper.safeTransfer(address(boneToken), user, amountWithoutFee);
+        TransferHelper.safeTransfer(address(boneToken), _user, amountWithoutFee);
     }
 
-    function getClaimableRewardFromBoneLocker(IBoneLocker _boneLocker, address _feeReceiver, uint256 _feePercent) public view returns (uint) {
+    function getClaimableRewardFromBoneLocker(IBoneLocker _boneLocker, address _feeReceiver, uint8 _feePercent) public view returns (uint) {
         if (address(_boneLocker) == address(0)) {
             _boneLocker = topDog.boneLocker();
         }
@@ -106,7 +100,7 @@ contract WSSLPUserProxy {
         return amountWithoutFee;
     }
 
-    function claimRewardFromBoneLocker(IBoneLocker _boneLocker, uint256 _maxBoneLockerRewardsAtOneClaim, address _feeReceiver, uint256 _feePercent) public onlyManager {
+    function claimRewardFromBoneLocker(address _user, IBoneLocker _boneLocker, uint256 _maxBoneLockerRewardsAtOneClaim, address _feeReceiver, uint8 _feePercent) public onlyManager {
         if (address(_boneLocker) == address(0)) {
             _boneLocker = topDog.boneLocker();
         }
@@ -121,6 +115,30 @@ contract WSSLPUserProxy {
         }
         _boneLocker.claimAll(right);
 
-        _sendAllBonesToUser(_feeReceiver, _feePercent);
+        _sendAllBonesToUser(_user, _feeReceiver, _feePercent);
+    }
+
+    function emergencyWithdraw() public onlyManager {
+        topDog.emergencyWithdraw(topDogPoolId);
+    }
+
+    function withdrawToken(address _token, address _user, uint _amount, address _feeReceiver, uint8 _feePercent) public onlyManager {
+        if (_token == address(boneToken)) {
+            _sendBonesToUser(_user, _amount, _feeReceiver, _feePercent);
+        } else {
+            TransferHelper.safeTransfer(_token, _user, _amount);
+        }
+    }
+
+    function readBoneLocker(address _boneLocker, bytes calldata _callData) public view returns (bool success, bytes memory data) {
+        (success, data) = _boneLocker.staticcall(_callData);
+    }
+
+    function callBoneLocker(address _boneLocker, bytes calldata _callData) public onlyManager returns (bool success, bytes memory data) {
+        (success, data) = _boneLocker.call(_callData);
+    }
+
+    function getDepositedAmount() public view returns (uint amount) {
+        (amount, ) = topDog.userInfo(topDogPoolId, address (this));
     }
 }

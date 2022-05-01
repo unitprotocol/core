@@ -134,6 +134,8 @@ async function deploy() {
         'AssetsBooleanParameters',
         "0xcc33c2840b65c0a4ac4015c650dd20dc3eb2081d"
     );
+    await parameters.connect(multisig).set('0x4bfB2FA13097E5312B19585042FdbF3562dC8676', PARAM_FORCE_TRANSFER_ASSET_TO_OWNER_ON_LIQUIDATION, true);
+    await parameters.connect(multisig).set('0x988AAf8B36173Af7Ad3FEB36EfEc0988Fbd06d07', PARAM_FORCE_TRANSFER_ASSET_TO_OWNER_ON_LIQUIDATION, true);
 
     await parameters.connect(multisig).set(wrappedSslpShib.address, PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION, true);//tx
     await parameters.connect(multisig).set(wrappedSslpUsdt.address, PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION, true);//tx
