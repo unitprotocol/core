@@ -1,3 +1,4 @@
+const {createDeployment: createWrappedSLPDeployment} = require("../../lib/deployments/wrappedSLP");
 const {createDeployment: createWrappedSSLPDeployment} = require("../../lib/deployments/wrappedSSLP");
 const {createDeployment: createCoreDeployment} = require("../../lib/deployments/core");
 const {runDeployment, loadHRE} = require("../helpers/deployUtils");
@@ -17,6 +18,8 @@ const BORROW_FEE_RECEIVER_ADDRESS = '0x0000000000000000000000000000000123456789'
 
 const SHIBA_TOPDOG_BONES_PER_BLOCK = ether("50");
 const SHIBA_TOPDOG_DIRECT_BONES_USER_PERCENT = EthersBN("33");
+
+const SUSHI_MASTERCHEF_SUSHI_PER_BLOCK = ether("100");
 
 const CASE_WRAPPED_TO_UNDERLYING_CHAINLINK = 1;
 const CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN = 2;
@@ -110,7 +113,7 @@ async function prepareCoreContracts(context, _oracleCase, oracleParams = {}) {
  * @param _oracleCase - case for oracle preparation, see CASE_* constants
  * 
  * context:
- * - bonesFeeReceiver
+ * - rewardTokenFeeReceiver
  */
 async function prepareWrappedSSLP(context, _oracleCase) {
     await prepareCoreContracts(context); // oracles will be prepared below
@@ -173,6 +176,65 @@ async function prepareWrappedSSLP(context, _oracleCase) {
     );
 }
 
+/**
+ * @param _oracleCase - case for oracle preparation, see CASE_* constants
+ *
+ * context:
+ * - bonesFeeReceiver
+ */
+async function prepareWrappedSLP(context, _oracleCase) {
+    await prepareCoreContracts(context); // oracles will be prepared below
+
+    context.tokenA = await deployContract("EmptyToken", 'TokenA descr', 'tokenA', 18, ether('100'), context.deployer.address);
+    context.tokenB = await deployContract("EmptyToken", 'TokenB descr', 'tokenB', 16, ether('100'), context.deployer.address);
+    context.tokenC = await deployContract("EmptyToken", 'TokenC descr', 'tokenC', 12, ether('100'), context.deployer.address);
+    context.tokenD = await deployContract("EmptyToken", 'TokenD descr', 'tokenD', 14, ether('100'), context.deployer.address);
+
+    context.lpToken0 = await deployContract("SushiSwapLpToken_Mock", context.tokenA.address, context.tokenB.address, 'SushiSwap LP0', 'SSLP0', 18);
+    context.lpToken1 = await deployContract("SushiSwapLpToken_Mock", context.tokenC.address, context.tokenD.address, 'SushiSwap LP1', 'SSLP1', 17);
+
+    context.rewardToken = await deployContract("SushiToken_Mock");
+    context.rewardDistributor = await deployContract(
+        "MasterChef_Mock",
+        context.rewardToken.address,
+        "0x0000000000000000000000000000000000000001",
+        SUSHI_MASTERCHEF_SUSHI_PER_BLOCK,
+        1,
+        2,
+    );
+    await context.rewardDistributor.add(50, context.lpToken0.address, false);
+    await context.rewardDistributor.add(50, context.lpToken1.address, false);
+    await context.rewardToken.transferOwnership(context.rewardDistributor.address);
+
+    const deployedAddresses0 = await deployWrappedSLP(context, 0);
+    context.wrappedSlp0 = await attachContract("WrappedSushiSwapLp", deployedAddresses0.WrappedSushiSwapLp)
+    await context.wrappedSlp0.setFee(0); // to simplify most tests. Fee must be tested separately
+
+    const deployedAddresses1 = await deployWrappedSLP(context, 1);
+    context.wrappedSlp1 = await attachContract("WrappedSushiSwapLp", deployedAddresses1.WrappedSushiSwapLp)
+    await context.wrappedSlp1.setFee(0); // to simplify most tests. Fee must be tested separately
+
+    await prepareOracle(context, _oracleCase, {
+        collateral: context.wrappedSlp0,
+        collateralUnderlying: await attachContract('IERC20', await context.lpToken0.token0()),
+        collateralWrappedAssetUnderlying: context.lpToken0,
+    });
+
+    await context.vaultManagerParameters.setCollateral(
+        context.collateral.address,
+        '0', // stability fee // todo replace in tests for stability dee
+        '13', // liquidation fee
+        '75', // initial collateralization
+        '76', // liquidation ratio
+        '0', // liquidation discount (3 decimals)
+        '100', // devaluation period in blocks
+        ether('100000'), // debt limit
+        [context.collateralOracleType], // enabled oracles
+        0,
+        0,
+    );
+}
+
 async function deployCore(context) {
     const deployment = await createCoreDeployment({
         deployer: context.deployer.address,
@@ -195,6 +257,19 @@ async function deployWrappedSSLP(context, topDogPoolId) {
         topDog: context.topDog.address,
         topDogPoolId: topDogPoolId,
         feeReceiver: context.bonesFeeReceiver.address,
+    });
+    const hre = await loadHRE();
+    return await runDeployment(deployment, {hre, deployer: context.deployer.address});
+}
+
+async function deployWrappedSLP(context, rewardDistributorPoolId) {
+    const deployment = await createWrappedSLPDeployment({
+        deployer: context.deployer.address,
+        manager: context.manager.address,
+        vaultParameters: context.vaultParameters.address,
+        rewardDistributor: context.rewardDistributor.address,
+        rewardDistributorPoolId: rewardDistributorPoolId,
+        feeReceiver: context.sushiFeeReceiver.address,
     });
     const hre = await loadHRE();
     return await runDeployment(deployment, {hre, deployer: context.deployer.address});
@@ -391,9 +466,12 @@ async function poolDeposit(context, uniswapRouter, token, tokenAmountToPool) {
 module.exports = {
     prepareCoreContracts,
     prepareWrappedSSLP,
+    prepareWrappedSLP,
 
     SHIBA_TOPDOG_BONES_PER_BLOCK,
     SHIBA_TOPDOG_DIRECT_BONES_USER_PERCENT,
+
+    SUSHI_MASTERCHEF_SUSHI_PER_BLOCK,
 
     CASE_WRAPPED_TO_UNDERLYING_CHAINLINK,
     CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN,
