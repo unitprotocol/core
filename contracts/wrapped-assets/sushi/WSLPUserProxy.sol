@@ -8,8 +8,8 @@ pragma solidity 0.7.6;
 import "@openzeppelin/contracts/math/SafeMath.sol"; // have to use OZ safemath since it is used in WSLP
 
 import "../../interfaces/wrapped-assets/sushi/IMasterChef.sol";
+import "../../interfaces/wrapped-assets/sushi/IWSLPFactory.sol";
 import "../../helpers/TransferHelper.sol";
-
 
 /**
  * @title WSLPUserProxy
@@ -17,24 +17,34 @@ import "../../helpers/TransferHelper.sol";
 contract WSLPUserProxy {
     using SafeMath for uint256;
 
-    address public immutable manager;
+    IWSLPFactory immutable factory;
 
     IMasterChef public immutable rewardDistributor;
-    uint256 public immutable rewardDistributorPoolId;
     IERC20 public immutable rewardToken;
+
+    // to store in one slot rewardDistributorPoolId was reduced to uint96. 7*10^28 pools are quite enough
+    address public manager;
+    uint96 public rewardDistributorPoolId;
 
     modifier onlyManager() {
         require(msg.sender == manager, "Unit Protocol Wrapped Assets: AUTH_FAILED");
         _;
     }
 
-    constructor(IMasterChef _rewardDistributor, uint256 _rewardDistributorPoolId) {
-        manager = msg.sender;
-
+    constructor(IWSLPFactory _factory, IMasterChef _rewardDistributor) {
+        factory = _factory;
         rewardDistributor = _rewardDistributor;
-        rewardDistributorPoolId = _rewardDistributorPoolId;
 
         rewardToken = _rewardDistributor.sushi();
+    }
+
+    function initialize(uint96 _rewardDistributorPoolId, IERC20 _lpToken) public {
+        require(manager == address(0), "Unit Protocol Wrapped Assets: ALREADY_INITIALIZED");
+
+        manager = msg.sender;
+        rewardDistributorPoolId = _rewardDistributorPoolId;
+
+        TransferHelper.safeApprove(address(_lpToken), address(rewardDistributor), type(uint256).max);
     }
 
     /**
@@ -53,40 +63,41 @@ contract WSLPUserProxy {
         TransferHelper.safeTransfer(address(_lpToken), _sentTokensTo, _amount);
     }
 
-    function pendingReward(address _feeReceiver, uint8 _feePercent) public view returns (uint) {
+    function pendingReward() public view returns (uint) {
         uint balance = rewardToken.balanceOf(address(this));
         uint pending = rewardDistributor.pendingSushi(rewardDistributorPoolId, address(this));
 
-        (uint amountWithoutFee, ) = _calcFee(balance.add(pending), _feeReceiver, _feePercent);
+        (uint amountWithoutFee,,) = _calcFee(balance.add(pending));
         return amountWithoutFee;
     }
 
-    function claimReward(address _user, address _feeReceiver, uint8 _feePercent) public onlyManager {
+    function claimReward(address _user) public onlyManager {
         rewardDistributor.deposit(rewardDistributorPoolId, 0); // get current reward (no separate methods)
 
-        _sendAllRewardTokensToUser(_user, _feeReceiver, _feePercent);
+        _sendAllRewardTokensToUser(_user);
     }
 
-    function _calcFee(uint _amount, address _feeReceiver, uint8 _feePercent) internal pure returns (uint amountWithoutFee, uint fee) {
+    function _calcFee(uint _amount) internal view returns (uint amountWithoutFee, uint fee, address feeReceiver) {
+        (address _feeReceiver, uint8 _feePercent) = factory.feeInfo();
         if (_feePercent == 0 || _feeReceiver == address(0)) {
-            return (_amount, 0);
+            return (_amount, 0, address(0));
         }
 
         fee = _amount.mul(_feePercent).div(100);
-        return (_amount.sub(fee), fee);
+        return (_amount.sub(fee), fee, _feeReceiver);
     }
 
-    function _sendAllRewardTokensToUser(address _user, address _feeReceiver, uint8 _feePercent) internal {
+    function _sendAllRewardTokensToUser(address _user) internal {
         uint balance = rewardToken.balanceOf(address(this));
 
-        _sendRewardTokensToUser(_user, balance, _feeReceiver, _feePercent);
+        _sendRewardTokensToUser(_user, balance);
     }
 
-    function _sendRewardTokensToUser(address _user, uint _amount, address _feeReceiver, uint8 _feePercent) internal {
-        (uint amountWithoutFee, uint fee) = _calcFee(_amount, _feeReceiver, _feePercent);
+    function _sendRewardTokensToUser(address _user, uint _amount) internal {
+        (uint amountWithoutFee, uint fee, address feeReceiver) = _calcFee(_amount);
 
         if (fee > 0) {
-            TransferHelper.safeTransfer(address(rewardToken), _feeReceiver, fee);
+            TransferHelper.safeTransfer(address(rewardToken), feeReceiver, fee);
         }
         TransferHelper.safeTransfer(address(rewardToken), _user, amountWithoutFee);
     }
@@ -95,9 +106,9 @@ contract WSLPUserProxy {
         rewardDistributor.emergencyWithdraw(rewardDistributorPoolId);
     }
 
-    function withdrawToken(address _token, address _user, uint _amount, address _feeReceiver, uint8 _feePercent) public onlyManager {
+    function withdrawToken(address _token, address _user, uint _amount) public onlyManager {
         if (_token == address(rewardToken)) {
-            _sendRewardTokensToUser(_user, _amount, _feeReceiver, _feePercent);
+            _sendRewardTokensToUser(_user, _amount);
         } else {
             TransferHelper.safeTransfer(_token, _user, _amount);
         }

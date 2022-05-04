@@ -27,6 +27,33 @@ describe("WrappedSushiSwapLp", function () {
         [context.deployer, context.user1, context.user2, context.user3, context.manager, context.sushiFeeReceiver] = await ethers.getSigners();
     });
 
+    describe("factory", function () {
+        beforeEach(async function () {
+            await prepareWrappedSLP(context, CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN);
+        })
+
+        it('set fee for manager only', async function () {
+            await context.wslpFactory.setFee('0x0000000000000000000000000000000000000005', 10);
+
+            await expect(
+              context.wslpFactory.connect(context.user3).setFee('0x0000000000000000000000000000000000000006', 11)
+            ).to.be.revertedWith("AUTH_FAILED");
+
+            expect(await context.wslpFactory.feeInfo()).deep.to.be.equal(['0x0000000000000000000000000000000000000005', 10]);
+        })
+
+        it('fee in range', async function () {
+            await context.wslpFactory.setFee('0x0000000000000000000000000000000000000000', 50);
+            await context.wslpFactory.setFee('0x0000000000000000000000000000000000000050', 0);
+
+            await expect(
+              context.wslpFactory.setFee('0x0000000000000000000000000000000000000000', 51)
+            ).to.be.revertedWith("INVALID_FEE");
+
+            expect(await context.wslpFactory.feeInfo()).deep.to.be.equal(['0x0000000000000000000000000000000000000050', 0]);
+        })
+    });
+
     describe("Oracles independent tests", function () {
         beforeEach(async function () {
             await prepareWrappedSLP(context, CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN);
@@ -46,6 +73,12 @@ describe("WrappedSushiSwapLp", function () {
                 expect(await context.wrappedSlp1.symbol()).to.be.equal("wuSSLP1tokenCtokenD"); // pool 1 with lpToken1 (tokenC, tokenD)
                 expect(await context.wrappedSlp1.name()).to.be.equal("Wrapped by Unit SushiSwap LP1 tokenC-tokenD"); // pool 1 with lpToken1 (tokenC, tokenD)
                 expect(await context.wrappedSlp1.decimals()).to.be.equal(await context.lpToken1.decimals());
+            });
+
+            it("reinitialization is prohibited", async function () {
+                await expect(
+                  context.wrappedSlp0.initialize(1)
+                ).to.be.revertedWith("Initializable: contract is already initialized");
             });
         });
 
@@ -70,6 +103,20 @@ describe("WrappedSushiSwapLp", function () {
                 await expect(
                     context.wrappedSlp0.connect(context.user1).deposit(context.user1.address, 0)
                 ).to.be.revertedWith("INVALID_AMOUNT");
+            });
+
+            it("reinitialization", async function () {
+                const lockAmount = ether('0.4');
+                await prepareUserForJoin(context.user1, ether('1'));
+
+                await context.wrappedSlp0.connect(context.user1).deposit(context.user1.address, lockAmount);
+                const user1ProxyAddr = await context.wrappedSlp0.usersProxies(context.user1.address);
+                const user1Proxy = await attachContract('WSLPUserProxy', user1ProxyAddr);
+
+                // user cannot transfer tokens
+                await expect(
+                    user1Proxy.initialize(1, context.user3.address)
+                ).to.be.revertedWith("ALREADY_INITIALIZED");
             });
 
             it("transfer lp token", async function () {
@@ -130,6 +177,49 @@ describe("WrappedSushiSwapLp", function () {
                 expect(await rewardTokenBalance(context.user1)).not.to.be.equal(0);
             });
 
+            it("separate state in pools", async function () {
+                const lockAmount = ether('0.4');
+
+                await context.lpToken1.transfer(context.user1.address, ether('1'));
+
+                await context.lpToken0.connect(context.user1).approve(context.wrappedSlp0.address, lockAmount);
+                await context.lpToken1.connect(context.user1).approve(context.wrappedSlp1.address, lockAmount);
+
+                const {blockNumber: deposit1Block} = await context.wrappedSlp0.connect(context.user1).deposit(context.user1.address, lockAmount);
+                expect(await context.lpToken0.balanceOf(context.user1.address)).to.be.equal(ether('0.6'));
+                expect(await context.wrappedSlp0.balanceOf(context.user1.address)).to.be.equal(lockAmount);
+
+                const {blockNumber: deposit2Block} = await context.wrappedSlp1.connect(context.user1).deposit(context.user1.address, lockAmount);
+                expect(await context.lpToken1.balanceOf(context.user1.address)).to.be.equal(ether('0.6'));
+                expect(await context.wrappedSlp1.balanceOf(context.user1.address)).to.be.equal(lockAmount);
+
+                const user1ProxyAddr = await context.wrappedSlp0.usersProxies(context.user1.address);
+                const user1Proxy = await attachContract('WSLPUserProxy', user1ProxyAddr);
+
+                const user1ProxyAddr2 = await context.wrappedSlp1.usersProxies(context.user1.address);
+                const user1Proxy2 = await attachContract('WSLPUserProxy', user1ProxyAddr2);
+
+                const {blockNumber: withdraw2Block} = await context.wrappedSlp1.connect(context.user1).withdraw(context.user1.address, lockAmount);
+                expect(await context.lpToken1.balanceOf(context.user1.address)).to.be.equal(ether('1'));
+                expect(await context.wrappedSlp1.balanceOf(context.user1.address)).to.be.equal(0);
+
+                const {blockNumber: withdraw1Block} = await context.wrappedSlp0.connect(context.user1).withdraw(context.user1.address, lockAmount);
+                expect(await context.lpToken0.balanceOf(context.user1.address)).to.be.equal(ether('1'));
+                expect(await context.wrappedSlp0.balanceOf(context.user1.address)).to.be.equal(0);
+
+                const user1Reward1 = sushiReward(deposit1Block, withdraw1Block);
+                expect(await rewardTokenBalance(user1Proxy)).to.be.closeTo(user1Reward1, EPSILON);
+
+                const user1Reward2 = sushiReward(deposit2Block, withdraw2Block);
+                expect(await rewardTokenBalance(user1Proxy2)).to.be.closeTo(user1Reward2, EPSILON);
+
+                await claimReward(context.user1)
+                expect(await rewardTokenBalance(context.user1)).to.be.closeTo(user1Reward1, EPSILON);
+
+                await context.wrappedSlp1.connect(context.user1).claimReward(context.user1.address);
+                expect(await rewardTokenBalance(context.user1)).to.be.closeTo(user1Reward1.add(user1Reward2), EPSILON);
+            });
+
             it("emergency withdraw + withdraw any token", async function () {
                 const lockAmount = ether('0.4');
                 await prepareUserForJoin(context.user1, ether('1'));
@@ -152,7 +242,7 @@ describe("WrappedSushiSwapLp", function () {
             });
 
             it("withdraw reward token from proxy (with fee)", async function () {
-                await context.wrappedSlp0.setFee(10);
+                await context.wslpFactory.setFee(context.sushiFeeReceiver.address, 10);
 
                 const lockAmount = ether('0.4');
                 await prepareUserForJoin(context.user1, ether('1'));
@@ -184,7 +274,7 @@ describe("WrappedSushiSwapLp", function () {
             });
 
             it("withdraw some token from proxy (with fee)", async function () {
-                await context.wrappedSlp0.setFee(10);
+                await context.wslpFactory.setFee(context.sushiFeeReceiver.address, 10);
 
                 const lockAmount = ether('0.4');
                 await prepareUserForJoin(context.user1, ether('1'));
@@ -270,7 +360,7 @@ describe("WrappedSushiSwapLp", function () {
                 ).to.be.revertedWith("AUTH_FAILED");
 
                 await expect(
-                    user1Proxy.claimReward(context.user1.address, context.user2.address, 30)
+                    user1Proxy.claimReward(context.user1.address)
                 ).to.be.revertedWith("AUTH_FAILED");
 
                 await expect(
@@ -278,7 +368,7 @@ describe("WrappedSushiSwapLp", function () {
                 ).to.be.revertedWith("AUTH_FAILED");
 
                 await expect(
-                    user1Proxy.withdrawToken(context.lpToken0.address, context.user1.address, 100, context.sushiFeeReceiver.address, 10)
+                    user1Proxy.withdrawToken(context.lpToken0.address, context.user1.address, 100)
                 ).to.be.revertedWith("AUTH_FAILED");
             });
         });
@@ -442,7 +532,7 @@ describe("WrappedSushiSwapLp", function () {
             })
 
             it('reward tokens fee', async function () {
-                await context.wrappedSlp0.setFee(10);
+                await context.wslpFactory.setFee(context.sushiFeeReceiver.address, 10);
 
                 const lockAmount = ether('0.2');
                 const usdpAmount = ether('50');
@@ -471,8 +561,7 @@ describe("WrappedSushiSwapLp", function () {
             })
 
             it('reward tokens fee with empty receiver', async function () {
-                await context.wrappedSlp0.setFee(10);
-                await context.wrappedSlp0.setFeeReceiver(ZERO_ADDRESS);
+                await context.wslpFactory.setFee(ZERO_ADDRESS, 10);
 
                 const lockAmount = ether('0.2');
                 const usdpAmount = ether('50');
@@ -673,39 +762,6 @@ describe("WrappedSushiSwapLp", function () {
                 expect(await context.lpToken0.balanceOf(context.user1.address)).to.be.equal(ether('1'), 'withdrawn all tokens');
 
                 expect(await context.usdp.balanceOf(context.user1.address)).to.be.not.equal(ether('0'), 'user1 with collateral and usdp :pokerface:');
-            })
-        });
-
-        describe("parameters updates", function () {
-            it('set fee receiver for manager only', async function () {
-                await context.wrappedSlp0.setFeeReceiver('0x0000000000000000000000000000000000000005');
-
-                await expect(
-                  context.wrappedSlp0.connect(context.user3).setFeeReceiver('0x0000000000000000000000000000000000000006')
-                ).to.be.revertedWith("AUTH_FAILED");
-
-                expect(await context.wrappedSlp0.feeReceiver()).to.be.equal('0x0000000000000000000000000000000000000005');
-            })
-
-            it('set fee for manager only', async function () {
-                await context.wrappedSlp0.setFee(3);
-
-                await expect(
-                  context.wrappedSlp0.connect(context.user3).setFee(7)
-                ).to.be.revertedWith("AUTH_FAILED");
-
-                expect(await context.wrappedSlp0.feePercent()).to.be.equal(3);
-            })
-
-            it('fee in range', async function () {
-                await context.wrappedSlp0.setFee(50);
-                await context.wrappedSlp0.setFee(0);
-
-                await expect(
-                  context.wrappedSlp0.setFee(51)
-                ).to.be.revertedWith("INVALID_FEE");
-
-                expect(await context.wrappedSlp0.feePercent()).to.be.equal(0);
             })
         });
     })

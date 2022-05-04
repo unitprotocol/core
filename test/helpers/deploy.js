@@ -9,6 +9,7 @@ const {ORACLE_TYPE_CHAINLINK_MAIN_ASSET, ORACLE_TYPE_WRAPPED_TO_UNDERLYING, ORAC
     ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX
 } = require("../../lib/constants");
 const UniswapV2FactoryDeployCode = require("./UniswapV2DeployCode");
+const {ZERO_ADDRESS} = require("./deployUtils");
 const EthersBN = ethers.BigNumber.from;
 const ether = ethers.utils.parseUnits;
 
@@ -113,7 +114,7 @@ async function prepareCoreContracts(context, _oracleCase, oracleParams = {}) {
  * @param _oracleCase - case for oracle preparation, see CASE_* constants
  * 
  * context:
- * - rewardTokenFeeReceiver
+ * - bonesFeeReceiver
  */
 async function prepareWrappedSSLP(context, _oracleCase) {
     await prepareCoreContracts(context); // oracles will be prepared below
@@ -179,8 +180,6 @@ async function prepareWrappedSSLP(context, _oracleCase) {
 /**
  * @param _oracleCase - case for oracle preparation, see CASE_* constants
  *
- * context:
- * - bonesFeeReceiver
  */
 async function prepareWrappedSLP(context, _oracleCase) {
     await prepareCoreContracts(context); // oracles will be prepared below
@@ -206,13 +205,13 @@ async function prepareWrappedSLP(context, _oracleCase) {
     await context.rewardDistributor.add(50, context.lpToken1.address, false);
     await context.rewardToken.transferOwnership(context.rewardDistributor.address);
 
-    const deployedAddresses0 = await deployWrappedSLP(context, 0);
-    context.wrappedSlp0 = await attachContract("WrappedSushiSwapLp", deployedAddresses0.WrappedSushiSwapLp)
-    await context.wrappedSlp0.setFee(0); // to simplify most tests. Fee must be tested separately
+    context.wslpFactory = await attachContract("WSLPFactory", (await deployWrappedSLP(context)).WSLPFactory);
 
-    const deployedAddresses1 = await deployWrappedSLP(context, 1);
-    context.wrappedSlp1 = await attachContract("WrappedSushiSwapLp", deployedAddresses1.WrappedSushiSwapLp)
-    await context.wrappedSlp1.setFee(0); // to simplify most tests. Fee must be tested separately
+    await context.wslpFactory.deploy(0);
+    context.wrappedSlp0 = await attachContract("WrappedSushiSwapLp", await context.wslpFactory.wrappedLpByPoolId(0));
+
+    await context.wslpFactory.deploy(1);
+    context.wrappedSlp1 = await attachContract("WrappedSushiSwapLp", await context.wslpFactory.wrappedLpByPoolId(1))
 
     await prepareOracle(context, _oracleCase, {
         collateral: context.wrappedSlp0,
@@ -262,14 +261,14 @@ async function deployWrappedSSLP(context, topDogPoolId) {
     return await runDeployment(deployment, {hre, deployer: context.deployer.address});
 }
 
-async function deployWrappedSLP(context, rewardDistributorPoolId) {
+async function deployWrappedSLP(context) {
     const deployment = await createWrappedSLPDeployment({
         deployer: context.deployer.address,
         manager: context.manager.address,
         vaultParameters: context.vaultParameters.address,
         rewardDistributor: context.rewardDistributor.address,
-        rewardDistributorPoolId: rewardDistributorPoolId,
-        feeReceiver: context.sushiFeeReceiver.address,
+        feeReceiver: ZERO_ADDRESS,
+        feePercent: 0 // todo must be set in tests for fee
     });
     const hre = await loadHRE();
     return await runDeployment(deployment, {hre, deployer: context.deployer.address});

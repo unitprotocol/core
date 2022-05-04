@@ -5,8 +5,9 @@
 */
 pragma solidity 0.7.6;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol"; // 'contracts' are used intentionally, since there is no dependencies in this interface
+import "@openzeppelin/contracts/proxy/Clones.sol"; // 'contracts' are used intentionally, since there is no dependencies in this library
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 import "./WSLPUserProxy.sol";
 import "../../helpers/ReentrancyGuard.sol";
@@ -14,80 +15,74 @@ import "../../helpers/TransferHelper.sol";
 import "../../Auth2.sol";
 import "../../interfaces/IVault.sol";
 import "../../interfaces/IERC20WithOptional.sol";
-import "../../interfaces/wrapped-assets/IWrappedAsset.sol";
+import "../../interfaces/wrapped-assets/IWrappedAssetUpgradeable.sol";
 import "../../interfaces/wrapped-assets/sushi/IMasterChef.sol";
 import "../../interfaces/wrapped-assets/ISushiSwapLpToken.sol";
+import "../../interfaces/IVaultParameters.sol";
 
 /**
  * @title WrappedSushiSwapLp
  **/
-contract WrappedSushiSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
-    using SafeMath for uint256;
+contract WrappedSushiSwapLp is IWrappedAssetUpgradeable, Auth2, ERC20Upgradeable, ReentrancyGuard {
+    using SafeMathUpgradeable for uint256;
 
     bytes32 public constant override isUnitProtocolWrappedAsset = keccak256("UnitProtocolWrappedAsset");
 
     IVault public immutable vault;
     IMasterChef public immutable rewardDistributor;
-    uint256 public immutable rewardDistributorPoolId;
     IERC20 public immutable rewardToken;
 
     address public immutable userProxyImplementation;
+
+    uint256 public rewardDistributorPoolId;
     mapping(address => WSLPUserProxy) public usersProxies;
 
-    address public feeReceiver;
-    uint8 public feePercent = 10;
-
     constructor(
-        address _vaultParameters,
+        IVaultParameters _vaultParameters,
         IMasterChef _rewardDistributor,
-        uint256 _rewardDistributorPoolId,
-        address _feeReceiver
+        IERC20 _rewardToken,
+        address _userProxyImplementation
     )
-    Auth2(_vaultParameters)
-    ERC20(
-        string(
-            abi.encodePacked(
-                "Wrapped by Unit ",
-                getLpTokenName(_rewardDistributor, _rewardDistributorPoolId),
-                " ",
-                getLpTokenToken0Symbol(_rewardDistributor, _rewardDistributorPoolId),
-                "-",
-                getLpTokenToken1Symbol(_rewardDistributor, _rewardDistributorPoolId)
-            )
-        ),
-        string(
-            abi.encodePacked(
-                "wu",
-                getLpTokenSymbol(_rewardDistributor, _rewardDistributorPoolId),
-                getLpTokenToken0Symbol(_rewardDistributor, _rewardDistributorPoolId),
-                getLpTokenToken1Symbol(_rewardDistributor, _rewardDistributorPoolId)
-            )
-        )
-    )
+        Auth2(address(_vaultParameters))
     {
-        rewardToken = _rewardDistributor.sushi();
+        vault = IVault(_vaultParameters.vault());
         rewardDistributor = _rewardDistributor;
+        rewardToken = _rewardToken;
+
+        userProxyImplementation = _userProxyImplementation;
+    }
+
+    function initialize(uint256 _rewardDistributorPoolId) initializer public {
+        require(rewardDistributorPoolId < type(uint96).max, "Unit Protocol Wrapped Assets: TOO_MANY_POOLS"); // in user proxies pool id is stores in uint96
         rewardDistributorPoolId = _rewardDistributorPoolId;
-        vault = IVault(VaultParameters(_vaultParameters).vault());
 
-        _setupDecimals(IERC20WithOptional(getLpToken(_rewardDistributor, _rewardDistributorPoolId)).decimals());
+        (IERC20 lpToken,,,) = rewardDistributor.poolInfo(_rewardDistributorPoolId);
+        address lpTokenAddr = address(lpToken);
+        string memory lpToken0Symbol = IERC20WithOptional(address(ISushiSwapLpToken(lpTokenAddr).token0())).symbol();
+        string memory lpToken1Symbol = IERC20WithOptional(address(ISushiSwapLpToken(lpTokenAddr).token1())).symbol();
 
-        feeReceiver = _feeReceiver;
+        __ERC20_init(
+            string(
+                abi.encodePacked(
+                    "Wrapped by Unit ",
+                    IERC20WithOptional(lpTokenAddr).name(),
+                    " ",
+                    lpToken0Symbol,
+                    "-",
+                    lpToken1Symbol
+                )
+            ),
+            string(
+                abi.encodePacked(
+                    "wu",
+                    IERC20WithOptional(lpTokenAddr).symbol(),
+                    lpToken0Symbol,
+                    lpToken1Symbol
+                )
+            )
+        );
 
-        userProxyImplementation = address(new WSLPUserProxy(_rewardDistributor, _rewardDistributorPoolId));
-    }
-
-    function setFeeReceiver(address _feeReceiver) public onlyManager {
-        feeReceiver = _feeReceiver;
-
-        emit FeeReceiverChanged(_feeReceiver);
-    }
-
-    function setFee(uint8 _feePercent) public onlyManager {
-        require(_feePercent <= 50, "Unit Protocol Wrapped Assets: INVALID_FEE");
-        feePercent = _feePercent;
-
-        emit FeeChanged(_feePercent);
+        _setupDecimals(IERC20WithOptional(lpTokenAddr).decimals());
     }
 
     /**
@@ -175,7 +170,7 @@ contract WrappedSushiSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
             return 0;
         }
 
-        return userProxy.pendingReward(feeReceiver, feePercent);
+        return userProxy.pendingReward();
     }
 
     /**
@@ -185,7 +180,7 @@ contract WrappedSushiSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         require(_user == msg.sender, "Unit Protocol Wrapped Assets: AUTH_FAILED");
 
         WSLPUserProxy userProxy = _requireUserProxy(_user);
-        userProxy.claimReward(_user, feeReceiver, feePercent);
+        userProxy.claimReward(_user);
     }
 
     /**
@@ -216,52 +211,16 @@ contract WrappedSushiSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
 
     function withdrawToken(address _token, uint _amount) public nonReentrant {
         WSLPUserProxy userProxy = _requireUserProxy(msg.sender);
-        userProxy.withdrawToken(_token, msg.sender, _amount, feeReceiver, feePercent);
+        userProxy.withdrawToken(_token, msg.sender, _amount);
 
         emit TokenWithdraw(msg.sender, _token, _amount);
     }
 
     /**
-     * @dev Get lp token for using in constructor
-     */
-    function getLpToken(IMasterChef _rewardDistributor, uint256 _rewardDistributorPoolId) private view returns (address) {
-        (IERC20 _lpToken,,,) = _rewardDistributor.poolInfo(_rewardDistributorPoolId);
-
-        return address(_lpToken);
-    }
-
-    /**
-     * @dev Get symbol of lp token for using in constructor
-     */
-    function getLpTokenSymbol(IMasterChef _rewardDistributor, uint256 _rewardDistributorPoolId) private view returns (string memory) {
-        return IERC20WithOptional(getLpToken(_rewardDistributor, _rewardDistributorPoolId)).symbol();
-    }
-
-    /**
-     * @dev Get name of lp token for using in constructor
-     */
-    function getLpTokenName(IMasterChef _rewardDistributor, uint256 _rewardDistributorPoolId) private view returns (string memory) {
-        return IERC20WithOptional(getLpToken(_rewardDistributor, _rewardDistributorPoolId)).name();
-    }
-
-    /**
-     * @dev Get token0 symbol of lp token for using in constructor
-     */
-    function getLpTokenToken0Symbol(IMasterChef _rewardDistributor, uint256 _rewardDistributorPoolId) private view returns (string memory) {
-        return IERC20WithOptional(address(ISushiSwapLpToken(getLpToken(_rewardDistributor, _rewardDistributorPoolId)).token0())).symbol();
-    }
-
-    /**
-     * @dev Get token1 symbol of lp token for using in constructor
-     */
-    function getLpTokenToken1Symbol(IMasterChef _rewardDistributor, uint256 _rewardDistributorPoolId) private view returns (string memory) {
-        return IERC20WithOptional(address(ISushiSwapLpToken(getLpToken(_rewardDistributor, _rewardDistributorPoolId)).token1())).symbol();
-    }
-
-    /**
      * @dev No direct transfers between users allowed since we store positions info in userInfo.
      */
-    function _transfer(address sender, address recipient, uint256 amount) internal override onlyVault {
+    function _transfer(address sender, address recipient, uint256 amount) internal override {
+        require(msg.sender == address(vault), "Unit Protocol: AUTH_FAILED"); // do not use onlyVault to save some gas by avoiding external call
         require(sender == address(vault) || recipient == address(vault), "Unit Protocol Wrapped Assets: AUTH_FAILED");
         super._transfer(sender, recipient, amount);
     }
@@ -275,24 +234,10 @@ contract WrappedSushiSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         userProxy = usersProxies[_user];
         if (address(userProxy) == address(0)) {
             // create new
-            userProxy = WSLPUserProxy(createClone(userProxyImplementation));
-            userProxy.approveLpToRewardDistributor(_lpToken);
+            userProxy = WSLPUserProxy(Clones.clone(userProxyImplementation));
+            userProxy.initialize(uint96(rewardDistributorPoolId), _lpToken); // overflow is checked in initialize
 
             usersProxies[_user] = userProxy;
-        }
-    }
-
-    /**
-     * @dev see https://github.com/optionality/clone-factory/blob/master/contracts/CloneFactory.sol
-     */
-    function createClone(address target) internal returns (address result) {
-        bytes20 targetBytes = bytes20(target);
-        assembly {
-            let clone := mload(0x40)
-            mstore(clone, 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000000000000000000000)
-            mstore(add(clone, 0x14), targetBytes)
-            mstore(add(clone, 0x28), 0x5af43d82803e903d91602b57fd5bf30000000000000000000000000000000000)
-            result := create(0, clone, 0x37)
         }
     }
 }

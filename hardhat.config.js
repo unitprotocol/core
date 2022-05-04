@@ -2,6 +2,7 @@ require("dotenv").config({ path: require("find-config")(".env") });
 const { types } = require("hardhat/config")
 const {createDeployment: createCoreDeployment} = require("./lib/deployments/core");
 const {createDeployment: createWrappedSSLPDeployment} = require("./lib/deployments/wrappedSSLP");
+const {createDeployment: createWrappedSLPDeployment} = require("./lib/deployments/wrappedSLP");
 const {createDeployment: createSwappersDeployment} = require("./lib/deployments/swappers");
 const {runDeployment} = require("./test/helpers/deployUtils");
 const {VAULT_PARAMETERS} = require("./network_constants");
@@ -58,6 +59,30 @@ task('deployWrappedSslp', 'Deploy wrapped sslp')
             topDog: taskArgs.topDog,
             topDogPoolId: taskArgs.topDogPoolId,
             feeReceiver: taskArgs.feeReceiver,
+        });
+
+        const deployed = await runDeployment(deployment, {deployer, verify: !taskArgs.noVerify});
+
+        console.log('Success!', deployed);
+    });
+
+task('deployWrappedSlp', 'Deploy wrapped sslp')
+    .addParam('manager', 'Address of a manager account/contract')
+    .addParam('feeReceiver', 'Address of fee receiver')
+    .addParam('feePercent', 'Fee percent', 50, types.int)
+    .addOptionalParam('rewardDistributor', 'Address of MasterChief contract', '0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd', types.string)
+    .addOptionalParam('noVerify', 'Skip contracts verification on *scan block explorer', false, types.boolean)
+    .setAction(async (taskArgs) => {
+        await hre.run("compile");
+
+        const deployer = taskArgs.deployer ? taskArgs.deployer : (await ethers.getSigners())[0].address;
+        const deployment = await createWrappedSLPDeployment({
+            deployer,
+            manager: taskArgs.manager,
+            vaultParameters: VAULT_PARAMETERS,
+            rewardDistributor: taskArgs.rewardDistributor,
+            feeReceiver: taskArgs.feeReceiver,
+            feePercent: taskArgs.feePercent,
         });
 
         const deployed = await runDeployment(deployment, {deployer, verify: !taskArgs.noVerify});
