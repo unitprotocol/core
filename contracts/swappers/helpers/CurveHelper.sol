@@ -49,7 +49,7 @@ library CurveHelper {
 
     function tryGetCoin(ICurvePool _pool, int128 i) private view returns (address) {
         (bool success,  bytes memory data) = address(_pool).staticcall{gas:20000}(abi.encodeWithSignature("coins(uint256)", uint(i)));
-        if (!success) {
+        if (!success || data.length != 32) {
             return address(0);
         }
 
