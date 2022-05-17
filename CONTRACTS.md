@@ -58,6 +58,6 @@
 | CyTokenOracle      | 14 | [0x40B743Ca424E3eC7b97f5AD93d2263Ae01DAE1D8](https://etherscan.io/address/0x40B743Ca424E3eC7b97f5AD93d2263Ae01DAE1D8#code)      | - | - | - |
 | YvTokenOracle      | 15 | [0x759EB07A8258BcF5590E9303763803DcF264652d](https://etherscan.io/address/0x759EB07A8258BcF5590E9303763803DcF264652d#code)      | - | - | - |
 | [UniswapV3Oracle](https://github.com/unitprotocol/uniswap-v3-oracle)      | 16 | [0xd31817a1E1578C4BECE02FbFb235d76f5716f18f](https://etherscan.io/address/0xd31817a1E1578C4BECE02FbFb235d76f5716f18f#code)  | - | - | - |
-| UnitMetadataOracle | 17 | [0x7721a657D98d65F9126004cD8C50875ed4F11174](https://etherscan.io/address/0x7721a657d98d65f9126004cd8c50875ed4f11174#code) | - | - | - |
+| UnitMetadataOracle | 17 | [0x7721a657D98d65F9126004cD8C50875ed4F11174](https://etherscan.io/address/0x7721a657d98d65f9126004cd8c50875ed4f11174#code) | - | - | [0xE30A50b117ddC1c163dC80115e96a3672eAA8C28](https://blockscout.com/xdai/mainnet/address/0xE30A50b117ddC1c163dC80115e96a3672eAA8C28/) |
 | ChainlinkedKeydonixOracleMainAsset (ShibaSwap) | 18 | [0x8074a64102ca15F21f197Cf3169d3950dd65F2d5](https://etherscan.io/address/0x8074a64102ca15F21f197Cf3169d3950dd65F2d5#code) | - | - | - |
 | WrappedToUnderlyingOracleKeydonix | 19 | [0xfF536BB145177D3E8E9A84fFF148B0e42282BF40](https://etherscan.io/address/0xfF536BB145177D3E8E9A84fFF148B0e42282BF40#code) | - | - | - |
