@@ -5,7 +5,8 @@ const {ethers} = require("hardhat");
 const {attachContract, deployContract} = require("./ethersUtils");
 const {ORACLE_TYPE_CHAINLINK_MAIN_ASSET, ORACLE_TYPE_WRAPPED_TO_UNDERLYING, ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN,
     ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING, ORACLE_TYPE_UNISWAP_V2_KEYDONIX_POOL_TOKEN,
-    ORACLE_TYPE_UNISWAP_V2_KEYDONIX_MAIN_ASSET
+    ORACLE_TYPE_UNISWAP_V2_KEYDONIX_MAIN_ASSET,
+    ORACLE_TYPE_BRIDGED_USDP,
 } = require("../../lib/constants");
 const UniswapV2FactoryDeployCode = require("./UniswapV2DeployCode");
 const EthersBN = ethers.BigNumber.from;
@@ -22,10 +23,14 @@ const CASE_WRAPPED_TO_UNDERLYING_SIMPLE = 1;
 const CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN = 2;
 const CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN = 3;
 
+const CASE_BRIDGED_USDP = 7;
+
 const PREPARE_ORACLES_METHODS = {
     [CASE_WRAPPED_TO_UNDERLYING_SIMPLE]: prepareWrappedToUnderlyingOracle,
     [CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN]: prepareWrappedToUnderlyingOracleWrappedLPToken,
     [CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN]: prepareKeydonixWrappedToUnderlyingOracleWrappedLPToken,
+    
+    [CASE_BRIDGED_USDP]: prepareBridgedUsdpOracle,
 }
 
 /**
@@ -75,6 +80,20 @@ async function prepareCoreContracts(context, _oracle_case) {
 
     if (_oracle_case) {
         await prepareOracle(context, _oracle_case);
+
+        await context.vaultManagerParameters.setCollateral(
+            context.collateral.address,
+            '0', // stability fee // todo replace in tests for stability dee
+            '13', // liquidation fee
+            '67', // initial collateralization
+            '68', // liquidation ratio
+            '0', // liquidation discount (3 decimals)
+            '100', // devaluation period in blocks
+            ether('100000'), // debt limit
+            [context.collateralOracleType], // enabled oracles
+            0,
+            0,
+        );
     }
 }
 
@@ -254,6 +273,15 @@ async function prepareKeydonixWrappedToUnderlyingOracleWrappedLPToken(context, {
     ]);
 }
 
+async function prepareBridgedUsdpOracle(context) {
+    context.collateral = await deployContract("DummyToken", "Wrapper token", "wtoken", 18, ether('100000000000'));
+    context.collateralOracleType = ORACLE_TYPE_BRIDGED_USDP;
+
+    const oracle = await deployContract('BridgedUsdpOracle', context.vaultParameters.address, [context.collateral.address]);
+    await context.oracleRegistry.setOracle(ORACLE_TYPE_BRIDGED_USDP, oracle.address);
+    await context.oracleRegistry.setOracleTypeForAsset(context.collateral.address, ORACLE_TYPE_BRIDGED_USDP);
+}
+
 async function prepareUniswapV2Pool(context) {
     context.chainLinkEthUsdAggregator = await deployContract("ChainlinkAggregator_Mock", 5e7, 8); // rewrite ethusd aggregator for price = 0.5/eth
     context.chainlinkOracleMainAsset.setAggregators(
@@ -306,4 +334,6 @@ module.exports = {
     CASE_WRAPPED_TO_UNDERLYING_SIMPLE,
     CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN,
     CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN,
+
+    CASE_BRIDGED_USDP,
 }
