@@ -61,4 +61,4 @@
 | UnitMetadataOracle | 17 | [0x7721a657D98d65F9126004cD8C50875ed4F11174](https://etherscan.io/address/0x7721a657d98d65f9126004cd8c50875ed4f11174#code) | - | - | [0xE30A50b117ddC1c163dC80115e96a3672eAA8C28](https://blockscout.com/xdai/mainnet/address/0xE30A50b117ddC1c163dC80115e96a3672eAA8C28/) |
 | ChainlinkedKeydonixOracleMainAsset (ShibaSwap) | 18 | [0x8074a64102ca15F21f197Cf3169d3950dd65F2d5](https://etherscan.io/address/0x8074a64102ca15F21f197Cf3169d3950dd65F2d5#code) | - | - | - |
 | WrappedToUnderlyingOracleKeydonix | 19 | [0xfF536BB145177D3E8E9A84fFF148B0e42282BF40](https://etherscan.io/address/0xfF536BB145177D3E8E9A84fFF148B0e42282BF40#code) | - | - | - |
-| BridgedUsdpOracle | 20 | [0x4c71C265ad0Db6386F36b9f3d33818cc5ed67cb1](https://etherscan.io/address/0x4c71C265ad0Db6386F36b9f3d33818cc5ed67cb1) | - | - | - |
+| BridgedUsdpOracle | 20 | [0x4c71C265ad0Db6386F36b9f3d33818cc5ed67cb1](https://etherscan.io/address/0x4c71C265ad0Db6386F36b9f3d33818cc5ed67cb1) | - | - | [0x51e72972B5a264615A20FeafB47E5CA692FBba4B](https://blockscout.com/xdai/mainnet/address/0x51e72972B5a264615A20FeafB47E5CA692FBba4B) |
