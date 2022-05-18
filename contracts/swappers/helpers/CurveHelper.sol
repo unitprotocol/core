@@ -26,6 +26,8 @@ library CurveHelper {
         require(basePoolIndex > 0, "Unit Protocol Swappers: BROKEN_POOL"); // expected that base pool is the last
 
         int128 coinIndexInBasePool = getCoinIndexInPool(ICurvePool(_pool.base_pool()), _coin);
+        require(coinIndexInBasePool >= 0, "Unit Protocol Swappers: BROKEN_POOL");
+
         int128 coinIndex = coinIndexInBasePool + basePoolIndex;
         require(coinIndex >= coinIndexInBasePool, "Unit Protocol Swappers: BROKEN_POOL"); // assert from safe math since here we use int128
 
@@ -47,7 +49,7 @@ library CurveHelper {
 
     function tryGetCoin(ICurvePool _pool, int128 i) private view returns (address) {
         (bool success,  bytes memory data) = address(_pool).staticcall{gas:20000}(abi.encodeWithSignature("coins(uint256)", uint(i)));
-        if (!success) {
+        if (!success || data.length != 32) {
             return address(0);
         }
 

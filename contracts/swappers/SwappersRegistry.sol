@@ -14,7 +14,7 @@ contract SwappersRegistry is ISwappersRegistry, Auth2 {
 
     struct SwapperInfo {
         uint240 id;
-        bool isExist;
+        bool exists;
     }
 
     mapping(ISwapper => SwapperInfo) internal swappersInfo;
@@ -37,7 +37,7 @@ contract SwappersRegistry is ISwappersRegistry, Auth2 {
     }
 
     function hasSwapper(ISwapper _swapper) public view override returns (bool) {
-        return swappersInfo[_swapper].isExist;
+        return swappersInfo[_swapper].exists;
     }
 
     function getSwappers() external view override returns (ISwapper[] memory) {

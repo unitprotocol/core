@@ -28,35 +28,32 @@ contract SwapperUniswapV2Lp is AbstractSwapper {
     using UniswapV2Helper for IUniswapV2PairFull;
     using TransferHelper for address;
 
-    IERC20 public immutable WETH;
-    IERC20 public immutable USDT;
+    address public immutable WETH;
 
     ISwapper public immutable wethSwapper;
 
     constructor(
-        address _vaultParameters, address _weth,  address _usdp, address _usdt,
+        address _vaultParameters, address _weth,  address _usdp,
         address _wethSwapper
     ) AbstractSwapper(_vaultParameters, _usdp) {
         require(
             _weth != address(0)
-            && _usdt != address(0)
             && _wethSwapper != address(0)
             , "Unit Protocol Swappers: ZERO_ADDRESS"
         );
 
-        WETH = IERC20(_weth);
-        USDT = IERC20(_usdt);
+        WETH = _weth;
 
         wethSwapper = ISwapper(_wethSwapper);
     }
 
     function predictAssetOut(address _asset, uint256 _usdpAmountIn) external view override returns (uint predictedAssetAmount) {
         IUniswapV2PairFull pair = IUniswapV2PairFull(_asset);
-        (uint256 pairWethId,,) = pair.getTokenInfo(address(WETH));
+        (uint256 pairWethId,,) = pair.getTokenInfo(WETH);
         (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
 
         // USDP -> WETH
-        uint wethAmount = wethSwapper.predictAssetOut(address(WETH), _usdpAmountIn);
+        uint wethAmount = wethSwapper.predictAssetOut(WETH, _usdpAmountIn);
 
         // ~1/2 WETH -> LP underlying token
         uint wethToSwap = pair.calcWethToSwapBeforeMint(wethAmount, pairWethId);
@@ -77,7 +74,7 @@ contract SwapperUniswapV2Lp is AbstractSwapper {
 
     function predictUsdpOut(address _asset, uint256 _assetAmountIn) external view override returns (uint predictedUsdpAmount) {
         IUniswapV2PairFull pair = IUniswapV2PairFull(_asset);
-        (uint256 pairWethId, uint pairTokenId,) = pair.getTokenInfo(address(WETH));
+        (uint256 pairWethId, uint pairTokenId,) = pair.getTokenInfo(WETH);
         (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
 
         // LP tokens -> WETH + LP underlying token
@@ -90,26 +87,26 @@ contract SwapperUniswapV2Lp is AbstractSwapper {
         );
 
         // WETH -> USDP
-        predictedUsdpAmount = wethSwapper.predictUsdpOut(address(WETH), wethAmount);
+        predictedUsdpAmount = wethSwapper.predictUsdpOut(WETH, wethAmount);
     }
 
     function _swapUsdpToAsset(address _user, address _asset, uint256 _usdpAmount, uint256 /** _minAssetAmount */)
         internal override returns (uint swappedAssetAmount)
     {
         IUniswapV2PairFull pair = IUniswapV2PairFull(_asset);
-        (uint256 pairWethId,, address underlyingToken) = pair.getTokenInfo(address(WETH));
+        (uint256 pairWethId,, address underlyingToken) = pair.getTokenInfo(WETH);
 
         // USDP -> WETH
         address(USDP).safeTransfer(address(wethSwapper), _usdpAmount);
-        uint wethAmount = wethSwapper.swapUsdpToAssetWithDirectSending(address(this), address(WETH), _usdpAmount, 0);
+        uint wethAmount = wethSwapper.swapUsdpToAssetWithDirectSending(address(this), WETH, _usdpAmount, 0);
 
 
         // ~1/2 WETH -> LP underlying token
         uint wethToSwap = pair.calcWethToSwapBeforeMint(wethAmount, pairWethId);
-        uint tokenAmount = _swapPairTokens(pair, address(WETH), pairWethId, wethToSwap, address(this));
+        uint tokenAmount = _swapPairTokens(pair, WETH, pairWethId, wethToSwap, address(this));
 
         // ~1/2 WETH + LP underlying token -> LP tokens and send remainders to user
-        address(WETH).safeTransfer(address(pair), wethAmount.sub(wethToSwap));
+        WETH.safeTransfer(address(pair), wethAmount.sub(wethToSwap));
         underlyingToken.safeTransfer(address(pair), tokenAmount);
         swappedAssetAmount = pair.mint(_user);
     }
@@ -118,7 +115,7 @@ contract SwapperUniswapV2Lp is AbstractSwapper {
         internal override returns (uint swappedUsdpAmount)
     {
         IUniswapV2PairFull pair = IUniswapV2PairFull(_asset);
-        (uint256 pairWethId, uint pairTokenId, address underlyingToken) = pair.getTokenInfo(address(WETH));
+        (uint256 pairWethId, uint pairTokenId, address underlyingToken) = pair.getTokenInfo(WETH);
 
         // LP tokens -> WETH + LP underlying token
         _asset.safeTransfer(_asset, _assetAmount);
@@ -129,8 +126,8 @@ contract SwapperUniswapV2Lp is AbstractSwapper {
         wethAmount = wethAmount.add(_swapPairTokens(pair, underlyingToken, pairTokenId, tokenAmount, address(this)));
 
         // WETH -> USDP
-        address(WETH).safeTransfer(address(wethSwapper), wethAmount);
-        swappedUsdpAmount = wethSwapper.swapAssetToUsdpWithDirectSending(address(this), address(WETH), wethAmount, 0);
+        WETH.safeTransfer(address(wethSwapper), wethAmount);
+        swappedUsdpAmount = wethSwapper.swapAssetToUsdpWithDirectSending(address(this), WETH, wethAmount, 0);
 
         // USDP -> user
         address(USDP).safeTransfer(_user, swappedUsdpAmount);

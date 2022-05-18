@@ -28,7 +28,7 @@ describe("SwapperUniswapV2Lp", function () {
 
         context.swapper = await deployContract(
             'SwapperUniswapV2Lp',
-            context.vaultParameters.address, context.weth.address, context.usdp.address, context.usdt.address,
+            context.vaultParameters.address, context.weth.address, context.usdp.address,
             context.wethSwapper.address
         );
     });

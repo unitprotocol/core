@@ -206,7 +206,7 @@ contract CDPManager01_Fallback is BaseCDPManager {
      * @notice  - preapprove USDP to vault: pay stability fee
      * @notice  - preapprove asset to swapper: swap asset to USDP
      * @param asset The address of the collateral
-     * @param swapper The address of swapper (for swap usdp->asset)
+     * @param swapper The address of swapper (for swap asset->usdp)
      * @param assetAmountToUser The amount of the collateral to withdraw
      * @param assetAmountToSwap The amount of the collateral to swap to USDP
      * @param minSwappedUsdpAmount min USDP amount which user must get after swap assetAmountToSwap (in case of slippage)
@@ -278,7 +278,7 @@ contract CDPManager01_Fallback is BaseCDPManager {
      * @notice  - preapprove USDP to vault: pay stability fee
      * @notice  - preapprove asset (underlying token of wrapped asset) to swapper: swap asset to USDP
      * @param wrappedAsset The address of the wrapped asset
-     * @param swapper The address of swapper (for swap usdp->asset)
+     * @param swapper The address of swapper (for swap asset->usdp)
      * @param assetAmountToUser The amount of the collateral to withdraw
      * @param assetAmountToSwap The amount of the collateral to swap to USDP
      * @param minSwappedUsdpAmount min USDP amount which user must get after swap assetAmountToSwap (in case of slippage)
@@ -329,7 +329,7 @@ contract CDPManager01_Fallback is BaseCDPManager {
         _ensurePositionCollateralization(asset, msg.sender, proofData);
 
         emit Join(asset, msg.sender, totalAssetAmount, usdpAmount);
-        emit JoinWithLeverage(asset, msg.sender, assetAmount, totalAssetAmount, usdpAmount);
+        emit JoinWithLeverage(asset, msg.sender, assetAmount, swappedAssetAmount, usdpAmount);
     }
 
     function _exitWithDeleverage(

@@ -48,7 +48,7 @@ abstract contract BaseCDPManager is ReentrancyGuard {
     /**
      * @dev Log joins with leverage
      **/
-    event JoinWithLeverage(address indexed asset, address indexed owner, uint userAssetAmount, uint totalAssetAmount, uint usdp);
+    event JoinWithLeverage(address indexed asset, address indexed owner, uint userAssetAmount, uint swappedAssetAmount, uint usdp);
 
     /**
      * @dev Trigger when exits are happened
@@ -238,6 +238,6 @@ abstract contract BaseCDPManager is ReentrancyGuard {
 
         require(swappedUsdpAmount >= _minSwappedUsdpAmount, "Unit Protocol: SWAPPED_AMOUNT_LESS_THAN_EXPECTED_MINIMUM");
         require(IERC20(_asset).balanceOf(msg.sender) == assetBalanceBeforeSwap.sub(_assetAmountToSwap), "Unit Protocol: INVALID_ASSET_AMOUNT_GOT_FOR_SWAP_BY_SWAPPER");
-        require(usdp.balanceOf(msg.sender) == usdpBalanceBeforeSwap.add(swappedUsdpAmount), "Unit Protocol: INVALID_SWAPPED_ASSET_AMOUNT_RETURNED");
+        require(usdp.balanceOf(msg.sender) == usdpBalanceBeforeSwap.add(swappedUsdpAmount), "Unit Protocol: INVALID_SWAPPED_USDP_AMOUNT_RETURNED");
     }
 }
