@@ -5,7 +5,13 @@
 */
 pragma solidity 0.7.6;
 
-contract WETH {
+import "./IAssetTestsMint.sol";
+import "../interfaces/IWETH.sol";
+import "../helpers/SafeMath.sol";
+
+contract WETHMock is IWETH, IAssetTestsMint {
+    using SafeMath for uint;
+
     string public name     = "Wrapped Ether";
     string public symbol   = "WETH";
     uint8  public decimals = 18;
@@ -18,14 +24,16 @@ contract WETH {
     mapping (address => uint)                       public  balanceOf;
     mapping (address => mapping (address => uint))  public  allowance;
 
+    uint testsMinted = 0;
+
     receive() external payable {
         deposit();
     }
-    function deposit() public payable {
+    function deposit() public override payable {
         balanceOf[msg.sender] += msg.value;
         emit Deposit(msg.sender, msg.value);
     }
-    function withdraw(uint wad) public {
+    function withdraw(uint wad) public override {
         require(balanceOf[msg.sender] >= wad);
         balanceOf[msg.sender] -= wad;
         msg.sender.transfer(wad);
@@ -33,7 +41,7 @@ contract WETH {
     }
 
     function totalSupply() public view returns (uint) {
-        return address(this).balance;
+        return address(this).balance + testsMinted;
     }
 
     function approve(address guy, uint wad) public returns (bool) {
@@ -42,12 +50,12 @@ contract WETH {
         return true;
     }
 
-    function transfer(address dst, uint wad) public returns (bool) {
+    function transfer(address dst, uint wad) public override returns (bool) {
         return transferFrom(msg.sender, dst, wad);
     }
 
     function transferFrom(address src, address dst, uint wad)
-        public
+        public override
         returns (bool)
     {
         require(balanceOf[src] >= wad);
@@ -63,5 +71,12 @@ contract WETH {
         Transfer(src, dst, wad);
 
         return true;
+    }
+
+    function tests_mint(address to, uint amount) public override {
+        require(to != address(0), "Unit Protocol: ZERO_ADDRESS");
+
+        balanceOf[to] = balanceOf[to].add(amount);
+        testsMinted = testsMinted.add(amount);
     }
 }

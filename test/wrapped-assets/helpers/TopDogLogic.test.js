@@ -1,8 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const {directBonesReward, fullBonesReward, lockedBonesReward} = require("./TopDogLogic");
-
-ether = ethers.utils.parseUnits;
+const {ether} = require("../../helpers/ethersUtils");
 
 describe("TopDogLogic", function () {
     [0, 1, 3, 10].forEach(blockInterval =>

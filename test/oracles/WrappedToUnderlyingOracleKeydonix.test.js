@@ -2,7 +2,7 @@ const {expect} = require("chai");
 const {ethers} = require("hardhat");
 const {prepareCoreContracts} = require("../helpers/deploy");
 const {deployContract} = require("../helpers/ethersUtils");
-const {ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING} = require("../../lib/constants");
+const {ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX} = require("../../lib/constants");
 
 const SIMPLE_ORACLE_ID = 500;
 const WRAPPED_ASSET = '0x0000000000000000000000000000000000000001';
@@ -23,8 +23,8 @@ describe(`oracle WrappedToUnderlyingOracleKeydonix.test.js`, function () {
         await context.oracleRegistry.setOracleTypeForAsset(UNDERLYING_ASSET, SIMPLE_ORACLE_ID);
 
         this.oracleKeydonixWrappedToUnderlying = await deployContract('WrappedToUnderlyingOracleKeydonix', context.vaultParameters.address, context.oracleRegistry.address);
-        await context.oracleRegistry.setOracle(ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING, this.oracleKeydonixWrappedToUnderlying.address);
-        await context.oracleRegistry.setOracleTypeForAsset(WRAPPED_ASSET, ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING);
+        await context.oracleRegistry.setOracle(ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX, this.oracleKeydonixWrappedToUnderlying.address);
+        await context.oracleRegistry.setOracleTypeForAsset(WRAPPED_ASSET, ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX);
         await this.oracleKeydonixWrappedToUnderlying.setUnderlying(WRAPPED_ASSET, UNDERLYING_ASSET)
     });
 
@@ -52,8 +52,8 @@ describe(`oracle WrappedToUnderlyingOracleKeydonix.test.js`, function () {
         await context.oracleRegistry.setOracleTypeForAsset(UNDERLYING_ASSET, SIMPLE_ORACLE_ID);
 
         this.oracleKeydonixWrappedToUnderlying = await deployContract('WrappedToUnderlyingOracleKeydonix', context.vaultParameters.address, context.oracleRegistry.address);
-        await context.oracleRegistry.setOracle(ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING, this.oracleKeydonixWrappedToUnderlying.address);
-        await context.oracleRegistry.setOracleTypeForAsset(WRAPPED_ASSET, ORACLE_TYPE_UNISWAP_V2_KEYDONIX_WRAPPED_TO_UNDERLYING);
+        await context.oracleRegistry.setOracle(ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX, this.oracleKeydonixWrappedToUnderlying.address);
+        await context.oracleRegistry.setOracleTypeForAsset(WRAPPED_ASSET, ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX);
         await this.oracleKeydonixWrappedToUnderlying.setUnderlying(WRAPPED_ASSET, UNDERLYING_ASSET)
 
         await expect(
