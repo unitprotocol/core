@@ -13,7 +13,7 @@ const ether = ethers.utils.parseUnits;
 
 let context;
 
-describe.only(`oracle BridgedUsdpOracle`, function () {
+describe(`oracle BridgedUsdpOracle`, function () {
 
     beforeEach(async function () {
         context = this;
