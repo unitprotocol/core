@@ -5,7 +5,8 @@ const {ethers} = require("hardhat");
 const {attachContract, deployContract, Q112} = require("./ethersUtils");
 const {ORACLE_TYPE_CHAINLINK_MAIN_ASSET, ORACLE_TYPE_WRAPPED_TO_UNDERLYING, ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN,
     ORACLE_TYPE_WRAPPED_TO_UNDERLYING_KEYDONIX, ORACLE_TYPE_UNISWAP_V2_POOL_TOKEN_KEYDONIX,
-    ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX
+    ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX,
+    ORACLE_TYPE_BRIDGED_USDP,
 } = require("../../lib/constants");
 const UniswapV2FactoryDeployCode = require("./UniswapV2DeployCode");
 const EthersBN = ethers.BigNumber.from;
@@ -24,6 +25,7 @@ const CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN_KEYDONIX = 3;
 const CASE_CHAINLINK = 4;
 const CASE_UNISWAP_V2_MAIN_ASSET_KEYDONIX = 5;
 const CASE_WRAPPED_TO_UNDERLYING_SIMPLE_KEYDONIX = 6;
+const CASE_BRIDGED_USDP = 7;
 
 const PREPARE_ORACLES_METHODS = {
     [CASE_WRAPPED_TO_UNDERLYING_CHAINLINK]: prepareWrappedToUnderlyingOracle,
@@ -32,6 +34,7 @@ const PREPARE_ORACLES_METHODS = {
     [CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN_KEYDONIX]: prepareWrappedToUnderlyingOracleWrappedLPTokenKeydonix,
     [CASE_CHAINLINK]: prepareChainlinkOracle,
     [CASE_UNISWAP_V2_MAIN_ASSET_KEYDONIX]: prepareUniswapV2MainAssetOracleKeydonix,
+    [CASE_BRIDGED_USDP]: prepareBridgedUsdpOracle,
 }
 
 /**
@@ -337,6 +340,15 @@ async function prepareChainlinkOracle(context, {collateral}) {
     }
 }
 
+async function prepareBridgedUsdpOracle(context) {
+    context.collateral = await deployContract("DummyToken", "Wrapper token", "wtoken", 18, ether('100000000000'));
+    context.collateralOracleType = ORACLE_TYPE_BRIDGED_USDP;
+
+    const oracle = await deployContract('BridgedUsdpOracle', context.vaultParameters.address, [context.collateral.address]);
+    await context.oracleRegistry.setOracle(ORACLE_TYPE_BRIDGED_USDP, oracle.address);
+    await context.oracleRegistry.setOracleTypeForAsset(context.collateral.address, ORACLE_TYPE_BRIDGED_USDP);
+}
+
 async function prepareUniswapV2MainAssetOracleKeydonix(context, {collateral}) {
     context.collateral = collateral ?? await deployContract("DummyToken", "Token", "token", 18, ether('100000'));
     context.collateralOracleType = ORACLE_TYPE_UNISWAP_V2_MAIN_ASSET_KEYDONIX;
@@ -401,4 +413,5 @@ module.exports = {
     CASE_CHAINLINK,
     CASE_UNISWAP_V2_MAIN_ASSET_KEYDONIX,
     CASE_WRAPPED_TO_UNDERLYING_SIMPLE_KEYDONIX,
+    CASE_BRIDGED_USDP,
 }
