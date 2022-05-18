@@ -147,6 +147,7 @@ const increaseTime = require('./helpers/timeTravel');
 					const mainAmount = ether('100');
 					const usdpAmount = ether('20');
 
+					await this.vaultManagerBorrowFeeParameters.setBaseBorrowFee(0, {from: deployer}); // for user usdp balance === usdpAmount
 					await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
 
 					await increaseTime(3600 * 24 * 365);
@@ -156,7 +157,12 @@ const increaseTime = require('./helpers/timeTravel');
 					const mainToWithdraw = ether('1');
 					const repayment = ether('11');
 
+ 					// user must repay not more than repayment, so will transfer other usdps to somewhere
+					await this.usdp.transfer(this.mainCollateral.address, usdpAmount.sub(repayment));
+					expect(await this.usdp.balanceOf(this.deployer)).to.be.bignumber.equal(repayment);
+
 					const receipt = await this.utils.exitTarget(this.mainCollateral, mainToWithdraw, repayment);
+					expect(await this.usdp.balanceOf(this.deployer)).to.be.bignumber.lte(new BN(1), "Allowed remainder (due rounding error) = 1")
 
 					expectEvent(receipt, 'Exit', {
 						asset: this.mainCollateral.address,
@@ -164,13 +170,13 @@ const increaseTime = require('./helpers/timeTravel');
 						main: mainToWithdraw,
 					});
 
-					// the principal is about 10 USDP
-					expect(ether('10').sub(receipt.logs[0].args.usdp)).to.be.bignumber.lt(ether('0.001'));
+					// the principal is about 10 USDP, fee = 1 usdp
+					expect(ether('10').sub(receipt.logs[0].args.usdp).abs()).to.be.bignumber.lt(ether('0.001'));
 
 					const usdpInPosition = await this.vault.debts(this.mainCollateral.address, deployer);
 
-					// accumulated debt is about 1 USDP
-					expect(usdpInPosition.sub(ether('11'))).to.be.bignumber.lt(ether('0.001'));
+					// accumulated debt is about 11 USDP = 10 eth after repayment of debt body + 11 usdp fee for this debt
+					expect(usdpInPosition.sub(ether('11')).abs()).to.be.bignumber.lt(ether('0.001'));
 				})
 
 				it('Should partially repay the debt of a position and withdraw collaterals partially using ETH', async function() {

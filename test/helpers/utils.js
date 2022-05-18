@@ -3,8 +3,9 @@ const VaultParameters = artifacts.require('VaultParameters');
 const FoundationMock = artifacts.require('FoundationMock');
 const VaultManagerParameters = artifacts.require('VaultManagerParameters');
 const VaultManagerBorrowFeeParameters = artifacts.require('VaultManagerBorrowFeeParameters');
+const SwappersRegistry = artifacts.require('SwappersRegistry');
 const USDP = artifacts.require('USDPMock');
-const WETH = artifacts.require('WETH');
+const WETH = artifacts.require('WETHMock');
 const DummyToken = artifacts.require('DummyToken');
 const CyWETH = artifacts.require('CyWETH');
 const YvWETH = artifacts.require('YvWETH');
@@ -128,7 +129,7 @@ module.exports = (context, mode) => {
 		const totalDebt = await context.vault.getTotalDebt(context.weth.address, user);
 
 		// mint usdp to cover initial borrow fee
-		await context.usdp.mintForTests(user, calcBorrowFee(totalDebt));
+		await context.usdp.tests_mint(user, calcBorrowFee(totalDebt));
 
 		await context.usdp.approve(context.vault.address, totalDebt);
 		const mainAmount = await context.vault.collaterals(context.weth.address, user);
@@ -272,11 +273,13 @@ module.exports = (context, mode) => {
 				context.ethUsd.address,
 			)
 			await context.oracleRegistry.setOracle(mainAssetOracleType, context.keydonixOracleMainAssetMock.address)
+			await context.oracleRegistry.setOracleTypeForAsset(context.mainCollateral.address, mainAssetOracleType)
 			if (isLP) {
 				context.keydonixOraclePoolTokenMock = await KeydonixOraclePoolTokenMock.new(
 					context.keydonixOracleMainAssetMock.address
 				)
 				await context.oracleRegistry.setOracle(poolTokenOracleType, context.keydonixOraclePoolTokenMock.address)
+				await context.oracleRegistry.setOracleTypeForAsset(context.poolToken.address, poolTokenOracleType)
 				oracleTypes.push(poolTokenOracleType)
 			}
 			await context.oracleRegistry.setKeydonixOracleTypes(oracleTypes)
@@ -483,6 +486,7 @@ module.exports = (context, mode) => {
 			context.cdpRegistry = await CDPRegistry.at(context.deployed.CDPRegistry);
 			context.vaultManagerParameters = await VaultManagerParameters.at(context.deployed.VaultManagerParameters);
 			context.vaultManagerBorrowFeeParameters = await VaultManagerBorrowFeeParameters.at(context.deployed.VaultManagerBorrowFeeParameters);
+			context.swappersRegistry = await SwappersRegistry.at(context.deployed.SwappersRegistry);
 		}
 		else {
 			context.collateralRegistry = await CollateralRegistry.new(context.vaultParameters.address, [context.mainCollateral.address]);
@@ -490,6 +494,8 @@ module.exports = (context, mode) => {
 			context.vaultManagerParameters = await VaultManagerParameters.new(context.vaultParameters.address);
 			context.vaultManagerBorrowFeeParameters = await VaultManagerBorrowFeeParameters.new(context.vaultParameters.address, BASE_BORROW_FEE, BORROW_FEE_RECEIVER_ADDRESS);
 			await context.vaultParameters.setManager(context.vaultManagerParameters.address, true);
+
+			context.swappersRegistry = await SwappersRegistry.new(context.vaultParameters.address);
 		}
 
 		if (useDeployment) {
@@ -505,16 +511,20 @@ module.exports = (context, mode) => {
 		if (keydonix) {
 			context.vaultManagerKeydonix = await CDPManagerFallback.new(
 				context.vaultManagerParameters.address,
+				context.vaultManagerBorrowFeeParameters.address,
 				context.oracleRegistry.address,
 				context.cdpRegistry.address,
-				context.vaultManagerBorrowFeeParameters.address
+				context.swappersRegistry.address
 			);
 		}
 
 		if (useDeployment) {
 			context.vaultManager = await CDPManager.at(context.deployed.CDPManager01);
 		} else {
-			context.vaultManager = await CDPManager.new(context.vaultManagerParameters.address, context.oracleRegistry.address, context.cdpRegistry.address, context.vaultManagerBorrowFeeParameters.address);
+			context.vaultManager = await CDPManager.new(
+				context.vaultManagerParameters.address, context.vaultManagerBorrowFeeParameters.address,
+				context.oracleRegistry.address, context.cdpRegistry.address, context.swappersRegistry.address
+			);
 		}
 
 

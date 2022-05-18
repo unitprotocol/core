@@ -56,7 +56,7 @@ contract KeydonixOracleMainAsset_Mock is ChainlinkedKeydonixOracleMainAssetAbstr
         // revert if there is no liquidity
         require(tokenReserve != 0, "Unit Protocol: UNISWAP_EMPTY_POOL");
 
-        return ethToUsd(assetToEth(asset, amount, proofData)).div(tokenReserve);
+        return ethToUsd(assetToEth(asset, amount, proofData).div(tokenReserve));
     }
 
     // override with mock; only for tests

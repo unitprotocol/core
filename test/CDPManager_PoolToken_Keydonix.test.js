@@ -113,7 +113,7 @@ const time = require('./helpers/time');
 					);
 
 					// get some usdp to cover fee
-					await this.usdp.mintForTests(deployer, ether('2'));
+					await this.usdp.tests_mint(deployer, ether('2'));
 
 					await this.utils.updatePrice();
 

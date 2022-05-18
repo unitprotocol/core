@@ -1,7 +1,6 @@
 const {ethers} = require("ethers");
 const {SHIBA_TOPDOG_BONES_PER_BLOCK, SHIBA_TOPDOG_DIRECT_BONES_USER_PERCENT} = require("../../helpers/deploy");
-
-EthersBN = ethers.BigNumber.from
+const {BN} = require("../../helpers/ethersUtils");
 
 function directBonesReward(startBlock, endBlock) {
     return SHIBA_TOPDOG_BONES_PER_BLOCK
@@ -14,7 +13,7 @@ function directBonesReward(startBlock, endBlock) {
 function lockedBonesReward(startBlock, endBlock) {
     return SHIBA_TOPDOG_BONES_PER_BLOCK
         .mul(endBlock-startBlock)
-        .mul(EthersBN('100').sub(SHIBA_TOPDOG_DIRECT_BONES_USER_PERCENT)).div(100)
+        .mul(BN('100').sub(SHIBA_TOPDOG_DIRECT_BONES_USER_PERCENT)).div(100)
         .div(2) // 2 pools, divided between them
         ;
 }

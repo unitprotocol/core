@@ -2,7 +2,9 @@ require("dotenv").config({ path: require("find-config")(".env") });
 const { types } = require("hardhat/config")
 const {createDeployment: createCoreDeployment} = require("./lib/deployments/core");
 const {createDeployment: createWrappedSSLPDeployment} = require("./lib/deployments/wrappedSSLP");
+const {createDeployment: createSwappersDeployment} = require("./lib/deployments/swappers");
 const {runDeployment} = require("./test/helpers/deployUtils");
+const {VAULT_PARAMETERS} = require("./network_constants");
 
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-waffle");
@@ -41,7 +43,6 @@ task('deploy', 'Runs a core deployment')
 
 task('deployWrappedSslp', 'Deploy wrapped sslp')
     .addParam('manager', 'Address of a manager account/contract')
-    .addParam('vaultParameters', 'Address of VaultParameters')
     .addParam('topDogPoolId', 'id of pool in TopDog (each pool is for concrete sslp)', 0, types.int)
     .addParam('feeReceiver', 'Address of fee receiver')
     .addOptionalParam('topDog', 'Address of topDog', '0x94235659cf8b805b2c658f9ea2d6d6ddbb17c8d7', types.string)
@@ -53,7 +54,7 @@ task('deployWrappedSslp', 'Deploy wrapped sslp')
         const deployment = await createWrappedSSLPDeployment({
             deployer,
             manager: taskArgs.manager,
-            vaultParameters: taskArgs.vaultParameters,
+            vaultParameters: VAULT_PARAMETERS,
             topDog: taskArgs.topDog,
             topDogPoolId: taskArgs.topDogPoolId,
             feeReceiver: taskArgs.feeReceiver,
@@ -64,6 +65,20 @@ task('deployWrappedSslp', 'Deploy wrapped sslp')
         console.log('Success!', deployed);
     });
 
+task('deploySwappers', 'Deploy swappers')
+    .addOptionalParam('noVerify', 'Skip contracts verification on *scan block explorer', false, types.boolean)
+    .setAction(async (taskArgs) => {
+        await hre.run("compile");
+
+        const deployer = taskArgs.deployer ? taskArgs.deployer : (await ethers.getSigners())[0].address;
+        const deployment = await createSwappersDeployment({
+            deployer,
+        });
+
+        const deployed = await runDeployment(deployment, {deployer, verify: !taskArgs.noVerify});
+
+        console.log('Success!', deployed);
+    });
 
 task('accounts', 'Show current accounts')
     .setAction(async (taskArgs) => {
@@ -111,5 +126,9 @@ module.exports = {
         // Your API key for Etherscan
         // Obtain one at https://etherscan.io/
         apiKey: process.env.ETHERSCAN_API_KEY
-    }
+    },
+
+    mocha: {
+        timeout: 180000, // requests to fork network could be slow
+    },
 };

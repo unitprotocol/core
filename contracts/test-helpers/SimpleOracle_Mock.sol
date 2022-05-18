@@ -14,7 +14,7 @@ import "../interfaces/IOracleUsd.sol";
  **/
 contract SimpleOracle_Mock is IOracleUsd {
 
-    function assetToUsd(address /* asset */, uint amount) public override view returns (uint) {
+    function assetToUsd(address /* asset */, uint amount) public override pure returns (uint) {
         return amount * 1234;
     }
 }
