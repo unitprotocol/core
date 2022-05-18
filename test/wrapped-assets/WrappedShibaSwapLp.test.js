@@ -2,22 +2,20 @@ const {expect} = require("chai");
 const {ethers} = require("hardhat");
 const {
     prepareWrappedSSLP, CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN,
-    CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN
+    CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN_KEYDONIX
 } = require("../helpers/deploy");
 const {directBonesReward, lockedBonesReward, fullBonesReward} = require("./helpers/TopDogLogic");
-const {deployContract, attachContract} = require("../helpers/ethersUtils");
+const {deployContract, attachContract, ether, BN} = require("../helpers/ethersUtils");
 const {PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION} = require("../../lib/constants");
 const {cdpManagerWrapper} = require("../helpers/cdpManagerWrappers");
 const {ZERO_ADDRESS} = require("../helpers/deployUtils");
 const Abi = require('@ethersproject/abi');
 
-ether = ethers.utils.parseUnits;
-
-const EPSILON = ethers.BigNumber.from('400000');
+const EPSILON = BN('400000');
 
 const oracleCases = [
     [CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN, 'cdp manager'],
-    [CASE_KEYDONIX_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN, 'cdp manager keydonix'],
+    [CASE_WRAPPED_TO_UNDERLYING_WRAPPED_LP_TOKEN_KEYDONIX, 'cdp manager keydonix'],
 ]
 
 let context = {};
@@ -250,7 +248,7 @@ describe("WrappedShibaSwapLp", function () {
         describe("proxies direct calls", function () {
             it("only manager methods", async function () {
                 const lockAmount = ether('0.4');
-                const usdpAmount = ether('0.2');
+                const usdpAmount = ether('100');
 
                 await prepareUserForJoin(context.user1, lockAmount);
                 await wrapAndJoin(context.user1, lockAmount, usdpAmount);
@@ -292,7 +290,7 @@ describe("WrappedShibaSwapLp", function () {
         describe("reward distribution cases", function () {
             it('consecutive deposit and withdrawal with 3 users', async function () {
                 const lockAmount = ether('0.4');
-                const usdpAmount = ether('0.2');
+                const usdpAmount = ether('100');
 
                 await prepareUserForJoin(context.user1, lockAmount);
                 await prepareUserForJoin(context.user2, lockAmount);
@@ -364,7 +362,7 @@ describe("WrappedShibaSwapLp", function () {
 
             it('bones distribution with non consecutive deposit and withdrawal with 3 users', async function () {
                 const lockAmount = ether('0.4');
-                const usdpAmount = ether('0.2');
+                const usdpAmount = ether('100');
 
                 await prepareUserForJoin(context.user1, lockAmount);
                 await prepareUserForJoin(context.user2, lockAmount);
@@ -423,7 +421,7 @@ describe("WrappedShibaSwapLp", function () {
 
             it('simple case for pending reward', async function () {
                 const lockAmount = ether('0.2');
-                const usdpAmount = ether('0.1');
+                const usdpAmount = ether('50');
 
                 await prepareUserForJoin(context.user1, lockAmount);
 
@@ -451,7 +449,7 @@ describe("WrappedShibaSwapLp", function () {
                 await context.wrappedSslp0.setFee(10);
 
                 const lockAmount = ether('0.2');
-                const usdpAmount = ether('0.1');
+                const usdpAmount = ether('50');
 
                 await prepareUserForJoin(context.user1, lockAmount);
 
@@ -481,7 +479,7 @@ describe("WrappedShibaSwapLp", function () {
                 await context.wrappedSslp0.setFeeReceiver(ZERO_ADDRESS);
 
                 const lockAmount = ether('0.2');
-                const usdpAmount = ether('0.1');
+                const usdpAmount = ether('50');
 
                 await prepareUserForJoin(context.user1, lockAmount);
 
@@ -503,7 +501,7 @@ describe("WrappedShibaSwapLp", function () {
 
                 const lockAmount = ether('0.4');
                 const lockAmount2 = ether('0.2');
-                const usdpAmount = ether('0.1');
+                const usdpAmount = ether('50');
 
                 await context.topDog.setLockingPeriod(3600, 3600); // topdog calls bonelocker inside
 
@@ -555,7 +553,7 @@ describe("WrappedShibaSwapLp", function () {
             it('distribution bones from default bone locker', async function () {
                 const lockAmount = ether('0.4');
                 const lockAmount2 = ether('0.2');
-                const usdpAmount = ether('0.1');
+                const usdpAmount = ether('50');
 
                 await context.topDog.setLockingPeriod(3600, 3600); // topdog calls bonelocker inside
 
@@ -652,7 +650,7 @@ describe("WrappedShibaSwapLp", function () {
 
             it('several bone lockers', async function () {
                 const lockAmount = ether('0.2');
-                const usdpAmount = ether('0.1');
+                const usdpAmount = ether('50');
 
                 await context.topDog.setLockingPeriod(3600, 3600); // topdog calls bonelocker inside
                 const boneLocker2 = await deployContract("BoneLocker_Mock", context.boneToken.address, "0x0000000000000000000000000000000000001234", 1, 3);
@@ -771,7 +769,7 @@ describe("WrappedShibaSwapLp", function () {
         describe("topdog edge cases", function () {
             it('handle change of lptopken in topdog', async function () {
                 const lockAmount = ether('0.4');
-                const usdpAmount = ether('0.2');
+                const usdpAmount = ether('100');
 
                 await prepareUserForJoin(context.user1, ether('1'));
 
@@ -876,17 +874,17 @@ describe("WrappedShibaSwapLp", function () {
 
             it('liquidation (with moving position)', async function () {
                 const lockAmount = ether('0.4');
-                const usdpAmount = ether('0.2');
+                const usdpAmount = ether('100');
 
                 await prepareUserForJoin(context.user1, lockAmount);
                 await context.assetsBooleanParameters.set(context.wrappedSslp0.address, PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION, true);
-                await context.usdp.mintForTests(context.user2.address, ether('1'));
-                await context.usdp.connect(context.user2).approve(context.vault.address, ether('1'));
+                await context.usdp.tests_mint(context.user2.address, usdpAmount.mul(2));
+                await context.usdp.connect(context.user2).approve(context.vault.address, usdpAmount.mul(2));
 
                 await wrapAndJoin(context.user1, lockAmount, usdpAmount);
 
-                await context.vaultManagerParameters.setInitialCollateralRatio(context.wrappedSslp0.address, ethers.BigNumber.from(9));
-                await context.vaultManagerParameters.setLiquidationRatio(context.wrappedSslp0.address, ethers.BigNumber.from(10));
+                await context.vaultManagerParameters.setInitialCollateralRatio(context.wrappedSslp0.address, BN(9));
+                await context.vaultManagerParameters.setLiquidationRatio(context.wrappedSslp0.address, BN(10));
 
 
                 await cdpManagerWrapper.triggerLiquidation(context, context.wrappedSslp0, context.user1);
@@ -914,16 +912,16 @@ describe("WrappedShibaSwapLp", function () {
 
             it('liquidation by owner (with moving position)', async function () {
                 const lockAmount = ether('0.4');
-                const usdpAmount = ether('0.2');
+                const usdpAmount = ether('100');
 
                 await prepareUserForJoin(context.user1, lockAmount);
                 await context.assetsBooleanParameters.set(context.wrappedSslp0.address, PARAM_FORCE_MOVE_WRAPPED_ASSET_POSITION_ON_LIQUIDATION, true);
-                await context.usdp.connect(context.user1).approve(context.vault.address, ether('1'));
+                await context.usdp.connect(context.user1).approve(context.vault.address, usdpAmount.mul(2));
 
                 await wrapAndJoin(context.user1, lockAmount, usdpAmount);
 
-                await context.vaultManagerParameters.setInitialCollateralRatio(context.wrappedSslp0.address, ethers.BigNumber.from(9));
-                await context.vaultManagerParameters.setLiquidationRatio(context.wrappedSslp0.address, ethers.BigNumber.from(10));
+                await context.vaultManagerParameters.setInitialCollateralRatio(context.wrappedSslp0.address, BN(9));
+                await context.vaultManagerParameters.setLiquidationRatio(context.wrappedSslp0.address, BN(10));
 
                 await cdpManagerWrapper.triggerLiquidation(context, context.wrappedSslp0, context.user1);
 
@@ -1005,7 +1003,7 @@ describe("WrappedShibaSwapLp", function () {
                 [1, 10].forEach(blockInterval =>
                     it(`simple deposit and withdrawal with interval ${blockInterval} blocks`, async function () {
                         const lockAmount = ether('0.4');
-                        const usdpAmount = ether('0.2');
+                        const usdpAmount = ether('100');
 
                         await prepareUserForJoin(context.user1, lockAmount);
 
@@ -1037,7 +1035,7 @@ describe("WrappedShibaSwapLp", function () {
 
                 it(`simple deposit in one block`, async function () {
                     const lockAmount = ether('0.4');
-                    const usdpAmount = ether('0.2');
+                    const usdpAmount = ether('100');
 
                     await prepareUserForJoin(context.user1, lockAmount);
 
@@ -1066,7 +1064,7 @@ describe("WrappedShibaSwapLp", function () {
 
                 it(`simple case with several deposits`, async function () {
                     const lockAmount = ether('0.4');
-                    const usdpAmount = ether('0.2');
+                    const usdpAmount = ether('100');
 
                     await prepareUserForJoin(context.user1, lockAmount);
 
@@ -1090,7 +1088,7 @@ describe("WrappedShibaSwapLp", function () {
 
                 it(`simple case with target repayment`, async function () {
                     const lockAmount = ether('0.4');
-                    const usdpAmount = ether('0.2');
+                    const usdpAmount = ether('100');
 
                     await prepareUserForJoin(context.user1, lockAmount);
                     await context.usdp.connect(context.user1).approve(context.vault.address, ether('1'));
@@ -1099,14 +1097,14 @@ describe("WrappedShibaSwapLp", function () {
                     expect(await context.sslpToken0.balanceOf(context.user1.address)).to.be.equal(ether('0.6'), "sent tokens");
                     expect(await context.usdp.balanceOf(context.user1.address)).to.be.equal(usdpAmount, "got usdp");
 
-                    await cdpManagerWrapper.unwrapAndExitTargetRepayment(context, context.user1, context.wrappedSslp0, ether('0.2'), ether('0.1'));
+                    await cdpManagerWrapper.unwrapAndExitTargetRepayment(context, context.user1, context.wrappedSslp0, lockAmount.div(2), usdpAmount.div(2));
                     expect(await context.sslpToken0.balanceOf(context.user1.address)).to.be.equal(ether('0.8'), "returned tokens to user");
-                    expect(await context.usdp.balanceOf(context.user1.address)).to.be.equal(ether('0.1'), "got usdp without fee");
+                    expect(await context.usdp.balanceOf(context.user1.address)).to.be.equal(usdpAmount.div(2), "borrowed usdp without repaid");
                 })
 
                 it(`mint usdp only without adding collateral`, async function () {
                     const lockAmount = ether('0.4');
-                    const usdpAmount = ether('0.1');
+                    const usdpAmount = ether('50');
 
                     await prepareUserForJoin(context.user1, lockAmount);
 
@@ -1120,7 +1118,7 @@ describe("WrappedShibaSwapLp", function () {
 
                 it(`burn usdp without withdraw collateral`, async function () {
                     const lockAmount = ether('0.4');
-                    const usdpAmount = ether('0.2');
+                    const usdpAmount = ether('100');
 
                     await prepareUserForJoin(context.user1, lockAmount);
 
@@ -1137,7 +1135,7 @@ describe("WrappedShibaSwapLp", function () {
             describe("cdp manager and direct wraps/unwraps", function () {
                 it('exit without unwrap', async function () {
                     const lockAmount = ether('0.4');
-                    const usdpAmount = ether('0.2');
+                    const usdpAmount = ether('100');
 
                     await prepareUserForJoin(context.user1, ether('1'));
 
@@ -1155,7 +1153,7 @@ describe("WrappedShibaSwapLp", function () {
 
                 it('exit without unwrap with direct unwrap', async function () {
                     const lockAmount = ether('0.4');
-                    const usdpAmount = ether('0.2');
+                    const usdpAmount = ether('100');
 
                     await prepareUserForJoin(context.user1, ether('1'));
 
@@ -1171,7 +1169,7 @@ describe("WrappedShibaSwapLp", function () {
 
                 it('manual wrap and join and exit with cdp manager', async function () {
                     const lockAmount = ether('0.4');
-                    const usdpAmount = ether('0.2');
+                    const usdpAmount = ether('100');
 
                     await prepareUserForJoin(context.user1, ether('1'));
 

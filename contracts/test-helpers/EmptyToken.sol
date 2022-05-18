@@ -5,9 +5,10 @@
 */
 pragma solidity 0.7.6;
 
+import "./IAssetTestsMint.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract EmptyToken is ERC20 {
+contract EmptyToken is ERC20, IAssetTestsMint {
     using SafeMath for uint;
 
     event Burn(address indexed burner, uint value);
@@ -67,5 +68,9 @@ contract EmptyToken is ERC20 {
         for (uint i = 0; i < n.length; i++) {
             require(n[i] >= 0x20 && n[i] <= 0x7E, "INVALID_VALUE");
         }
+    }
+
+    function tests_mint(address to, uint amount) public override {
+        _mint(to, amount);
     }
 }

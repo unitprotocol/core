@@ -31,4 +31,20 @@ library Math {
         // (a + b) / 2 can overflow, so we distribute
         return (a / 2) + (b / 2) + ((a % 2 + b % 2) / 2);
     }
+
+    /**
+     * @dev babylonian method (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method)
+     **/
+    function sqrt(uint x) internal pure returns (uint y) {
+        if (x > 3) {
+            uint z = x / 2 + 1;
+            y = x;
+            while (z < y) {
+                y = z;
+                z = (x / z + z) / 2;
+            }
+        } else if (x != 0) {
+            y = 1;
+        }
+    }
 }
