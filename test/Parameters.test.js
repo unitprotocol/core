@@ -9,6 +9,7 @@ const { expect } = require('chai');
 const VaultParameters = artifacts.require('VaultParameters');
 const VaultManagerParameters = artifacts.require('VaultManagerParameters');
 const AssetParametersViewer = artifacts.require('AssetParametersViewer');
+const ForceTransferAssetStore = artifacts.require('ForceTransferAssetStore');
 
 contract('Parameters', function([
 	deployer,
@@ -22,6 +23,8 @@ contract('Parameters', function([
 		this.vaultParameters = await VaultParameters.new(secondAccount, deployer);
 		this.vaultManagerParameters = await VaultManagerParameters.new(this.vaultParameters.address);
 		await this.vaultParameters.setManager(this.vaultManagerParameters.address, true);
+
+		this.forceTransferAssetStore = await ForceTransferAssetStore.new(this.vaultParameters.address, []);
 	});
 
 	describe('Optimistic cases', function() {
@@ -131,7 +134,7 @@ contract('Parameters', function([
 		})
 
 		it('Should view parameters', async function () {
-		    const viewer = await AssetParametersViewer.new(this.vaultManagerParameters.address);
+		    const viewer = await AssetParametersViewer.new(this.vaultManagerParameters.address, this.forceTransferAssetStore.address);
 
 			await this.vaultManagerParameters.setCollateral(
 				thirdAccount,
@@ -161,6 +164,8 @@ contract('Parameters', function([
 				0,
 			);
 
+			await this.forceTransferAssetStore.add(fourthAccount);
+
             const [asset1, asset2] = await viewer.getMultiAssetParameters.call([thirdAccount, fourthAccount], 50);
 
             expect(asset1.asset).to.be.equal(thirdAccount);
@@ -174,6 +179,9 @@ contract('Parameters', function([
             expect(asset1.oracles).to.deep.equal(['1', '5']);
             expect(asset1.minColPercent).to.be.bignumber.equal(new BN('3'));
             expect(asset1.maxColPercent).to.be.bignumber.equal(new BN('5'));
+			expect(asset1.borrowFee).to.be.bignumber.equal(new BN('0'));
+			expect(asset1.forceTransferAssetToOwnerOnLiquidation).to.be.equal(false);
+			expect(asset1.forceMoveWrappedAssetPositionOnLiquidation).to.be.equal(false);
 
             expect(asset2.asset).to.be.equal(fourthAccount);
             expect(asset2.stabilityFee).to.be.bignumber.equal(new BN('1500'));
@@ -186,6 +194,9 @@ contract('Parameters', function([
             expect(asset2.oracles).to.deep.equal(['5', '7', '28']);
             expect(asset2.minColPercent).to.be.bignumber.equal(new BN('0'));
             expect(asset2.maxColPercent).to.be.bignumber.equal(new BN('0'));
+			expect(asset2.borrowFee).to.be.bignumber.equal(new BN('0'));
+			expect(asset2.forceTransferAssetToOwnerOnLiquidation).to.be.equal(true);
+			expect(asset2.forceMoveWrappedAssetPositionOnLiquidation).to.be.equal(false);
 
 			const asset1copy = await viewer.getAssetParameters.call(thirdAccount, 50);
 
@@ -200,6 +211,9 @@ contract('Parameters', function([
             expect(asset1copy.oracles).to.deep.equal(['1', '5']);
             expect(asset1copy.minColPercent).to.be.bignumber.equal(new BN('3'));
             expect(asset1copy.maxColPercent).to.be.bignumber.equal(new BN('5'));
+			expect(asset1copy.borrowFee).to.be.bignumber.equal(new BN('0'));
+			expect(asset1copy.forceTransferAssetToOwnerOnLiquidation).to.be.equal(false);
+			expect(asset1copy.forceMoveWrappedAssetPositionOnLiquidation).to.be.equal(false);
 
             const nonexistent = await viewer.getAssetParameters.call(deployer, 50);
             expect(nonexistent.asset).to.be.equal(deployer);
@@ -207,7 +221,7 @@ contract('Parameters', function([
 		})
 
 		it('Should view parameters without oracles search', async function () {
-		    const viewer = await AssetParametersViewer.new(this.vaultManagerParameters.address);
+		    const viewer = await AssetParametersViewer.new(this.vaultManagerParameters.address, this.forceTransferAssetStore.address);
 
 			await this.vaultManagerParameters.setCollateral(
 				thirdAccount,

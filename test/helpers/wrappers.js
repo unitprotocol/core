@@ -147,7 +147,7 @@ module.exports = function(context, mode) {
 				);
 			},
 			triggerLiquidation: (main, user, from = context.deployer) => {
-				return context.liquidatorKeydonixPoolToken.triggerLiquidation(
+				return context.vaultManager.triggerLiquidation(
 					main.address,
 					user,
 					['0x', '0x', '0x', '0x'], // main price proof

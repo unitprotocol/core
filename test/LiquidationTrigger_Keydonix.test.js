@@ -7,7 +7,7 @@ const { expect } = require('chai');
 const { nextBlockNumber } = require('./helpers/time');
 const utils = require('./helpers/utils');
 
-contract('LiquidationTriggerKeydonixMainAsset', function([
+contract.skip('LiquidationTriggerKeydonixMainAsset', function([
 	positionOwner,
 	liquidator,
 ]) {

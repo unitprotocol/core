@@ -36,7 +36,10 @@ contract ChainlinkAggregator_Mock {
         uint256 updatedAt,
         uint80 answeredInRound
     ) {
+        roundId = 0;
         answer = latestAnswer;
+        startedAt = 0;
         updatedAt = latestTimestamp;
+        answeredInRound = 0;
     }
 }

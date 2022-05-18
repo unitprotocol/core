@@ -12,7 +12,7 @@ const time = require('./helpers/time');
 [
 	'keydonixMainAsset',
 ].forEach(oracleMode =>
-	contract(`CDPManager with ${oracleMode} oracle wrapper`, function([
+	contract.skip(`CDPManager with ${oracleMode} oracle wrapper`, function([
 		deployer,
 	]) {
 		// deploy & initial settings
