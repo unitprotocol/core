@@ -9,10 +9,10 @@ import '../interfaces/IOracleRegistry.sol';
 import '../interfaces/IVault.sol';
 import '../interfaces/ICDPRegistry.sol';
 import '../interfaces/vault-managers/parameters/IVaultManagerParameters.sol';
+import '../interfaces/vault-managers/parameters/IAssetsBooleanParameters.sol';
 import '../interfaces/IVaultParameters.sol';
 import '../interfaces/IWrappedToUnderlyingOracle.sol';
-import '../interfaces/IForceTransferAssetStore.sol';
-import '../interfaces/IFoundation.sol';
+import '../vault-managers/parameters/AssetParameters.sol';
 
 import '../helpers/ReentrancyGuard.sol';
 import '../helpers/SafeMath.sol';
@@ -26,8 +26,7 @@ contract LiquidationAuction02 is ReentrancyGuard {
     IVault public immutable vault;
     IVaultManagerParameters public immutable vaultManagerParameters;
     ICDPRegistry public immutable cdpRegistry;
-    IForceTransferAssetStore public immutable forceTransferAssetStore;
-    bool public immutable notifyFoundation;
+    IAssetsBooleanParameters public immutable assetsBooleanParameters;
 
     uint public constant DENOMINATOR_1E2 = 1e2;
     uint public constant WRAPPED_TO_UNDERLYING_ORACLE_TYPE = 11;
@@ -45,19 +44,19 @@ contract LiquidationAuction02 is ReentrancyGuard {
     /**
      * @param _vaultManagerParameters The address of the contract with Vault manager parameters
      * @param _cdpRegistry The address of the CDP registry
-     * @param _forceTransferAssetStore The address of the ForceTransferAssetStore
+     * @param _assetsBooleanParameters The address of the AssetsBooleanParameters
      **/
-    constructor(address _vaultManagerParameters, address _cdpRegistry, address _forceTransferAssetStore, bool _notifyFoundation) {
+    constructor(address _vaultManagerParameters, address _cdpRegistry, address _assetsBooleanParameters) {
         require(
             _vaultManagerParameters != address(0) &&
-            _forceTransferAssetStore != (address(0)),
-                "Unit Protocol: INVALID_ARGS"
+            _cdpRegistry != address(0) &&
+            _assetsBooleanParameters != address(0),
+            "Unit Protocol: INVALID_ARGS"
         );
         vaultManagerParameters = IVaultManagerParameters(_vaultManagerParameters);
         vault = IVault(IVaultManagerParameters(_vaultManagerParameters).vaultParameters().vault());
         cdpRegistry = ICDPRegistry(_cdpRegistry);
-        forceTransferAssetStore = IForceTransferAssetStore(_forceTransferAssetStore);
-        notifyFoundation = _notifyFoundation;
+        assetsBooleanParameters = IAssetsBooleanParameters(_assetsBooleanParameters);
     }
 
     /**
@@ -86,8 +85,10 @@ contract LiquidationAuction02 is ReentrancyGuard {
             collateralInPosition
         );
 
+        uint256 assetBoolParams = assetsBooleanParameters.getAll(asset);
+
         // ensure that at least 1 unit of token is transferred to cdp owner
-        if (collateralToOwner == 0 && forceTransferAssetStore.shouldForceTransfer(asset)) {
+        if (collateralToOwner == 0 && AssetParameters.needForceTransferAssetToOwnerOnLiquidation(assetBoolParams)) {
             collateralToOwner = 1;
             collateralToLiquidator = collateralToLiquidator.sub(1);
         }
@@ -120,11 +121,6 @@ contract LiquidationAuction02 is ReentrancyGuard {
             penalty,
             msg.sender
         );
-
-        if (notifyFoundation) {
-            uint fee = repayment > penalty ? penalty : repayment;
-            IFoundation(IVaultParameters(vaultManagerParameters.vaultParameters()).foundation()).submitLiquidationFee(fee);
-        }
 
         // fire an buyout event
         emit Buyout(asset, user, msg.sender, collateralToBuyer, repayment, penalty);
