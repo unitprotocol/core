@@ -11,7 +11,7 @@ import '../helpers/ERC20Like.sol';
 import '../helpers/TransferHelper.sol';
 
 import './UniswapV2Library.sol';
-import './WETH.sol';
+import '../interfaces/IWETH.sol';
 
 contract UniswapV2Router02 {
     using SafeMath for uint;
@@ -96,8 +96,8 @@ contract UniswapV2Router02 {
         );
         address pair = UniswapV2Library.pairFor(factory, token, weth);
         TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
-        WETH(weth).deposit{value: amountETH}();
-        assert(WETH(weth).transfer(pair, amountETH));
+        IWETH(weth).deposit{value: amountETH}();
+        assert(IWETH(weth).transfer(pair, amountETH));
         liquidity = IUniswapV2PairFull(pair).mint(to);
         // refund dust eth, if any
         if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
@@ -139,7 +139,7 @@ contract UniswapV2Router02 {
             deadline
         );
         TransferHelper.safeTransfer(token, to, amountToken);
-        WETH(weth).withdraw(amountETH);
+        IWETH(weth).withdraw(amountETH);
         TransferHelper.safeTransferETH(to, amountETH);
     }
     function removeLiquidityWithPermit(
@@ -191,7 +191,7 @@ contract UniswapV2Router02 {
             deadline
         );
         TransferHelper.safeTransfer(token, to, ERC20Like(token).balanceOf(address(this)));
-        WETH(weth).withdraw(amountETH);
+        IWETH(weth).withdraw(amountETH);
         TransferHelper.safeTransferETH(to, amountETH);
     }
     function removeLiquidityETHWithPermitSupportingFeeOnTransferTokens(
@@ -263,8 +263,8 @@ contract UniswapV2Router02 {
         require(path[0] == weth, 'UniswapV2Router: INVALID_PATH');
         amounts = UniswapV2Library.getAmountsOut(factory, msg.value, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
-        WETH(weth).deposit{value: amounts[0]}();
-        assert(WETH(weth).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
+        IWETH(weth).deposit{value: amounts[0]}();
+        assert(IWETH(weth).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
     }
     function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
@@ -280,7 +280,7 @@ contract UniswapV2Router02 {
             path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, address(this));
-        WETH(weth).withdraw(amounts[amounts.length - 1]);
+        IWETH(weth).withdraw(amounts[amounts.length - 1]);
         TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
     }
     function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
@@ -296,7 +296,7 @@ contract UniswapV2Router02 {
             path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, address(this));
-        WETH(weth).withdraw(amounts[amounts.length - 1]);
+        IWETH(weth).withdraw(amounts[amounts.length - 1]);
         TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
     }
     function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline)
@@ -309,8 +309,8 @@ contract UniswapV2Router02 {
         require(path[0] == weth, 'UniswapV2Router: INVALID_PATH');
         amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
         require(amounts[0] <= msg.value, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
-        WETH(weth).deposit{value: amounts[0]}();
-        assert(WETH(weth).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
+        IWETH(weth).deposit{value: amounts[0]}();
+        assert(IWETH(weth).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
         // refund dust eth, if any
         if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
@@ -366,8 +366,8 @@ contract UniswapV2Router02 {
     {
         require(path[0] == weth, 'UniswapV2Router: INVALID_PATH');
         uint amountIn = msg.value;
-        WETH(weth).deposit{value: amountIn}();
-        assert(WETH(weth).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amountIn));
+        IWETH(weth).deposit{value: amountIn}();
+        assert(IWETH(weth).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amountIn));
         uint balanceBefore = ERC20Like(path[path.length - 1]).balanceOf(to);
         _swapSupportingFeeOnTransferTokens(path, to);
         require(
@@ -394,7 +394,7 @@ contract UniswapV2Router02 {
         _swapSupportingFeeOnTransferTokens(path, address(this));
         uint amountOut = ERC20Like(weth).balanceOf(address(this));
         require(amountOut >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
-        WETH(weth).withdraw(amountOut);
+        IWETH(weth).withdraw(amountOut);
         TransferHelper.safeTransferETH(to, amountOut);
     }
 

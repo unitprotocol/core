@@ -1,5 +1,7 @@
 require("dotenv").config({ path: require("find-config")(".env") });
 const { types } = require("hardhat/config")
+const {createDeployment: createCoreDeployment} = require("./lib/deployments/core");
+const {runDeployment} = require("./test/helpers/deployUtils");
 
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-waffle");
@@ -20,11 +22,8 @@ task('deploy', 'Runs a core deployment')
     .setAction(async (taskArgs) => {
         await hre.run("compile");
 
-        const {createDeployment} = require('./lib/deployments/core');
-        const {runDeployment} = require('./test/helpers/deployUtils');
-
         const deployer = taskArgs.deployer ? taskArgs.deployer : (await ethers.getSigners())[0].address;
-        const deployment = await createDeployment({
+        const deployment = await createCoreDeployment({
             deployer,
             foundation: taskArgs.foundation,
             manager: taskArgs.manager,
@@ -76,5 +75,9 @@ module.exports = {
         // Your API key for Etherscan
         // Obtain one at https://etherscan.io/
         apiKey: process.env.ETHERSCAN_API_KEY
-    }
+    },
+
+    mocha: {
+        timeout: 300000, // requests to fork or real network could be slow
+    },
 };

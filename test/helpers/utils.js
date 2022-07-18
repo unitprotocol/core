@@ -3,8 +3,8 @@ const VaultParameters = artifacts.require('VaultParameters');
 const FoundationMock = artifacts.require('FoundationMock');
 const VaultManagerParameters = artifacts.require('VaultManagerParameters');
 const VaultManagerBorrowFeeParameters = artifacts.require('VaultManagerBorrowFeeParameters');
-const USDP = artifacts.require('USDP');
-const WETH = artifacts.require('WETH');
+const USDP = artifacts.require('USDPMock');
+const WETH = artifacts.require('WETHMock');
 const DummyToken = artifacts.require('DummyToken');
 const CyWETH = artifacts.require('CyWETH');
 const YvWETH = artifacts.require('YvWETH');
@@ -32,7 +32,7 @@ const CDPManager = artifacts.require('CDPManager01');
 const CDPManagerFallback = artifacts.require('CDPManager01_Fallback');
 const LiquidationAuction = artifacts.require('LiquidationAuction02');
 const CDPRegistry = artifacts.require('CDPRegistry');
-const ForceTransferAssetStore = artifacts.require('ForceTransferAssetStore');
+const AssetsBooleanParameters = artifacts.require('AssetsBooleanParameters');
 const CollateralRegistry = artifacts.require('CollateralRegistry');
 const CyTokenOracle = artifacts.require('CyTokenOracle');
 const YvTokenOracle = artifacts.require('YvTokenOracle');
@@ -42,30 +42,18 @@ const StETHStableSwapOracle = artifacts.require('StETHStableSwapOracle');
 const StETHCurvePool = artifacts.require('StETHCurvePool');
 
 const { ether } = require('openzeppelin-test-helpers');
-const { calculateAddressAtNonce, deployContractBytecode, runDeployment } = require('./deployUtils');
+const { calculateAddressAtNonce, deployContractBytecode, runDeployment, loadHRE } = require('./deployUtils');
 const { createDeployment } = require('../../lib/deployments/core');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
 const getWrapper = require('./wrappers');
+const {PARAM_FORCE_TRANSFER_ASSET_TO_OWNER_ON_LIQUIDATION} = require("../../lib/constants");
 
 const MAX_UINT = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
 
 const BASE_BORROW_FEE = new BN(123); // 123 basis points = 1.23% = 0.0123
 const BASIS_POINTS_IN_1 = new BN('10000'); // 1 = 100.00% = 10000 basis points
 const BORROW_FEE_RECEIVER_ADDRESS = '0x0000000000000000000000000000000123456789';
-
-let _hre;
-const _loadHRE = async function() {
-	if (_hre === undefined) {
-		if (!process.env.HARDHAT_NETWORK)
-			process.env.HARDHAT_NETWORK = 'localhost';
-		_hre = require("hardhat");
-
-		await _hre.run("compile");
-	}
-
-	return _hre;
-}
 
 
 async function expectRevert(promise, expectedError) {
@@ -152,8 +140,7 @@ module.exports = (context, mode) => {
 		const totalDebt = await context.vault.getTotalDebt(context.weth.address, user);
 
 		// mint usdp to cover initial borrow fee
-		await context.usdp.setMinter(context.deployer, true);
-		await context.usdp.mint(user, calcBorrowFee(totalDebt));
+		await context.usdp.tests_mint(user, calcBorrowFee(totalDebt));
 
 		await context.usdp.approve(context.vault.address, totalDebt);
 		const mainAmount = await context.vault.collaterals(context.weth.address, user);
@@ -167,7 +154,7 @@ module.exports = (context, mode) => {
 			main.address,
 			0,
 			usdpAmount,
-      ['0x', '0x', '0x', '0x'], // main price proof
+      		['0x', '0x', '0x', '0x'], // main price proof
 		);
 	}
 
@@ -218,16 +205,17 @@ module.exports = (context, mode) => {
 				wtoken: context.weth.address,
 				baseBorrowFeePercent: 123,  // BASE_BORROW_FEE, their fckn BNs are incompatible
 				borrowFeeReceiver: BORROW_FEE_RECEIVER_ADDRESS,
+				testEnvironment: true,
 			});
-			const hre = await _loadHRE();
+			const hre = await loadHRE();
 			const deployed = await runDeployment(deployment, {hre, deployer: context.deployer});
 			context.deployed = deployed;
 
-			context.usdp = await USDP.at(deployed.USDP);
+			context.usdp = await USDP.at(deployed.USDPMock); // for tests we deploy USDPMock even with deploy script
 			context.vaultParameters = await VaultParameters.at(deployed.VaultParameters);
 			context.vault = await Vault.at(deployed.Vault);
 			context.oracleRegistry = await OracleRegistry.at(deployed.OracleRegistry);
-			context.forceTransferAssetStore = await ForceTransferAssetStore.at(deployed.ForceTransferAssetStore);
+			context.assetsBooleanParameters = await AssetsBooleanParameters.at(deployed.AssetsBooleanParameters);
 			context.chainlinkOracleMainAsset = await ChainlinkOracleMainAsset.at(deployed.ChainlinkedOracleMainAsset);
 
 			Vault.class_defaults.from = '0x0000000000000000000000000000000000000000';
@@ -253,7 +241,7 @@ module.exports = (context, mode) => {
 
 			context.oracleRegistry = await OracleRegistry.new(context.vaultParameters.address, context.weth.address)
 
-			context.forceTransferAssetStore = await ForceTransferAssetStore.new(context.vaultParameters.address, []);
+			context.assetsBooleanParameters = await AssetsBooleanParameters.new(context.vaultParameters.address, [], []);
 		}
 
 		let mainAssetOracleType, poolTokenOracleType
@@ -411,7 +399,7 @@ module.exports = (context, mode) => {
 
 			context.wrappedAsset = await DummyToken.new("Wrapper Curve LP", "WCLP", 18, ether('100000000000'))
 
-			await context.forceTransferAssetStore.add(context.wrappedAsset.address);
+			await context.assetsBooleanParameters.set(context.wrappedAsset.address, PARAM_FORCE_TRANSFER_ASSET_TO_OWNER_ON_LIQUIDATION, true);
 
 			await context.wrappedToUnderlyingOracle.setUnderlying(context.wrappedAsset.address, context.mainCollateral.address)
 
@@ -531,8 +519,7 @@ module.exports = (context, mode) => {
 			context.liquidationAuction = await LiquidationAuction.new(
 				context.vaultManagerParameters.address,
 				context.cdpRegistry.address,
-				context.forceTransferAssetStore.address,
-				false
+				context.assetsBooleanParameters.address
 			);
 		}
 

@@ -50,6 +50,19 @@ function calculateAddressAtNonce(sender, nonce, web3Inst = web3) {
 
 // --- Hardhat deployment script helpers --------------------------------------
 
+let _hre;
+async function loadHRE () {
+	if (_hre === undefined) {
+		if (!process.env.HARDHAT_NETWORK)
+			process.env.HARDHAT_NETWORK = 'localhost';
+		_hre = require("hardhat");
+
+		await _hre.run("compile");
+	}
+
+	return _hre;
+}
+
 async function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -88,7 +101,9 @@ async function _deploymentStep(name, args, options) {
     const convertedArgs = [];
     for (const arg of args) {
         if (Array.isArray(arg) || typeof arg == 'boolean' || typeof arg == 'number' || ethers.utils.isAddress(arg)
-                || (typeof arg == 'string' && arg.toLowerCase().startsWith('0x'))) {
+                || (typeof arg == 'string' && arg.toLowerCase().startsWith('0x'))
+                || ethers.BigNumber.isBigNumber(arg)
+        ) {
             convertedArgs.push(arg);
         }
         else if (typeof arg == 'object' && 'addressAtNextNonce' in arg) {
@@ -197,4 +212,5 @@ module.exports = {
 	deployContractBytecode,
 	runDeployment,
 	ZERO_ADDRESS,
+    loadHRE,
 };
