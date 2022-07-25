@@ -4,7 +4,7 @@ const {
 } = require('openzeppelin-test-helpers');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
-const { nextBlockNumber } = require('./helpers/time');
+const { blockNumberFromReceipt } = require('./helpers/time');
 const utils = require('./helpers/utils');
 
 contract('LiquidationTriggerKeydonixMainAsset', function([
@@ -63,13 +63,13 @@ contract('LiquidationTriggerKeydonixMainAsset', function([
 		 * utilization percent = 70 / 78.06 = ~89.67%
 		 */
 
-		const expectedLiquidationBlock = await nextBlockNumber();
-
 		const totalCollateralUsdValue = mainUsdValueAfterSwap;
 		const initialDiscount = await this.vaultManagerParameters.liquidationDiscount(this.mainCollateral.address);
 		const expectedLiquidationPrice = totalCollateralUsdValue.sub(totalCollateralUsdValue.mul(initialDiscount).div(new BN(1e5)));
 
-		const { logs } = await this.utils.triggerLiquidation(this.mainCollateral, positionOwner, liquidator);
+		const receipt = await this.utils.triggerLiquidation(this.mainCollateral, positionOwner, liquidator);
+		const { logs } = receipt;
+		const expectedLiquidationBlock = await blockNumberFromReceipt(receipt);
 		expectEvent.inLogs(logs, 'LiquidationTriggered', {
 			asset: this.mainCollateral.address,
 			owner: positionOwner,

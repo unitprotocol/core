@@ -7,12 +7,11 @@ async function block () {
     const block = await web3.eth.getBlock('latest');
     return new web3.utils.BN(block.number);
 }
-async function nextBlockNumber () {
-    const block = await web3.eth.getBlock('latest');
-    return new web3.utils.BN(block.number).add(new web3.utils.BN('1'));
+async function blockNumberFromReceipt(receipt) {
+    return new web3.utils.BN(receipt.receipt.blockNumber)
 }
 module.exports = {
     latest,
     block,
-    nextBlockNumber,
+    blockNumberFromReceipt,
 }

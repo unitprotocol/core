@@ -4,7 +4,7 @@ const {
 } = require('openzeppelin-test-helpers');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
-const { nextBlockNumber } = require('./helpers/time');
+const { blockNumberFromReceipt} = require('./helpers/time');
 const utils = require('./helpers/utils');
 
 contract('LiquidationAuction', function([
@@ -37,8 +37,8 @@ contract('LiquidationAuction', function([
 
 		const collateralOwnerBalanceBefore = await this.wrappedAsset.balanceOf(positionOwner);
 
-		const liquidationTriggerBlock = await nextBlockNumber();
-		await this.utils.triggerLiquidation(this.wrappedAsset, positionOwner, liquidator);
+		const reciept = await this.utils.triggerLiquidation(this.wrappedAsset, positionOwner, liquidator);
+		const liquidationTriggerBlock = await blockNumberFromReceipt(reciept);
 
 		const startingCollateralPrice = await this.vault.liquidationPrice(this.wrappedAsset.address, positionOwner);
 
@@ -48,9 +48,9 @@ contract('LiquidationAuction', function([
 		// approve USDP
 		await this.usdp.approve(this.vault.address, penalty, { from: liquidator });
 
-		const buyoutBlock = await nextBlockNumber();
-
-		const { logs } = await this.utils.buyout(this.wrappedAsset, positionOwner, liquidator);
+		receipt = await this.utils.buyout(this.wrappedAsset, positionOwner, liquidator);
+		const { logs } = receipt;
+		const buyoutBlock = await blockNumberFromReceipt(receipt);
 
 		const devaluationPeriod = await this.vaultManagerParameters.devaluationPeriod(this.wrappedAsset.address);
 		const blocksPast = buyoutBlock.sub(liquidationTriggerBlock);

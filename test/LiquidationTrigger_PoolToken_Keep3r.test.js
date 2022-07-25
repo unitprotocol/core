@@ -1,7 +1,7 @@
 const { expectEvent } = require('openzeppelin-test-helpers');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
-const { nextBlockNumber } = require('./helpers/time');
+const { blockNumberFromReceipt } = require('./helpers/time');
 const utils = require('./helpers/utils');
 
 contract('LiquidationTriggerKeep3rPoolToken', function([
@@ -62,9 +62,10 @@ contract('LiquidationTriggerKeep3rPoolToken', function([
 		const initialDiscount = await this.vaultManagerParameters.liquidationDiscount(this.poolToken.address);
 
 		const expectedLiquidationPrice = totalCollateralUsdValue.sub(totalCollateralUsdValue.mul(initialDiscount).div(new BN(1e5)));
-		const expectedLiquidationBlock = await nextBlockNumber();
 
-		const { logs } = await this.utils.triggerLiquidation(this.poolToken, positionOwner, liquidator);
+		const receipt = await this.utils.triggerLiquidation(this.poolToken, positionOwner, liquidator);
+		const { logs } = receipt;
+		const expectedLiquidationBlock = await blockNumberFromReceipt(receipt);
 		expectEvent.inLogs(logs, 'LiquidationTriggered', {
 			asset: this.poolToken.address,
 			owner: positionOwner,
