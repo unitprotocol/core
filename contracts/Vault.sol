@@ -39,7 +39,7 @@ contract Vault is IVault, Auth {
     mapping(address => mapping(address => uint)) public override debts;
 
     // block number of liquidation trigger
-    mapping(address => mapping(address => uint)) public override liquidationBlock;
+    mapping(address => mapping(address => uint)) public override liquidationTs;
 
     // initial price of collateral
     mapping(address => mapping(address => uint)) public override liquidationPrice;
@@ -63,7 +63,7 @@ contract Vault is IVault, Auth {
     mapping(address => mapping(address => uint)) public override lastUpdate;
 
     modifier notLiquidating(address asset, address user) {
-        require(liquidationBlock[asset][user] == 0, "Unit Protocol: LIQUIDATING_POSITION");
+        require(liquidationTs[asset][user] == 0, "Unit Protocol: LIQUIDATING_POSITION");
         _;
     }
 
@@ -106,7 +106,7 @@ contract Vault is IVault, Auth {
      **/
     function spawn(address asset, address user, uint _oracleType) external override hasVaultAccess notLiquidating(asset, user) {
         oracleType[asset][user] = _oracleType;
-        delete liquidationBlock[asset][user];
+        delete liquidationTs[asset][user];
     }
 
     /**
@@ -274,7 +274,7 @@ contract Vault is IVault, Auth {
         // reverts if oracle type is disabled
         require(vaultParameters.isOracleTypeEnabled(oracleType[asset][positionOwner], asset), "Unit Protocol: WRONG_ORACLE_TYPE");
 
-        liquidationBlock[asset][positionOwner] = block.number;
+        liquidationTs[asset][positionOwner] = block.timestamp;
         liquidationPrice[asset][positionOwner] = initialPrice;
     }
 
@@ -301,7 +301,7 @@ contract Vault is IVault, Auth {
         override
         hasVaultAccess
     {
-        require(liquidationBlock[asset][positionOwner] != 0, "Unit Protocol: NOT_TRIGGERED_LIQUIDATION");
+        require(liquidationTs[asset][positionOwner] != 0, "Unit Protocol: NOT_TRIGGERED_LIQUIDATION");
 
         uint mainAssetInPosition = collaterals[asset][positionOwner];
         uint mainAssetToFoundation = mainAssetInPosition.sub(mainAssetToLiquidator).sub(mainAssetToPositionOwner);
@@ -309,7 +309,7 @@ contract Vault is IVault, Auth {
         tokenDebts[asset] = tokenDebts[asset].sub(debts[asset][positionOwner]);
 
         delete liquidationPrice[asset][positionOwner];
-        delete liquidationBlock[asset][positionOwner];
+        delete liquidationTs[asset][positionOwner];
         delete debts[asset][positionOwner];
         delete collaterals[asset][positionOwner];
 
@@ -371,7 +371,7 @@ contract Vault is IVault, Auth {
      * @return user accumulated fee
      **/
     function getFee(address asset, address user) public override view returns (uint) {
-        if (liquidationBlock[asset][user] != 0) return accumulatedStabilityFee[asset][user];
+        if (liquidationTs[asset][user] != 0) return accumulatedStabilityFee[asset][user];
         return accumulatedStabilityFee[asset][user].add(calculateFee(asset, user, debts[asset][user]));
     }
 

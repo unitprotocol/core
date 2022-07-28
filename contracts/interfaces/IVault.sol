@@ -23,7 +23,7 @@ interface IVault {
     function getTotalDebt ( address asset, address user ) external view returns ( uint256 );
     function lastUpdate ( address, address ) external view returns ( uint256 );
     function liquidate ( address asset, address positionOwner, uint256 mainAssetToLiquidator, uint256 mainAssetToPositionOwner, uint256 repayment, uint256 penalty, address liquidator ) external;
-    function liquidationBlock ( address, address ) external view returns ( uint256 );
+    function liquidationTs ( address, address ) external view returns ( uint256 );
     function liquidationFee ( address, address ) external view returns ( uint256 );
     function liquidationPrice ( address, address ) external view returns ( uint256 );
     function oracleType ( address, address ) external view returns ( uint256 );

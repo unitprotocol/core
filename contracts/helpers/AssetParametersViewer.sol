@@ -47,7 +47,7 @@ contract AssetParametersViewer {
         // Percentage with 3 decimals
         uint liquidationDiscount;
 
-        // Devaluation period in blocks
+        // Devaluation period in seconds
         uint devaluationPeriod;
 
         // USDP mint limit

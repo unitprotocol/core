@@ -43,6 +43,6 @@ module.exports = {
         exit,
 
         triggerLiquidation,
-        cdpManager,
-    }
+    },
+    cdpManager,
 }

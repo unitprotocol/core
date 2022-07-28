@@ -65,9 +65,9 @@ contract LiquidationAuction02 is ReentrancyGuard {
      * @param owner The owner of a position
      **/
     function buyout(address asset, address owner) public nonReentrant checkpoint(asset, owner) {
-        require(vault.liquidationBlock(asset, owner) != 0, "Unit Protocol: LIQUIDATION_NOT_TRIGGERED");
+        require(vault.liquidationTs(asset, owner) != 0, "Unit Protocol: LIQUIDATION_NOT_TRIGGERED");
         uint startingPrice = vault.liquidationPrice(asset, owner);
-        uint blocksPast = block.number.sub(vault.liquidationBlock(asset, owner));
+        uint secondsPassed = block.timestamp.sub(vault.liquidationTs(asset, owner));
         uint depreciationPeriod = vaultManagerParameters.devaluationPeriod(asset);
         uint debt = vault.getTotalDebt(asset, owner);
         uint penalty = debt.mul(vault.liquidationFee(asset, owner)).div(DENOMINATOR_1E2);
@@ -79,7 +79,7 @@ contract LiquidationAuction02 is ReentrancyGuard {
 
         (collateralToLiquidator, collateralToOwner, repayment) = _calcLiquidationParams(
             depreciationPeriod,
-            blocksPast,
+            secondsPassed,
             startingPrice,
             debt.add(penalty),
             collateralInPosition
@@ -128,7 +128,7 @@ contract LiquidationAuction02 is ReentrancyGuard {
 
     function _calcLiquidationParams(
         uint depreciationPeriod,
-        uint blocksPast,
+        uint secondsPassed,
         uint startingPrice,
         uint debtWithPenalty,
         uint collateralInPosition
@@ -140,8 +140,8 @@ contract LiquidationAuction02 is ReentrancyGuard {
         uint collateralToOwner,
         uint price
     ) {
-        if (depreciationPeriod > blocksPast) {
-            uint valuation = depreciationPeriod.sub(blocksPast);
+        if (depreciationPeriod > secondsPassed) {
+            uint valuation = depreciationPeriod.sub(secondsPassed);
             uint collateralPrice = startingPrice.mul(valuation).div(depreciationPeriod);
             if (collateralPrice > debtWithPenalty) {
                 collateralToBuyer = collateralInPosition.mul(debtWithPenalty).div(collateralPrice);

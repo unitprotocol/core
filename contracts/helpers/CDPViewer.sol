@@ -63,7 +63,7 @@ contract CDPViewer {
         // Percentage with 3 decimals
         uint32 liquidationDiscount;
 
-        // Devaluation period in blocks
+        // Devaluation period in seconds
         uint32 devaluationPeriod;
 
         // Percentage with 0 decimals

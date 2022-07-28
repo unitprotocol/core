@@ -1,4 +1,4 @@
-const {ethers} = require("hardhat");
+const {ethers, network} = require("hardhat");
 
 async function attachContract(contract, address) {
     return ethers.getContractAt(contract, address)
@@ -16,6 +16,16 @@ function getRandomSigner() {
     return new ethers.Wallet(ethers.Wallet.createRandom().privateKey, ethers.provider);
 }
 
+async function getBlockTs(blockNumber) {
+    return (await ethers.provider.getBlock(blockNumber)).timestamp
+}
+
+async function increaseTime(seconds) {
+    await network.provider.send("evm_increaseTime", [seconds]);
+    await network.provider.send("evm_mine");
+}
+
+
 const ether = ethers.utils.parseEther;
 const weiToEther = wei => ethers.utils.formatUnits(wei, "ether");
 const BN = ethers.BigNumber.from
@@ -25,6 +35,8 @@ module.exports = {
     attachContract,
     deployContract,
     getRandomSigner,
+    getBlockTs,
+    increaseTime,
 
     ether,
     weiToEther,
