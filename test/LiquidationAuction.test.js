@@ -6,6 +6,7 @@ const BN = web3.utils.BN;
 const { expect } = require('chai');
 const { blockNumberFromReceipt} = require('./helpers/time');
 const utils = require('./helpers/utils');
+const {getBlockTs} = require("./helpers/ethersUtils");
 
 contract('LiquidationAuction', function([
 	positionOwner,
@@ -39,6 +40,9 @@ contract('LiquidationAuction', function([
 
 		const reciept = await this.utils.triggerLiquidation(this.wrappedAsset, positionOwner, liquidator);
 		const liquidationTriggerBlock = await blockNumberFromReceipt(reciept);
+		const liquidationTriggerTs = await getBlockTs(liquidationTriggerBlock.toNumber())
+
+		await new Promise(r => setTimeout(r, 3000)); // for ability to test in real network
 
 		const startingCollateralPrice = await this.vault.liquidationPrice(this.wrappedAsset.address, positionOwner);
 
@@ -51,9 +55,10 @@ contract('LiquidationAuction', function([
 		receipt = await this.utils.buyout(this.wrappedAsset, positionOwner, liquidator);
 		const { logs } = receipt;
 		const buyoutBlock = await blockNumberFromReceipt(receipt);
+		const buyoutTs = await getBlockTs(buyoutBlock.toNumber())
 
 		const devaluationPeriod = await this.vaultManagerParameters.devaluationPeriod(this.wrappedAsset.address);
-		const blocksPast = buyoutBlock.sub(liquidationTriggerBlock);
+		const secondsPassed = new BN(buyoutTs - liquidationTriggerTs);
 		const debtWithPenalty = usdpAmount.add(penalty);
 
 		let valuationPeriod = new BN('0');
@@ -62,20 +67,16 @@ contract('LiquidationAuction', function([
 		let repayment = new BN('0');
 		let collateralToBuyer;
 
-		if (devaluationPeriod.gt(blocksPast)) {
-			valuationPeriod = devaluationPeriod.sub(blocksPast);
-			collateralPrice = startingCollateralPrice.mul(valuationPeriod).div(devaluationPeriod);
-			if (collateralPrice.gt(debtWithPenalty)) {
-				collateralToBuyer = collateralAmount.mul(debtWithPenalty).div(collateralPrice);
-				collateralToOwner = collateralAmount.sub(collateralToBuyer);
-				repayment = debtWithPenalty;
-			} else {
-				collateralToBuyer = collateralAmount;
-				repayment = collateralPrice;
-			}
-		} else {
-			collateralToBuyer = collateralAmount;
-		}
+		expect(devaluationPeriod).is.be.bignumber.gt(secondsPassed);
+
+		valuationPeriod = devaluationPeriod.sub(secondsPassed);
+		collateralPrice = startingCollateralPrice.mul(valuationPeriod).div(devaluationPeriod);
+
+		expect(collateralPrice).is.be.bignumber.gt(debtWithPenalty)
+
+		collateralToBuyer = collateralAmount.mul(debtWithPenalty).div(collateralPrice);
+		collateralToOwner = collateralAmount.sub(collateralToBuyer);
+		repayment = debtWithPenalty;
 
 		expectEvent.inLogs(logs, 'Buyout', {
 			asset: this.wrappedAsset.address,

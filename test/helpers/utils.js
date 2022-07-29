@@ -555,7 +555,7 @@ module.exports = (context, mode) => {
 			'67', // initial collateralization
 			'68', // liquidation ratio
 			'0', // liquidation discount (3 decimals)
-			'1000', // devaluation period in blocks
+			'3600', // devaluation period in seconds
 			ether('100000'), // debt limit
 			[mainAssetOracleType], // enabled oracles
 		);
@@ -568,7 +568,7 @@ module.exports = (context, mode) => {
 				'67', // initial collateralization
 				'68', // liquidation ratio
 				'0', // liquidation discount (3 decimals)
-				'1000', // devaluation period in blocks
+				'3600', // devaluation period in seconds
 				ether('100000'), // debt limit
 				[5], // enabled oracles
 			);
@@ -582,7 +582,7 @@ module.exports = (context, mode) => {
 				'67', // initial collateralization
 				'68', // liquidation ratio
 				'0', // liquidation discount (3 decimals)
-				'1000', // devaluation period in blocks
+				'3600', // devaluation period in seconds
 				ether('100000'), // debt limit
 				[poolTokenOracleType], // enabled oracles
 			);

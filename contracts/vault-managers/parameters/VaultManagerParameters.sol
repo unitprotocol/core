@@ -23,7 +23,7 @@ contract VaultManagerParameters is IVaultManagerParameters, Auth {
     // map token to liquidation discount; 3 decimals
     mapping(address => uint) public override liquidationDiscount;
 
-    // map token to devaluation period in blocks
+    // map token to devaluation period in seconds
     mapping(address => uint) public override devaluationPeriod;
 
     constructor(address _vaultParameters) Auth(_vaultParameters) {}
@@ -37,7 +37,7 @@ contract VaultManagerParameters is IVaultManagerParameters, Auth {
      * @param initialCollateralRatioValue The initial collateralization ratio
      * @param liquidationRatioValue The liquidation ratio
      * @param liquidationDiscountValue The liquidation discount (3 decimals)
-     * @param devaluationPeriodValue The devaluation period in blocks
+     * @param devaluationPeriodValue The devaluation period in seconds
      * @param usdpLimit The USDP token issue limit
      * @param oracles The enabled oracles type IDs
      **/
@@ -102,7 +102,7 @@ contract VaultManagerParameters is IVaultManagerParameters, Auth {
      * @notice Only manager is able to call this function
      * @dev Sets the devaluation period of collateral after liquidation
      * @param asset The address of the main collateral token
-     * @param newValue The devaluation period in blocks
+     * @param newValue The devaluation period in seconds
      **/
     function setDevaluationPeriod(address asset, uint newValue) public override onlyManager {
         require(newValue != 0, "Unit Protocol: INCORRECT_DEVALUATION_VALUE");

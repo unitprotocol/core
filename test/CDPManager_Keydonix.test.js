@@ -3,8 +3,6 @@ const {
 	ether,
 } = require('openzeppelin-test-helpers');
 const chai = require('chai');
-const { solidity } = require("ethereum-waffle");
-chai.use(solidity);
 const { expect } = chai;
 const BN = web3.utils.BN;
 const utils = require('./helpers/utils');
