@@ -106,7 +106,6 @@ contract Vault is IVault, Auth {
      **/
     function spawn(address asset, address user, uint _oracleType) external override hasVaultAccess notLiquidating(asset, user) {
         oracleType[asset][user] = _oracleType;
-        delete liquidationTs[asset][user];
     }
 
     /**
