@@ -81,7 +81,10 @@ async function verifyContract(contract, constructorArguments, contract_name) {
             });
             break;
         } catch (e) {
-            if (e.message.indexOf("Try waiting for a minute before verifying your contract") !== -1) {
+            if (
+                e.message.indexOf("Try waiting for a minute before verifying your contract") !== -1
+                || e.message.indexOf("has no bytecode. Is the contract deployed to this network?") !== -1
+            ) {
                 l("Waiting for updating etherscan index");
                 await sleep(10000);  // etherscan often has delays fo updating indexes
             } else if (e.message.indexOf("Reason: Already Verified") !== -1) {
