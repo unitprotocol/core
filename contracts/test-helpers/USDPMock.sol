@@ -12,7 +12,8 @@ import "./IAssetTestsMint.sol";
 contract USDPMock is USDP, IAssetTestsMint {
   using SafeMath for uint;
 
-  constructor(address _parameters) USDP(_parameters) {}
+  constructor(address parameters_, string memory name_, string memory symbol_)
+    USDP(parameters_, name_, symbol_) {}
 
   function tests_mint(address to, uint amount) public override {
     require(to != address(0), "Unit Protocol: ZERO_ADDRESS");

@@ -225,7 +225,7 @@ module.exports = (context, mode) => {
 		}
 		else {
 		const vaultParametersAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 1);
-		context.usdp = await USDP.new(vaultParametersAddr);
+		context.usdp = await USDP.new(vaultParametersAddr, "USDP stablecoin", "USDP");
 
     const vaultProxyAddr = calculateAddressAtNonce(context.deployer, await web3.eth.getTransactionCount(context.deployer) + 2);
 		context.vaultParameters = await VaultParameters.new(vaultProxyAddr, context.foundation.address);

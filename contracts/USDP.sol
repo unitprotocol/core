@@ -17,10 +17,10 @@ contract USDP is Auth {
     using SafeMath for uint;
 
     // name of the token
-    string public constant name = "USDP Stablecoin";
+    string public name;
 
     // symbol of the token
-    string public constant symbol = "USDP";
+    string public symbol;
 
     // version of the token
     string public constant version = "1";
@@ -63,7 +63,10 @@ contract USDP is Auth {
     /**
       * @param _parameters The address of system parameters contract
      **/
-    constructor(address _parameters) Auth(_parameters) {}
+    constructor(address _parameters, string memory name_, string memory symbol_) Auth(_parameters) {
+        name = name_;
+        symbol = symbol_;
+    }
 
     /**
       * @notice Only manager is able to manage minters
