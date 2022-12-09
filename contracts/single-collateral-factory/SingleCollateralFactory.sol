@@ -17,6 +17,8 @@ import "../Vault.sol";
 
 contract SingleCollateralFactory is Ownable, IFactory {
 
+    string public constant override VERSION = '0.1.0';
+
     IStageDeployer public immutable usdpAndVaultDeployer;
     IStageDeployer public immutable registriesDeployer;
     IStageDeployer public immutable parametersDeployer;
@@ -25,6 +27,7 @@ contract SingleCollateralFactory is Ownable, IFactory {
 
     mapping (uint => Deploy) deploys;
     uint public deploysCount;
+    mapping (address => uint) public vaultDeploy;
 
     bool public deployOnlyForOwner = true;
 
@@ -85,8 +88,11 @@ contract SingleCollateralFactory is Ownable, IFactory {
             deploy.vaultParameters = result[1];
             deploy.vault = result[2];
 
+            vaultDeploy[deploy.vault] = deployId_;
+
             deploy.stage = 1;
             emit StageDeployed(deployId_, 0);
+            emit VaultDeployed(deployId_, deploy.vault);
         } else if (stage == 1) {
             address[] memory result = registriesDeployer.deployStage(deploy);
             deploy.collateralRegistry = result[0];
@@ -100,8 +106,6 @@ contract SingleCollateralFactory is Ownable, IFactory {
             deploy.vaultManagerParameters = result[0];
             deploy.vaultManagerBorrowFeeParameters = result[1];
             deploy.assetsBooleanParameters = result[2];
-            deploy.cdpManager = result[3];
-            deploy.liquidationAuction = result[4];
 
             deploy.stage = 3;
             emit StageDeployed(deployId_, 2);

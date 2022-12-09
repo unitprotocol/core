@@ -6,7 +6,9 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-interface IFactory {
+import "../../interfaces/IVersioned.sol";
+
+interface IFactory is IVersioned {
 
     struct DeploySettings {
         string stableName;
@@ -54,7 +56,9 @@ interface IFactory {
         address cdpViewer;
     }
 
-    event DeployInitialized(uint deployId);
-    event StageDeployed(uint deployId, uint8 stage);
-    event DeployFinished(uint deployId);
+    event DeployInitialized(uint indexed deployId);
+    event StageDeployed(uint indexed deployId, uint8 stage);
+    event DeployFinished(uint indexed deployId);
+
+    event VaultDeployed(uint indexed deployId, address indexed vaultAddress);
 }

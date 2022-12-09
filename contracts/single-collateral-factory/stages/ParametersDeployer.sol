@@ -32,7 +32,7 @@ contract ParametersDeployer is AbstractDeployer {
             deploy_.vaultParameters, initialAssets, initialParams
         );
 
-        result_ = new address[](5);
+        result_ = new address[](3);
         result_[0] = address(vaultManagerParameters);
         result_[1] = address(vaultManagerBorrowFeeParameters);
         result_[2] = address(assetsBooleanParameters);

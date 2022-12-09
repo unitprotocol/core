@@ -171,6 +171,10 @@ describe(`SingleCollateralFactoryTest`, function () {
         expect(deploy1.vaultParameters).not.to.be.equal(deploy2.vaultParameters);
         expect(deploy1.vaultParameters).not.to.be.equal(deploy3.vaultParameters);
         expect(deploy2.vaultParameters).not.to.be.equal(deploy3.vaultParameters);
+
+        expect(await this.factory.vaultDeploy(deploy1.vault)).to.be.equal(deployId1)
+        expect(await this.factory.vaultDeploy(deploy2.vault)).to.be.equal(deployId2)
+        expect(await this.factory.vaultDeploy(deploy3.vault)).to.be.equal(deployId3)
     })
 
     it("check simple borrow and repay", async function () {

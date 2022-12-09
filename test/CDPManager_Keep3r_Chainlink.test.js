@@ -6,6 +6,7 @@ const balance = require('./helpers/balances');
 const BN = web3.utils.BN;
 const { expect } = require('chai');
 const utils = require('./helpers/utils');
+const increaseTime = require("./helpers/timeTravel");
 
 [
 	'chainlinkMainAsset',
@@ -114,6 +115,40 @@ const utils = require('./helpers/utils');
 
 					expect(mainAmountInPosition).to.be.bignumber.equal(new BN(0));
 					expect(usdpBalance).to.be.bignumber.equal(new BN(0));
+				})
+
+				it('repay all without withdrawal and then with withdrawal with stability fee', async function() {
+					await this.vaultParameters.setStabilityFee(this.mainCollateral.address, 3000); // 3% st. fee
+					// get some usdp to cover fee
+					await this.usdp.setMinter(deployer, true);
+					await this.usdp.mint(deployer, ether('2'));
+
+					await this.usdp.approve(this.vault.address, ether('1000'));
+
+					const mainAmount = ether('100');
+					const usdpAmount = ether('20');
+
+					const collateralBalanceBefore = await this.mainCollateral.balanceOf(deployer);
+
+					await this.utils.join(this.mainCollateral, mainAmount, usdpAmount);
+
+					await increaseTime(3600 * 24);
+
+					const collateralBalanceAfter = await this.mainCollateral.balanceOf(deployer);
+
+					await this.vaultManager.repayAll(this.mainCollateral.address, false);
+
+					expect(await this.vault.getFee(this.mainCollateral.address, deployer)).to.be.bignumber.equal(new BN(0))
+					expect(await this.vault.debts(this.mainCollateral.address, deployer)).to.be.bignumber.equal(new BN(0))
+
+					expect(await this.mainCollateral.balanceOf(deployer)).to.be.bignumber.equal(collateralBalanceAfter)
+
+					const usdpBalanceAfterFirstRepay = await this.usdp.balanceOf(deployer)
+
+					await this.vaultManager.repayAll(this.mainCollateral.address, true);
+
+					expect(await this.mainCollateral.balanceOf(deployer)).to.be.bignumber.equal(collateralBalanceBefore)
+					expect(await this.usdp.balanceOf(deployer)).to.be.bignumber.equal(usdpBalanceAfterFirstRepay)
 				})
 
 				it('Should partially repay the debt of a position and withdraw collaterals partially', async function() {
