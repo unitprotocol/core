@@ -109,6 +109,10 @@ async function _deploymentStep(name, args, options) {
         ) {
             convertedArgs.push(arg);
         }
+        else if (typeof arg == 'string' && arg.startsWith('str:')
+        ) {
+            convertedArgs.push(arg.replace('str:', ''));
+        }
         else if (typeof arg == 'object' && 'addressAtNextNonce' in arg) {
             const nonce = await signer.getTransactionCount();
             convertedArgs.push("0x" + ethers.utils.keccak256(

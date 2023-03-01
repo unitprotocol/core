@@ -157,7 +157,7 @@ contract CDPManager01 is BaseCDPManager {
         uint fee = vault.getFee(asset, msg.sender);
 
         // check usefulness of tx
-        require(debt != 0 || fee != 0, "Unit Protocol: USELESS_TX");
+        require(debt != 0 || fee != 0 || withdraw, "Unit Protocol: USELESS_TX");
 
         if (fee != 0) {
             vault.chargeFee(vault.usdp(), msg.sender, fee);

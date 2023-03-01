@@ -9,7 +9,7 @@ contract('USDP', function ([deployer, owner, recipient, anotherAccount]) {
     beforeEach(async function () {
         const parameters = await Parameters.new(deployer, deployer);
         await parameters.setVaultAccess(deployer, true);
-        this.token = await USDP.new(parameters.address);
+        this.token = await USDP.new(parameters.address, "USDP Stablecoin", "USDP");
         await this.token.setMinter(deployer, true);
         await this.token.mint(owner, new BN(100));
     });
