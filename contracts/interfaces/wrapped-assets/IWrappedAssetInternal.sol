@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: bsl-1.1
 
 /*
-  Copyright 2021 Unit Protocol: Artem Zakharov (az@unit.xyz).
+  Copyright 2022 Unit Protocol: Artem Zakharov (az@unit.xyz).
 */
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * @dev For upgradeable/clones contracts use inheritance from IWrappedAssetUpgradeable.
- * @dev For dependencies in unit protocol use this interface
- * @dev todo on update wsslp replace body with IWrappedAssetInternal
+ * @dev wrapped assets methods/events. To inherit by IWrappedAsset* interfaces
  */
-interface IWrappedAsset is IERC20 /* IERC20WithOptional */ {
+interface IWrappedAssetInternal {
 
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
