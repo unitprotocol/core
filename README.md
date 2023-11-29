@@ -1,6 +1,10 @@
 # Unit Protocol
 
-[Unit Protocol](https://unit.xyz/) is a decentralized protocol that allows you to mint stablecoin [USDP](contracts/USDP.sol) using a variety of tokens as collateral. See the [docs](https://docs.unit.xyz/).
+[Unit Protocol](https://unit.xyz/) is a decentralized protocol that allows you to mint stablecoin [USDP](contracts/USDP.sol) using a variety of tokens as collateral. 
+
+The Unit Protocol offers a robust infrastructure for stablecoin minting and management, backed by a diverse range of collateral assets. It emphasizes security, flexibility, and efficient governance, making it a comprehensive solution in the DeFi space.
+
+See the [docs](https://unit-protocol.gitbook.io/docs/).
 
 ## Deployed contracts
 
