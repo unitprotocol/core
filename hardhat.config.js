@@ -131,4 +131,10 @@ module.exports = {
     mocha: {
         timeout: 180000, // requests to fork network could be slow
     },
+
+    docgen: {
+        outputDir: 'doc/dev-full',
+        pages: 'items',
+        exclude: ['interfaces', 'test-helpers', 'wrapped-assets/test-helpers'],
+    },
 };
