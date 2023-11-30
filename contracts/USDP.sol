@@ -8,11 +8,11 @@ pragma solidity 0.7.6;
 import "./VaultParameters.sol";
 import "./helpers/SafeMath.sol";
 
-
-/**
- * @title USDP token implementation
- * @dev ERC20 token
- **/
+/* 
+ * @title USDP Stablecoin Contract
+ * @notice Implements the operations of the USDP Stablecoin
+ * @dev This contract handles minting, burning, and transferring of USDP tokens.
+ */
 contract USDP is Auth {
     using SafeMath for uint;
 
@@ -166,6 +166,12 @@ contract USDP is Auth {
         return true;
     }
 
+    /**
+     * @dev Internal function to set approval of tokens for a given spender
+     * @param owner The address of the token owner
+     * @param spender The address of the spender
+     * @param amount The amount of tokens to approve
+     */
     function _approve(address owner, address spender, uint amount) internal virtual {
         require(owner != address(0), "Unit Protocol: approve from the zero address");
         require(spender != address(0), "Unit Protocol: approve to the zero address");
@@ -174,6 +180,11 @@ contract USDP is Auth {
         emit Approval(owner, spender, amount);
     }
 
+    /**
+     * @dev Internal function to burn tokens from a given address
+     * @param from The address from which tokens will be burned
+     * @param amount The amount of tokens to burn
+     */
     function _burn(address from, uint amount) internal virtual {
         balanceOf[from] = balanceOf[from].sub(amount);
         totalSupply = totalSupply.sub(amount);

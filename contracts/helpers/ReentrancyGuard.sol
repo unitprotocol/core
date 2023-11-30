@@ -2,7 +2,8 @@
 
 pragma solidity 0.7.6;
 
-/**
+/* 
+ * @title ReentrancyGuard
  * @dev Contract module that helps prevent reentrant calls to a function.
  *
  * Inheriting from `ReentrancyGuard` will make the {nonReentrant} modifier
@@ -35,6 +36,9 @@ contract ReentrancyGuard {
 
     uint256 private _status;
 
+    /**
+     * @dev Initializes the contract by setting the `_status` variable to `_NOT_ENTERED`.
+     */
     constructor () {
         _status = _NOT_ENTERED;
     }

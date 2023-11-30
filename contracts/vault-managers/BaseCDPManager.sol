@@ -23,8 +23,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title BaseCDPManager
- * @dev all common logic should be moved here in future
- **/
+ * @notice Abstract contract for Collateralized Debt Position (CDP) management in Unit Protocol.
+ * @dev Contains common logic for CDP management, with future scope for extension.
+ */
 abstract contract BaseCDPManager is ReentrancyGuard {
     using SafeMath for uint;
 
@@ -71,12 +72,13 @@ abstract contract BaseCDPManager is ReentrancyGuard {
     }
 
     /**
+     * @notice Constructs the BaseCDPManager contract.
      * @param _vaultManagerParameters The address of the contract with Vault manager parameters
      * @param _vaultManagerBorrowFeeParameters The address of the vault manager borrow fee parameters
      * @param _oracleRegistry The address of the oracle registry
      * @param _cdpRegistry The address of the CDP registry
      * @param _swappersRegistry The address of the swappers registry
-     **/
+     */
     constructor(
         address _vaultManagerParameters,
         address _vaultManagerBorrowFeeParameters,
@@ -104,7 +106,12 @@ abstract contract BaseCDPManager is ReentrancyGuard {
     }
 
     /**
-     * @notice Charge borrow fee if needed
+     * @notice Charges a borrow fee if needed when borrowing USDP against collateral.
+     * @param asset The address of the collateral asset.
+     * @param user The address of the user borrowing USDP.
+     * @param usdpAmount The amount of USDP being borrowed.
+     * @return borrowFee The calculated borrow fee.
+     * @dev Throws an error if the USDP allowance for the fee is not approved by the user.
      */
     function _chargeBorrowFee(address asset, address user, uint usdpAmount) internal returns (uint borrowFee) {
         borrowFee = vaultManagerBorrowFeeParameters.calcBorrowFeeAmount(asset, usdpAmount);
@@ -123,7 +130,13 @@ abstract contract BaseCDPManager is ReentrancyGuard {
         );
     }
 
-    // decreases debt
+    /**
+     * @notice Repays a portion of the debt in USDP.
+     * @param asset The address of the collateral asset.
+     * @param owner The owner of the debt.
+     * @param usdpAmount The amount of USDP to repay.
+     * @dev Destroys the CDP if the debt after repayment is zero.
+     */
     function _repay(address asset, address owner, uint usdpAmount) internal {
         uint fee = vault.calculateFee(asset, owner, usdpAmount);
         vault.chargeFee(vault.usdp(), owner, fee);
@@ -137,11 +150,11 @@ abstract contract BaseCDPManager is ReentrancyGuard {
     }
 
     /**
-     * @dev Calculates liquidation price
-     * @param asset The address of the collateral
-     * @param owner The owner of the position
-     * @return Q112-encoded liquidation price
-     **/
+     * @notice Calculates the liquidation price for a given collateral and owner.
+     * @param asset The address of the collateral.
+     * @param owner The owner of the position.
+     * @return The liquidation price, Q112-encoded.
+     */
     function liquidationPrice_q112(
         address asset,
         address owner
@@ -157,7 +170,11 @@ abstract contract BaseCDPManager is ReentrancyGuard {
     }
 
     /**
-     * @dev Returned asset amount + charged stability fee on this amount = repayment (in fact <= repayment bcs of rounding error)
+     * @notice Calculates the principal amount for a given repayment.
+     * @param asset The address of the collateral asset.
+     * @param owner The owner of the debt.
+     * @param repayment The total repayment amount.
+     * @return The principal amount of the repayment.
      */
     function _calcPrincipal(address asset, address owner, uint repayment) internal view returns (uint) {
         uint multiplier = repayment;
@@ -176,12 +193,12 @@ abstract contract BaseCDPManager is ReentrancyGuard {
     }
 
     /**
-     * @dev Determines whether a position is liquidatable
-     * @param asset The address of the collateral
-     * @param owner The owner of the position
-     * @param usdValue_q112 Q112-encoded USD value of the collateral
-     * @return boolean value, whether a position is liquidatable
-     **/
+     * @notice Determines whether a position is liquidatable.
+     * @param asset The address of the collateral.
+     * @param owner The owner of the position.
+     * @param usdValue_q112 Q112-encoded USD value of the collateral.
+     * @return A boolean indicating whether the position is liquidatable.
+     */
     function _isLiquidatablePosition(
         address asset,
         address owner,
@@ -195,6 +212,12 @@ abstract contract BaseCDPManager is ReentrancyGuard {
         return debt.mul(100).mul(Q112).div(usdValue_q112) >= vaultManagerParameters.liquidationRatio(asset);
     }
 
+    /**
+     * @notice Ensures the existence of an oracle for a given asset.
+     * @param asset The address of the asset.
+     * @return oracleType The type of the oracle.
+     * @dev Throws an error if the oracle type is invalid or the oracle is disabled.
+     */
     function _ensureOracle(address asset) internal view virtual returns (uint oracleType) {
         oracleType = oracleRegistry.oracleTypeByAsset(asset);
         require(oracleType != 0, "Unit Protocol: INVALID_ORACLE_TYPE");
@@ -203,6 +226,13 @@ abstract contract BaseCDPManager is ReentrancyGuard {
         require(oracle != address(0), "Unit Protocol: DISABLED_ORACLE");
     }
 
+    /**
+     * @notice Mints USDP against the provided collateral.
+     * @param _asset The address of the collateral asset.
+     * @param _owner The owner of the collateral.
+     * @param _amount The amount of USDP to mint.
+     * @return usdpAmountToUser The net amount of USDP provided to the user after fees.
+     */
     function _mintUsdp(address _asset, address _owner, uint _amount) internal returns (uint usdpAmountToUser) {
         uint oracleType = _ensureOracle(_asset);
 
@@ -219,6 +249,16 @@ abstract contract BaseCDPManager is ReentrancyGuard {
         return _amount.sub(borrowFee);
     }
 
+    /**
+     * @notice Swaps USDP to a specified asset and performs checks on the swapped amount.
+     * @param swapper The ISwapper interface to perform the swap.
+     * @param _asset The address of the asset to swap to.
+     * @param _usdpAmountToSwap The amount of USDP to swap.
+     * @param _minSwappedAssetAmount The minimum acceptable amount of the asset to receive from the swap.
+     * @return swappedAssetAmount The actual amount of the asset received from the swap.
+     * @dev Verifies that the swapped amount is at least the minimum specified and the balance changes are as expected.
+     *      Throws an error if the swapped amount is less than the minimum or if the balance changes are not as expected.
+     */
     function _swapUsdpToAssetAndCheck(ISwapper swapper, address _asset, uint _usdpAmountToSwap, uint _minSwappedAssetAmount) internal returns(uint swappedAssetAmount) {
         uint assetBalanceBeforeSwap = IERC20(_asset).balanceOf(msg.sender);
         uint usdpBalanceBeforeSwap = usdp.balanceOf(msg.sender);
@@ -230,6 +270,16 @@ abstract contract BaseCDPManager is ReentrancyGuard {
         require(usdp.balanceOf(msg.sender) == usdpBalanceBeforeSwap.sub(_usdpAmountToSwap), "Unit Protocol: INVALID_USDP_AMOUNT_GOT_FOR_SWAP_BY_SWAPPER");
     }
 
+    /**
+     * @notice Swaps a specified asset to USDP and performs checks on the swapped amount.
+     * @param swapper The ISwapper interface to perform the swap.
+     * @param _asset The address of the asset to swap.
+     * @param _assetAmountToSwap The amount of the asset to swap.
+     * @param _minSwappedUsdpAmount The minimum acceptable amount of USDP to receive from the swap.
+     * @return swappedUsdpAmount The actual amount of USDP received from the swap.
+     * @dev Verifies that the swapped amount is at least the minimum specified and the balance changes are as expected.
+     *      Throws an error if the swapped amount is less than the minimum or if the balance changes are not as expected.
+     */
     function _swapAssetToUsdpAndCheck(ISwapper swapper, address _asset, uint _assetAmountToSwap, uint _minSwappedUsdpAmount) internal returns(uint swappedUsdpAmount) {
         uint assetBalanceBeforeSwap = IERC20(_asset).balanceOf(msg.sender);
         uint usdpBalanceBeforeSwap = usdp.balanceOf(msg.sender);

@@ -14,26 +14,49 @@ import "../interfaces/IOracleEth.sol";
 /**
  * @title BearingAssetOracle
  * @dev Wrapper to quote bearing assets like xSUSHI
- **/
+ */
 contract BearingAssetOracle is IOracleUsd, Auth  {
 
     IOracleRegistry public immutable oracleRegistry;
 
+    // Maps bearing asset to its underlying asset
     mapping (address => address) underlyings;
 
+    /**
+     * @dev Emitted when a new underlying is set for a bearing asset.
+     * @param bearing The address of the bearing asset
+     * @param underlying The address of the underlying asset
+     */
     event NewUnderlying(address indexed bearing, address indexed underlying);
 
+    /**
+     * @dev Constructs the BearingAssetOracle contract.
+     * @param _vaultParameters The address of the VaultParameters contract
+     * @param _oracleRegistry The address of the OracleRegistry contract
+     */
     constructor(address _vaultParameters, address _oracleRegistry) Auth(_vaultParameters) {
         require(_vaultParameters != address(0) && _oracleRegistry != address(0), "Unit Protocol: ZERO_ADDRESS");
         oracleRegistry = IOracleRegistry(_oracleRegistry);
     }
 
+    /**
+     * @dev Sets the underlying asset for a given bearing asset.
+     * @notice Only the manager can call this function.
+     * @param bearing The address of the bearing asset
+     * @param underlying The address of the underlying asset
+     */
     function setUnderlying(address bearing, address underlying) external onlyManager {
         underlyings[bearing] = underlying;
         emit NewUnderlying(bearing, underlying);
     }
 
-    // returns Q112-encoded value
+    /**
+     * @dev Returns the USD value of the bearing asset provided.
+     * @notice Returns a Q112-encoded value (to maintain precision).
+     * @param bearing The address of the bearing asset
+     * @param amount The amount of the bearing asset
+     * @return The USD value of the bearing asset amount provided
+     */
     function assetToUsd(address bearing, uint amount) public override view returns (uint) {
         if (amount == 0) return 0;
         (address underlying, uint underlyingAmount) = bearingToUnderlying(bearing, amount);
@@ -42,6 +65,12 @@ contract BearingAssetOracle is IOracleUsd, Auth  {
         return _oracleForUnderlying.assetToUsd(underlying, underlyingAmount);
     }
 
+    /**
+     * @dev Converts the amount of bearing asset into the equivalent amount of its underlying asset.
+     * @param bearing The address of the bearing asset
+     * @param amount The amount of the bearing asset
+     * @return The address of the underlying asset and the equivalent amount of the underlying asset
+     */
     function bearingToUnderlying(address bearing, uint amount) public view returns (address, uint) {
         address _underlying = underlyings[bearing];
         require(_underlying != address(0), "Unit Protocol: UNDEFINED_UNDERLYING");

@@ -9,11 +9,14 @@ pragma experimental ABIEncoderV2;
 import "./ChainlinkedKeydonixOracleMainAssetAbstract.sol";
 import "./KeydonixOracleAbstract.sol";
 
-
 /**
- * @title ChainlinkedKeydonixOraclePoolTokenAbstract
- **/
+ * @title Abstract contract for Chainlinked Keydonix Oracle for Pool Tokens
+ * @dev This abstract contract provides an interface for Chainlinked Keydonix Oracle for Pool Tokens.
+ */
 abstract contract ChainlinkedKeydonixOraclePoolTokenAbstract is KeydonixOracleAbstract {
 
+    /**
+     * @notice Reference to the ChainlinkedKeydonixOracleMainAssetAbstract contract
+     */
     ChainlinkedKeydonixOracleMainAssetAbstract public uniswapOracleMainAsset;
 }

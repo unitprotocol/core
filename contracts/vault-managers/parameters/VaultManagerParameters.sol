@@ -10,27 +10,32 @@ import "../../VaultParameters.sol";
 
 /**
  * @title VaultManagerParameters
- **/
+ * @dev Contract to manage parameters for vaults in the Unit Protocol system.
+ */
 contract VaultManagerParameters is Auth {
 
-    // determines the minimum percentage of COL token part in collateral, 0 decimals
+    /* @notice Minimum percentage of COL token part in collateral (0 decimals) */
     mapping(address => uint) public minColPercent;
 
-    // determines the maximum percentage of COL token part in collateral, 0 decimals
+    /* @notice Maximum percentage of COL token part in collateral (0 decimals) */
     mapping(address => uint) public maxColPercent;
 
-    // map token to initial collateralization ratio; 0 decimals
+    /* @notice Initial collateralization ratio for a given token (0 decimals) */
     mapping(address => uint) public initialCollateralRatio;
 
-    // map token to liquidation ratio; 0 decimals
+    /* @notice Liquidation ratio for a given token (0 decimals) */
     mapping(address => uint) public liquidationRatio;
 
-    // map token to liquidation discount; 3 decimals
+    /* @notice Liquidation discount for a given token (3 decimals) */
     mapping(address => uint) public liquidationDiscount;
 
-    // map token to devaluation period in blocks
+    /* @notice Devaluation period in blocks for a given token */
     mapping(address => uint) public devaluationPeriod;
 
+    /**
+     * @dev Initializes the contract by setting a `vaultParameters` address.
+     * @param _vaultParameters Address of the VaultParameters contract.
+     */
     constructor(address _vaultParameters) Auth(_vaultParameters) {}
 
     /**

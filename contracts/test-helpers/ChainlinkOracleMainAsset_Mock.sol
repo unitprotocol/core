@@ -12,19 +12,31 @@ import "../interfaces/IERC20WithOptional.sol";
 import "../VaultParameters.sol";
 import "../oracles/OracleSimple.sol";
 
-
 /**
  * @title ChainlinkOracleMainAsset_Mock
- * @dev Calculates the USD price of desired tokens
- **/
+ * @dev Mock contract to calculate the USD price of desired tokens using Chainlink oracles.
+ */
 contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
     using SafeMath for uint;
 
+    // Mapping of token addresses to their respective USD Chainlink Price Feed aggregators
     mapping (address => address) public usdAggregators;
+
+    // Mapping of token addresses to their respective ETH Chainlink Price Feed aggregators
     mapping (address => address) public ethAggregators;
 
+    // Constant to scale asset price
     uint public constant Q112 = 2 ** 112;
 
+    /**
+     * @notice Constructor sets initial aggregators for tokens
+     * @param tokenAddresses1 Array of token addresses for which USD aggregators are being set
+     * @param _usdAggregators Array of Chainlink USD aggregator addresses corresponding to token addresses
+     * @param tokenAddresses2 Array of token addresses for which ETH aggregators are being set
+     * @param _ethAggregators Array of Chainlink ETH aggregator addresses corresponding to token addresses
+     * @param weth Address of the Wrapped Ether token
+     * @param vaultParameters Address of the VaultParameters contract
+     */
     constructor(
         address[] memory tokenAddresses1,
         address[] memory _usdAggregators,
@@ -51,6 +63,13 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
         }
     }
 
+    /**
+     * @notice Sets or updates the USD and ETH aggregators for the given tokens
+     * @param tokenAddresses1 Array of token addresses for which USD aggregators are being set or updated
+     * @param _usdAggregators Array of new Chainlink USD aggregator addresses
+     * @param tokenAddresses2 Array of token addresses for which ETH aggregators are being set or updated
+     * @param _ethAggregators Array of new Chainlink ETH aggregator addresses
+     */
     function setAggregators(
         address[] calldata tokenAddresses1,
         address[] calldata _usdAggregators,
@@ -70,11 +89,12 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
     }
 
     /**
-     * @notice {asset}/USD or {asset}/ETH pair must be registered at Chainlink
+     * @notice Converts the amount of the given asset to its equivalent in USD
+     * @dev The {asset}/USD or {asset}/ETH pair must be registered at Chainlink
      * @param asset The token address
-     * @param amount Amount of tokens
-     * @return The price of asset amount in USD
-     **/
+     * @param amount The amount of tokens to convert
+     * @return The equivalent amount of the asset in USD
+     */
     function assetToUsd(address asset, uint amount) public override view returns (uint) {
         if (amount == 0) {
             return 0;
@@ -85,6 +105,12 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
         return ethToUsd(assetToEth(asset, amount));
     }
 
+    /**
+     * @dev Internal function to convert the amount of the given asset to its equivalent in USD
+     * @param asset The token address
+     * @param amount The amount of tokens to convert
+     * @return The equivalent amount of the asset in USD
+     */
     function _assetToUsd(address asset, uint amount) internal view returns (uint) {
         IAggregator agg = IAggregator(usdAggregators[asset]);
         (, int256 answer, , uint256 updatedAt, ) = agg.latestRoundData();
@@ -99,11 +125,12 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
     }
 
     /**
-     * @notice {asset}/ETH pair must be registered at Chainlink
+     * @notice Converts the amount of the given asset to its equivalent in ETH
+     * @dev The {asset}/ETH pair must be registered at Chainlink
      * @param asset The token address
-     * @param amount Amount of tokens
-     * @return The price of asset amount in ETH
-     **/
+     * @param amount The amount of tokens to convert
+     * @return The equivalent amount of the asset in ETH
+     */
     function assetToEth(address asset, uint amount) public view override returns (uint) {
         if (amount == 0) {
             return 0;
@@ -133,8 +160,9 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
 
     /**
      * @notice ETH/USD price feed from Chainlink, see for more info: https://feeds.chain.link/eth-usd
-     * returns The price of given amount of Ether in USD (0 decimals)
-     **/
+     * @param ethAmount The amount of Ether to convert
+     * @return The price of given amount of Ether in USD (0 decimals)
+     */
     function ethToUsd(uint ethAmount) public override view returns (uint) {
         IAggregator agg = IAggregator(usdAggregators[WETH]);
         (, int256 answer, , uint256 updatedAt, ) = agg.latestRoundData();
@@ -142,10 +170,15 @@ contract ChainlinkOracleMainAsset_Mock is ChainlinkedOracleSimple, Auth {
         return ethAmount.mul(uint(answer)).div(10 ** agg.decimals());
     }
 
-    function _usdToEth(uint ethAmount) internal view returns (uint) {
+    /**
+     * @dev Internal function to convert the given amount of USD to its equivalent in ETH
+     * @param usdAmount The amount of USD to convert
+     * @return The equivalent amount of USD in ETH
+     */
+    function _usdToEth(uint usdAmount) internal view returns (uint) {
         IAggregator agg = IAggregator(usdAggregators[WETH]);
         (, int256 answer, , uint256 updatedAt, ) = agg.latestRoundData();
         require(updatedAt > block.timestamp - 6 hours, "Unit Protocol: STALE_CHAINLINK_PRICE");
-        return ethAmount.mul(10 ** agg.decimals()).div(uint(answer));
+        return usdAmount.mul(10 ** agg.decimals()).div(uint(answer));
     }
 }

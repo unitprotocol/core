@@ -22,7 +22,10 @@ import '../helpers/SafeMath.sol';
 
 /**
  * @title CDPManager01_Fallback
- **/
+ * @dev This contract allows users to manage their Collateralized Debt Positions (CDPs).
+ * Users can deposit collateral tokens, borrow stablecoins against them, and repay the debt.
+ * This contract includes functionality for leveraged positions and handling wrapped tokens.
+ */
 contract CDPManager01_Fallback is BaseCDPManager {
     using SafeMath for uint;
 

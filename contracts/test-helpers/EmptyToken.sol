@@ -13,6 +13,13 @@ contract EmptyToken is ERC20, IAssetTestsMint {
 
     event Burn(address indexed burner, uint value);
 
+    /**
+     * @dev Burns a specific amount of tokens from the caller.
+     * @param _value The amount of token to be burned.
+     * @return A boolean that indicates if the operation was successful.
+     * @notice This function decreases the total supply of tokens.
+     * @notice The caller must have a balance of at least `_value`.
+     */
     function burn(uint _value) public returns (bool) {
         require(_value <= balanceOf(msg.sender), "BURN_INSUFFICIENT_BALANCE");
 
@@ -20,6 +27,14 @@ contract EmptyToken is ERC20, IAssetTestsMint {
         return true;
     }
 
+    /**
+     * @dev Burns a specific amount of tokens from the `_owner` on behalf of the caller.
+     * @param _owner The address of the token owner.
+     * @param _value The amount of token to be burned.
+     * @return A boolean that indicates if the operation was successful.
+     * @notice This function decreases the total supply of tokens.
+     * @notice The caller must have allowance for `_owner`'s tokens of at least `_value`.
+     */
     function burnFrom(address _owner, uint _value) public returns (bool) {
         require(_owner != address(0), "ZERO_ADDRESS");
         require(_value <= balanceOf(_owner), "BURNFROM_INSUFFICIENT_BALANCE");
@@ -29,6 +44,16 @@ contract EmptyToken is ERC20, IAssetTestsMint {
         return true;
     }
 
+    /**
+     * @dev Constructor to create a new EmptyToken
+     * @param _name Name of the new token.
+     * @param _symbol Symbol of the new token.
+     * @param _decimals Number of decimals of the new token.
+     * @param _totalSupply Initial total supply of tokens.
+     * @param _firstHolder Address that will receive the initial supply.
+     * @notice The `_firstHolder` cannot be the zero address.
+     * @notice The `_symbol` and `_name` are validated by `checkSymbolAndName`.
+     */
     constructor(
         string memory _name,
         string memory _symbol,
@@ -45,7 +70,13 @@ contract EmptyToken is ERC20, IAssetTestsMint {
         _mint(_firstHolder, _totalSupply);
     }
 
-    // Make sure symbol has 3-8 chars in [A-Za-z._] and name has up to 128 chars.
+    /**
+     * @dev Validates the symbol and name of the token.
+     * @param _symbol The symbol of the token.
+     * @param _name The name of the token.
+     * @notice The symbol must be 3-8 characters in `[A-Za-z._]`.
+     * @notice The name must be up to 128 characters and printable ASCII.
+     */
     function checkSymbolAndName(
         string memory _symbol,
         string memory _name
@@ -70,6 +101,12 @@ contract EmptyToken is ERC20, IAssetTestsMint {
         }
     }
 
+    /**
+     * @dev Mints tokens to the specified address. Can only be called by the contract owner.
+     * @param to The address that will receive the minted tokens.
+     * @param amount The amount of tokens to mint.
+     * @notice This function increases the total supply of tokens.
+     */
     function tests_mint(address to, uint amount) public override {
         _mint(to, amount);
     }

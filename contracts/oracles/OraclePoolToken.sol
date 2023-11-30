@@ -12,11 +12,10 @@ import "../interfaces/IOracleUsd.sol";
 import "../interfaces/IOracleRegistry.sol";
 import "../interfaces/IToken.sol";
 
-
 /**
  * @title OraclePoolToken
  * @dev Calculates the USD price of Uniswap LP tokens
- **/
+ */
 contract OraclePoolToken is IOracleUsd {
     using SafeMath for uint;
 
@@ -26,6 +25,10 @@ contract OraclePoolToken is IOracleUsd {
 
     uint public immutable Q112 = 2 ** 112;
 
+    /**
+     * @notice Constructs the OraclePoolToken contract
+     * @param _oracleRegistry Address of the OracleRegistry contract
+     */
     constructor(address _oracleRegistry) {
         oracleRegistry = IOracleRegistry(_oracleRegistry);
         WETH = IOracleRegistry(_oracleRegistry).WETH();
@@ -113,6 +116,12 @@ contract OraclePoolToken is IOracleUsd {
         return IOracleEth(oracleRegistry.oracleByAsset(WETH)).ethToUsd(priceInEth);
     }
 
+    /**
+     * @notice Calculates the square root of a given number
+     * @param x The number to calculate the square root of
+     * @return y The square root of the given number
+     * @dev Uses the Babylonian method (also known as Hero's method) for calculating square roots
+     */
     function sqrt(uint x) internal pure returns (uint y) {
         if (x > 3) {
             uint z = x / 2 + 1;
