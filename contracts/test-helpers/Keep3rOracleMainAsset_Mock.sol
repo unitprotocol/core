@@ -82,7 +82,7 @@ contract Keep3rOracleMainAsset_Mock is ChainlinkedOracleSimple {
         // WETH reserve of {Token}/WETH pool
         uint wethReserve = ERC20Like(WETH).balanceOf(uniswapPair);
 
-        return amount.mul(wethReserve).mul(Q112);
+        return amount.mul(wethReserve).mul(Q112).div(tokenReserve);
     }
 
     /**
