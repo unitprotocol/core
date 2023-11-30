@@ -20,25 +20,39 @@ import "../../interfaces/wrapped-assets/ISushiSwapLpToken.sol";
 
 /**
  * @title ShibaSwapWrappedLp
+ * @dev Contract for wrapping ShibaSwap LP tokens.
+ *      Inherits from IWrappedAsset, Auth2, ERC20, and ReentrancyGuard.
  **/
 contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     using SafeMath for uint256;
 
+    // Unique identifier for Unit Protocol Wrapped Asset
     bytes32 public constant override isUnitProtocolWrappedAsset = keccak256("UnitProtocolWrappedAsset");
 
+    // References to external contracts and immutable variables
     IVault public immutable vault;
     ITopDog public immutable topDog;
     uint256 public immutable topDogPoolId;
     IERC20 public immutable boneToken;
-
     address public immutable userProxyImplementation;
+
+    // User proxy mapping
     mapping(address => WSSLPUserProxy) public usersProxies;
 
+    // Allowed selectors for bone lockers
     mapping (address => mapping (bytes4 => bool)) allowedBoneLockersSelectors;
 
+    // Fee management variables
     address public feeReceiver;
     uint8 public feePercent = 10;
 
+    /**
+     * @dev Constructor for WrappedShibaSwapLp.
+     * @param _vaultParameters Address of the vault parameters.
+     * @param _topDog Address of the TopDog contract.
+     * @param _topDogPoolId Pool ID for the TopDog contract.
+     * @param _feeReceiver Address where fees are sent.
+     */
     constructor(
         address _vaultParameters,
         ITopDog _topDog,
@@ -79,12 +93,26 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         userProxyImplementation = address(new WSSLPUserProxy(_topDog, _topDogPoolId));
     }
 
+
+
+    /**
+     * @dev Sets the fee receiver address.
+     * @param _feeReceiver The address to which fees should be sent.
+     * @notice Only callable by the contract manager.
+     * @emit FeeReceiverChanged Emits the new fee receiver address.
+     */
     function setFeeReceiver(address _feeReceiver) public onlyManager {
         feeReceiver = _feeReceiver;
 
         emit FeeReceiverChanged(_feeReceiver);
     }
 
+    /**
+     * @dev Sets the fee percentage.
+     * @param _feePercent The new fee percentage, cannot exceed 50%.
+     * @notice Only callable by the contract manager.
+     * @emit FeeChanged Emits the new fee percentage.
+     */
     function setFee(uint8 _feePercent) public onlyManager {
         require(_feePercent <= 50, "Unit Protocol Wrapped Assets: INVALID_FEE");
         feePercent = _feePercent;
@@ -93,32 +121,38 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     }
 
     /**
-     * @dev in case of change bone locker to unsupported by current methods one
+     * @dev Allows or disallows a selector on a bone locker.
+     * @param _boneLocker Address of the bone locker.
+     * @param _selector The function selector to allow or disallow.
+     * @param _isAllowed Boolean value indicating whether the selector is allowed.
+     * @notice Only callable by the contract manager.
      */
     function setAllowedBoneLockerSelector(address _boneLocker, bytes4 _selector, bool _isAllowed) public onlyManager {
         allowedBoneLockersSelectors[_boneLocker][_selector] = _isAllowed;
-
         if (_isAllowed) {
             emit AllowedBoneLockerSelectorAdded(_boneLocker, _selector);
         } else {
-             emit AllowedBoneLockerSelectorRemoved(_boneLocker, _selector);
+            emit AllowedBoneLockerSelectorRemoved(_boneLocker, _selector);
         }
     }
 
-
     /**
-     * @notice Approve sslp token to spend from user proxy (in case of change sslp)
+     * @dev Approves the SSLP token to be spent by the TopDog contract.
+     * @notice Should be called in case of SSLP token change.
+     * @notice Only callable by the user proxy.
      */
     function approveSslpToTopDog() public nonReentrant {
         WSSLPUserProxy userProxy = _requireUserProxy(msg.sender);
         IERC20 sslpToken = getUnderlyingToken();
-
         userProxy.approveSslpToTopDog(sslpToken);
     }
 
     /**
-     * @notice Get tokens from user, send them to TopDog, sent to user wrapped tokens
-     * @dev only user or CDPManager could call this method
+     * @dev Allows deposit of SSLP tokens and issues wrapped tokens to the user.
+     * @param _user Address of the user making the deposit.
+     * @param _amount Amount of SSLP tokens to deposit.
+     * @notice Only callable by the user or a CDPManager.
+     * @notice Emits a Deposit event upon successful deposit.
      */
     function deposit(address _user, uint256 _amount) public override nonReentrant {
         require(_amount > 0, "Unit Protocol Wrapped Assets: INVALID_AMOUNT");
@@ -140,8 +174,11 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     }
 
     /**
-     * @notice Unwrap tokens, withdraw from TopDog and send them to user
-     * @dev only user or CDPManager could call this method
+     * @dev Withdraws SSLP tokens from TopDog and unwraps the tokens.
+     * @param _user Address of the user making the withdrawal.
+     * @param _amount Amount of SSLP tokens to withdraw.
+     * @notice Only callable by the user or a CDPManager.
+     * @notice Emits a Withdraw event upon successful withdrawal.
      */
     function withdraw(address _user, uint256 _amount) public override nonReentrant {
         require(_amount > 0, "Unit Protocol Wrapped Assets: INVALID_AMOUNT");
@@ -160,9 +197,12 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     }
 
     /**
-     * @notice Manually move position (or its part) to another user (for example in case of liquidation)
-     * @dev Important! Use only with additional token transferring outside this function (example: liquidation - tokens are in vault and transferred by vault)
-     * @dev only CDPManager could call this method
+     * @dev Moves a position or its part to another user, typically used in liquidation scenarios.
+     * @param _userFrom Address of the user from whom the position is moved.
+     * @param _userTo Address of the user to whom the position is moved.
+     * @param _amount Amount of the position to be moved.
+     * @notice Only callable by the CDPManager.
+     * @notice Emits PositionMoved event upon successful position transfer.
      */
     function movePosition(address _userFrom, address _userTo, uint256 _amount) public override nonReentrant hasVaultAccess {
         require(_userFrom != address(vault) && _userTo != address(vault), "Unit Protocol Wrapped Assets: NOT_ALLOWED_FOR_VAULT");
@@ -183,8 +223,9 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     }
 
     /**
-     * @notice Calculates pending reward for user. Not taken into account unclaimed reward from BoneLockers.
-     * @notice Use getClaimableRewardFromBoneLocker to calculate unclaimed reward from BoneLockers
+     * @dev Calculates the pending reward for a given user.
+     * @param _user Address of the user for whom to calculate the reward.
+     * @return uint256 Amount of the pending reward for the user.
      */
     function pendingReward(address _user) public override view returns (uint256) {
         WSSLPUserProxy userProxy = usersProxies[_user];
@@ -196,8 +237,9 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     }
 
     /**
-     * @notice Claim pending direct reward for user.
-     * @notice Use claimRewardFromBoneLockers claim reward from BoneLockers
+     * @dev Claims the reward for a given user.
+     * @param _user Address of the user claiming the reward.
+     * @notice Only callable by the user.
      */
     function claimReward(address _user) public override nonReentrant {
         require(_user == msg.sender, "Unit Protocol Wrapped Assets: AUTH_FAILED");
@@ -207,9 +249,10 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     }
 
     /**
-     * @notice Get claimable amount from BoneLocker
-     * @param _user user address
-     * @param _boneLocker BoneLocker to check, pass zero address to check current
+     * @dev Retrieves the claimable amount of reward from a specified BoneLocker.
+     * @param _user Address of the user.
+     * @param _boneLocker Address of the BoneLocker contract.
+     * @return uint256 Claimable amount of reward from the BoneLocker.
      */
     function getClaimableRewardFromBoneLocker(address _user, IBoneLocker _boneLocker) public view returns (uint256) {
         WSSLPUserProxy userProxy = usersProxies[_user];
@@ -232,8 +275,8 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     }
 
     /**
-     * @notice get SSLP token
-     * @dev not immutable since it could be changed in TopDog
+     * @dev Retrieves the underlying SSLP token.
+     * @return IERC20 Address of the underlying SSLP token.
      */
     function getUnderlyingToken() public override view returns (IERC20) {
         (IERC20 _sslpToken,,,) = topDog.poolInfo(topDogPoolId);
@@ -257,6 +300,11 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         emit EmergencyWithdraw(msg.sender, amount);
     }
 
+    /**
+     * @dev Withdraws a specified token from the user proxy to the user.
+     * @param _token Address of the token to withdraw.
+     * @param _amount Amount of the token to withdraw.
+     */
     function withdrawToken(address _token, uint _amount) public nonReentrant {
         WSSLPUserProxy userProxy = _requireUserProxy(msg.sender);
         userProxy.withdrawToken(_token, msg.sender, _amount, feeReceiver, feePercent);
@@ -264,11 +312,24 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
         emit TokenWithdraw(msg.sender, _token, _amount);
     }
 
+    /**
+     * @dev Reads data from a specified BoneLocker.
+     * @param _user Address of the user.
+     * @param _boneLocker Address of the BoneLocker.
+     * @param _callData Calldata for the BoneLocker read.
+     * @return (bool, bytes) Indicates if the operation was successful, and the returned data.
+     */
     function readBoneLocker(address _user, address _boneLocker, bytes calldata _callData) public view returns (bool success, bytes memory data) {
         WSSLPUserProxy userProxy = _requireUserProxy(_user);
         (success, data) = userProxy.readBoneLocker(_boneLocker, _callData);
     }
 
+    /**
+     * @dev Calls a method on a specified BoneLocker.
+     * @param _boneLocker Address of the BoneLocker.
+     * @param _callData Calldata for the BoneLocker call.
+     * @return (bool, bytes) Indicates if the operation was successful, and the returned data.
+     */
     function callBoneLocker(address _boneLocker, bytes calldata _callData) public nonReentrant returns (bool success, bytes memory data) {
         bytes4 selector;
         assembly {
@@ -281,7 +342,10 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     }
 
     /**
-     * @dev Get sslp token for using in constructor
+     * @dev Retrieves the SSLP token address used in the constructor.
+     * @param _topDog Reference to the TopDog contract.
+     * @param _topDogPoolId Pool ID in the TopDog contract.
+     * @return address Address of the SSLP token.
      */
     function getSsLpToken(ITopDog _topDog, uint256 _topDogPoolId) private view returns (address) {
         (IERC20 _sslpToken,,,) = _topDog.poolInfo(_topDogPoolId);
@@ -290,46 +354,74 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     }
 
     /**
-     * @dev Get symbol of sslp token for using in constructor
+     * @dev Retrieves the symbol of the SSLP token used in the constructor.
+     * @param _topDog Reference to the TopDog contract.
+     * @param _topDogPoolId Pool ID in the TopDog contract.
+     * @return string The symbol of the SSLP token.
      */
     function getSsLpTokenSymbol(ITopDog _topDog, uint256 _topDogPoolId) private view returns (string memory) {
         return IERC20WithOptional(getSsLpToken(_topDog, _topDogPoolId)).symbol();
     }
 
     /**
-     * @dev Get name of sslp token for using in constructor
+     * @dev Retrieves the name of the SSLP token used in the constructor.
+     * @param _topDog Reference to the TopDog contract.
+     * @param _topDogPoolId Pool ID in the TopDog contract.
+     * @return string The name of the SSLP token.
      */
     function getSsLpTokenName(ITopDog _topDog, uint256 _topDogPoolId) private view returns (string memory) {
         return IERC20WithOptional(getSsLpToken(_topDog, _topDogPoolId)).name();
     }
 
     /**
-     * @dev Get token0 symbol of sslp token for using in constructor
+     * @dev Retrieves the symbol of the token0 of the SSLP token used in the constructor.
+     * @param _topDog Reference to the TopDog contract.
+     * @param _topDogPoolId Pool ID in the TopDog contract.
+     * @return string The symbol of the token0 of the SSLP token.
      */
     function getSsLpTokenToken0Symbol(ITopDog _topDog, uint256 _topDogPoolId) private view returns (string memory) {
         return IERC20WithOptional(address(ISushiSwapLpToken(getSsLpToken(_topDog, _topDogPoolId)).token0())).symbol();
     }
 
     /**
-     * @dev Get token1 symbol of sslp token for using in constructor
+     * @dev Retrieves the symbol of the token1 of the SSLP token used in the constructor.
+     * @param _topDog Reference to the TopDog contract.
+     * @param _topDogPoolId Pool ID in the TopDog contract.
+     * @return string The symbol of the token1 of the SSLP token.
      */
     function getSsLpTokenToken1Symbol(ITopDog _topDog, uint256 _topDogPoolId) private view returns (string memory) {
         return IERC20WithOptional(address(ISushiSwapLpToken(getSsLpToken(_topDog, _topDogPoolId)).token1())).symbol();
     }
 
     /**
-     * @dev No direct transfers between users allowed since we store positions info in userInfo.
+     * @dev Internal function to handle token transfers, restricting direct transfers between users.
+     * @param sender Address sending the tokens.
+     * @param recipient Address receiving the tokens.
+     * @param amount Amount of tokens to transfer.
+     * @notice Transfers are only allowed to and from the vault contract.
      */
     function _transfer(address sender, address recipient, uint256 amount) internal override onlyVault {
         require(sender == address(vault) || recipient == address(vault), "Unit Protocol Wrapped Assets: AUTH_FAILED");
         super._transfer(sender, recipient, amount);
     }
 
+    /**
+     * @dev Internal function to require the existence of a user proxy.
+     * @param _user Address of the user to check.
+     * @return WSSLPUserProxy Returns the user proxy.
+     * @notice Reverts if the user proxy does not exist.
+     */
     function _requireUserProxy(address _user) internal view returns (WSSLPUserProxy userProxy) {
         userProxy = usersProxies[_user];
         require(address(userProxy) != address(0), "Unit Protocol Wrapped Assets: NO_DEPOSIT");
     }
 
+    /**
+     * @dev Internal function to get or create a user proxy.
+     * @param _user Address of the user.
+     * @param sslpToken SSLP token for which the proxy is created.
+     * @return WSSLPUserProxy Returns the newly created or existing user proxy.
+     */
     function _getOrCreateUserProxy(address _user, IERC20 sslpToken) internal returns (WSSLPUserProxy userProxy) {
         userProxy = usersProxies[_user];
         if (address(userProxy) == address(0)) {
@@ -342,7 +434,10 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
     }
 
     /**
+     * @dev Internal function to create a clone of a target contract.
      * @dev see https://github.com/optionality/clone-factory/blob/master/contracts/CloneFactory.sol
+     * @param target Address of the target contract to clone.
+     * @return address Returns the address of the newly created clone.
      */
     function createClone(address target) internal returns (address result) {
         bytes20 targetBytes = bytes20(target);
@@ -354,4 +449,5 @@ contract WrappedShibaSwapLp is IWrappedAsset, Auth2, ERC20, ReentrancyGuard {
             result := create(0, clone, 0x37)
         }
     }
+
 }

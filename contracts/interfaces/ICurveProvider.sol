@@ -5,6 +5,14 @@
 */
 pragma solidity ^0.7.6;
 
+/**
+ * @title ICurveProvider
+ * @dev Interface for interacting with the Curve protocol's provider contract.
+ */
 interface ICurveProvider {
+    /**
+     * @dev Returns the address of the Curve registry contract.
+     * @return The address of the Curve registry.
+     */
     function get_registry() external view returns (address);
 }

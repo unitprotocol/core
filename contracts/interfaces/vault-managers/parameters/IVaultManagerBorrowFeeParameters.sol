@@ -5,49 +5,59 @@
 */
 pragma solidity ^0.7.6;
 
+/**
+ * @title IVaultManagerBorrowFeeParameters
+ * @dev Interface for managing borrow fee parameters in a vault.
+ */
 interface IVaultManagerBorrowFeeParameters {
 
     /**
-     * @notice 1 = 100% = 10000 basis points
-     **/
+     * @dev Returns the constant representing the number of basis points in one.
+     * @return The number of basis points in one.
+     */
     function BASIS_POINTS_IN_1() external view returns (uint);
 
     /**
-     * @notice Borrow fee receiver
-     **/
+     * @dev Returns the address where borrow fees are sent.
+     * @return The address of the fee receiver.
+     */
     function feeReceiver() external view returns (address);
 
     /**
-     * @notice Sets the borrow fee receiver. Only manager is able to call this function
-     * @param newFeeReceiver The address of fee receiver
-     **/
+     * @dev Sets the address that receives the borrow fee.
+     * @param newFeeReceiver The address of the new fee receiver.
+     * @notice Only the manager can call this function.
+     */
     function setFeeReceiver(address newFeeReceiver) external;
 
     /**
-     * @notice Sets the base borrow fee in basis points (1bp = 0.01% = 0.0001). Only manager is able to call this function
-     * @param newBaseBorrowFeeBasisPoints The borrow fee in basis points
-     **/
+     * @dev Sets the base borrow fee in basis points.
+     * @param newBaseBorrowFeeBasisPoints The new borrow fee in basis points.
+     * @notice Only the manager can call this function.
+     */
     function setBaseBorrowFee(uint16 newBaseBorrowFeeBasisPoints) external;
 
     /**
-     * @notice Sets the borrow fee for a particular collateral in basis points (1bp = 0.01% = 0.0001). Only manager is able to call this function
-     * @param asset The address of the main collateral token
-     * @param newEnabled Is custom fee enabled for asset
-     * @param newFeeBasisPoints The borrow fee in basis points
-     **/
+     * @dev Sets the borrow fee for a specific collateral in basis points.
+     * @param asset The address of the collateral token.
+     * @param newEnabled Determines if the custom fee is enabled for the asset.
+     * @param newFeeBasisPoints The new borrow fee in basis points.
+     * @notice Only the manager can call this function.
+     */
     function setAssetBorrowFee(address asset, bool newEnabled, uint16 newFeeBasisPoints) external;
 
     /**
-     * @notice Returns borrow fee for particular collateral in basis points (1bp = 0.01% = 0.0001)
-     * @param asset The address of the main collateral token
-     * @return feeBasisPoints The borrow fee in basis points
-     **/
+     * @dev Retrieves the borrow fee for a specific collateral in basis points.
+     * @param asset The address of the collateral token.
+     * @return feeBasisPoints The borrow fee in basis points.
+     */
     function getBorrowFee(address asset) external view returns (uint16 feeBasisPoints);
 
     /**
-     * @notice Returns borrow fee for usdp amount for particular collateral
-     * @param asset The address of the main collateral token
-     * @return The borrow fee
-     **/
+     * @dev Calculates the borrow fee amount in USDP for a given amount and collateral.
+     * @param asset The address of the collateral token.
+     * @param usdpAmount The amount of USDP for which to calculate the fee.
+     * @return The calculated borrow fee.
+     */
     function calcBorrowFeeAmount(address asset, uint usdpAmount) external view returns (uint);
 }

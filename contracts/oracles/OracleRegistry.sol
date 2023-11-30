@@ -8,6 +8,10 @@ pragma abicoder v2;
 
 import "../VaultParameters.sol";
 
+/**
+ * @title OracleRegistry
+ * @dev Contract that manages the registry of oracles for different asset types.
+ */
 contract OracleRegistry is Auth {
     
     struct Oracle {
@@ -45,6 +49,11 @@ contract OracleRegistry is Auth {
         _;
     }
 
+    /**
+     * @dev Constructor for OracleRegistry.
+     * @param vaultParameters The address of the VaultParameters contract.
+     * @param _weth The address of the wrapped ETH token.
+     */
     constructor(address vaultParameters, address _weth)
         Auth(vaultParameters)
         validAddress(vaultParameters)
@@ -53,6 +62,10 @@ contract OracleRegistry is Auth {
         WETH = _weth;
     }
 
+    /**
+     * @dev Sets the keydonix oracle types.
+     * @param _keydonixOracleTypes An array of oracle type IDs.
+     */
     function setKeydonixOracleTypes(uint[] calldata _keydonixOracleTypes) public onlyManager {
         for (uint i = 0; i < _keydonixOracleTypes.length; i++) {
             require(_keydonixOracleTypes[i] != 0, "Unit Protocol: INVALID_TYPE");
@@ -64,6 +77,11 @@ contract OracleRegistry is Auth {
         emit KeydonixOracleTypes();
     }
 
+    /**
+     * @dev Sets or updates the oracle for a given oracle type.
+     * @param oracleType The oracle type ID.
+     * @param oracle The oracle address.
+     */
     function setOracle(uint oracleType, address oracle) public
         onlyManager
         validType(oracleType)
@@ -89,6 +107,10 @@ contract OracleRegistry is Auth {
         emit OracleType(oracleType, oracle);
     }
 
+    /**
+     * @dev Unsets the oracle for a given oracle type.
+     * @param oracleType The oracle type ID to unset.
+     */
     function unsetOracle(uint oracleType) public onlyManager validType(oracleType) validAddress(oracleByType[oracleType]) {
         address oracle = oracleByType[oracleType];
         delete oracleByType[oracleType];
@@ -97,6 +119,11 @@ contract OracleRegistry is Auth {
         emit OracleType(oracleType, address(0));
     }
 
+    /**
+     * @dev Sets the oracle type for a specific asset.
+     * @param asset The asset address.
+     * @param oracleType The oracle type ID.
+     */
     function setOracleTypeForAsset(address asset, uint oracleType) public
         onlyManager
         validAddress(asset)
@@ -107,12 +134,21 @@ contract OracleRegistry is Auth {
         emit AssetOracle(asset, oracleType);
     }
 
+    /**
+     * @dev Sets the oracle type for multiple assets.
+     * @param assets An array of asset addresses.
+     * @param oracleType The oracle type ID.
+     */
     function setOracleTypeForAssets(address[] calldata assets, uint oracleType) public {
         for (uint i = 0; i < assets.length; i++) {
             setOracleTypeForAsset(assets[i], oracleType);
         }
     }
 
+    /**
+     * @dev Unsets the oracle type for a specific asset.
+     * @param asset The asset address to unset.
+     */
     function unsetOracleForAsset(address asset) public
         onlyManager
         validAddress(asset)
@@ -122,12 +158,20 @@ contract OracleRegistry is Auth {
         emit AssetOracle(asset, 0);
     }
 
+    /**
+     * @dev Unsets the oracle type for multiple assets.
+     * @param assets An array of asset addresses.
+     */
     function unsetOracleForAssets(address[] calldata assets) public {
         for (uint i = 0; i < assets.length; i++) {
             unsetOracleForAsset(assets[i]);
         }
     }
 
+    /**
+     * @dev Retrieves all active oracles with their types.
+     * @return foundOracles An array of Oracle structs containing oracle types and addresses.
+     */
     function getOracles() external view returns (Oracle[] memory foundOracles) {
 
         Oracle[] memory allOracles = new Oracle[](maxOracleType);
@@ -147,10 +191,19 @@ contract OracleRegistry is Auth {
         }
     }
 
+    /**
+     * @dev Retrieves the keydonix oracle types.
+     * @return An array of keydonix oracle type IDs.
+     */
     function getKeydonixOracleTypes() external view returns (uint[] memory) {
         return keydonixOracleTypes;
     }
 
+    /**
+     * @dev Retrieves the oracle address for a specific asset.
+     * @param asset The asset address.
+     * @return The address of the oracle associated with the asset.
+     */
     function oracleByAsset(address asset) external view returns (address) {
         uint oracleType = oracleTypeByAsset[asset];
         if (oracleType == 0) {

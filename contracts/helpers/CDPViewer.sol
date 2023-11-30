@@ -18,7 +18,8 @@ import "./ERC20Like.sol";
 
 
 /**
- * @notice Views collaterals in one request to save node requests and speed up dapps.
+ * @title CDPViewer
+ * @notice Provides batch views for collateral debt positions (CDPs) and token details to optimize node requests.
  */
 contract CDPViewer {
 
@@ -86,22 +87,25 @@ contract CDPViewer {
     }
 
     struct TokenDetails {
-        address[2] lpUnderlyings;
-        uint128 balance;
-        uint128 totalSupply;
-        uint8 decimals;
-        address uniswapV2Factory;
-
-        address underlyingToken;
-        uint256 underlyingTokenBalance;
-        uint256 underlyingTokenTotalSupply;
-        uint8 underlyingTokenDecimals;
-        address underlyingTokenUniswapV2Factory;
-        address[2] underlyingTokenUnderlyings;
-
+        address[2] lpUnderlyings; // Addresses of underlying tokens for LP tokens
+        uint128 balance; // Token balance of the owner
+        uint128 totalSupply; // Total supply of the token
+        uint8 decimals; // Decimals of the token
+        address uniswapV2Factory; // Address of the Uniswap V2 factory
+        address underlyingToken; // Address of the underlying token for wrapped tokens
+        uint256 underlyingTokenBalance; // Balance of the underlying token
+        uint256 underlyingTokenTotalSupply; // Total supply of the underlying token
+        uint8 underlyingTokenDecimals; // Decimals of the underlying token
+        address underlyingTokenUniswapV2Factory; // Uniswap V2 factory for the underlying token
+        address[2] underlyingTokenUnderlyings; // Underlying tokens for the underlying LP token
     }
 
-
+    /**
+     * @dev Initializes the contract by setting the vault manager parameters, oracle registry, and vault manager borrow fee parameters.
+     * @param _vaultManagerParameters Address of the vault manager parameters contract.
+     * @param _oracleRegistry Address of the oracle registry contract.
+     * @param _vaultManagerBorrowFeeParameters Address of the vault manager borrow fee parameters contract.
+     */
     constructor(address _vaultManagerParameters, address _oracleRegistry, address _vaultManagerBorrowFeeParameters) {
          IVaultManagerParameters vmp = IVaultManagerParameters(_vaultManagerParameters);
          vaultManagerParameters = vmp;
@@ -113,9 +117,10 @@ contract CDPViewer {
     }
 
     /**
-     * @notice Get parameters of one asset
-     * @param asset asset address
-     * @param owner owner address
+     * @notice Retrieves parameters and CDP information for a given asset and owner.
+     * @param asset The address of the asset to query.
+     * @param owner The address of the owner to query.
+     * @return r The CollateralParameters structure containing the requested information.
      */
     function getCollateralParameters(address asset, address owner)
         public
@@ -146,9 +151,10 @@ contract CDPViewer {
     }
 
     /**
-     * @notice Get details of one token
-     * @param asset token address
-     * @param owner owner address
+     * @notice Retrieves token details for a given asset and optionally for an owner's balance.
+     * @param asset The address of the token to query.
+     * @param owner The address of the owner to query, or zero address for no balance query.
+     * @return r The TokenDetails structure containing the requested information.
      */
     function getTokenDetails(address asset, address owner)
         public
@@ -195,12 +201,22 @@ contract CDPViewer {
         }
     }
 
+    /**
+     * @dev Converts bytes to an address.
+     * @param _bytes The bytes to convert.
+     * @return addr The converted address.
+     */
     function bytesToAddress(bytes memory _bytes) private pure returns (address addr) {
         assembly {
           addr := mload(add(_bytes, 32))
         }
     }
 
+    /**
+     * @dev Converts bytes to a bytes32.
+     * @param _bytes The bytes to convert.
+     * @return _bytes32 The converted bytes32.
+     */
     function bytesToBytes32(bytes memory _bytes) private pure returns (bytes32 _bytes32) {
         assembly {
           _bytes32 := mload(add(_bytes, 32))
@@ -208,9 +224,10 @@ contract CDPViewer {
     }
 
     /**
-     * @notice Get parameters of many collaterals
-     * @param assets asset addresses
-     * @param owner owner address
+     * @notice Retrieves parameters for multiple collaterals and an owner.
+     * @param assets An array of asset addresses to query.
+     * @param owner The address of the owner to query.
+     * @return r An array of CollateralParameters structures containing the requested information.
      */
     function getMultiCollateralParameters(address[] calldata assets, address owner)
         external
@@ -225,9 +242,10 @@ contract CDPViewer {
     }
 
     /**
-     * @notice Get details of many token
-     * @param assets token addresses
-     * @param owner owner address
+     * @notice Retrieves details for multiple tokens and optionally for an owner's balances.
+     * @param assets An array of token addresses to query.
+     * @param owner The address of the owner to query, or zero address for no balance query.
+     * @return r An array of TokenDetails structures containing the requested information.
      */
     function getMultiTokenDetails(address[] calldata assets, address owner)
         external

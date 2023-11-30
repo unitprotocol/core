@@ -14,8 +14,8 @@ import "../helpers/IUniswapV2Factory.sol";
 
 /**
  * @title KeydonixOracleMainAsset_Mock
- * @dev Calculates the USD price of desired tokens
- **/
+ * @dev Mock contract for calculating the USD price of desired tokens for testing purposes.
+ */
 contract KeydonixOracleMainAsset_Mock is ChainlinkedKeydonixOracleMainAssetAbstract {
     using SafeMath for uint;
 
@@ -25,6 +25,12 @@ contract KeydonixOracleMainAsset_Mock is ChainlinkedKeydonixOracleMainAssetAbstr
 
     IUniswapV2Factory public immutable uniswapFactory;
 
+    /**
+     * @dev Constructs the KeydonixOracleMainAsset_Mock contract.
+     * @param uniFactory The address of the UniswapV2Factory contract.
+     * @param weth The address of the WETH token contract.
+     * @param chainlinkAggregator The address of the Chainlink aggregator contract for ETH/USD price feed.
+     */
     constructor(
         IUniswapV2Factory uniFactory,
         address weth,
@@ -40,7 +46,13 @@ contract KeydonixOracleMainAsset_Mock is ChainlinkedKeydonixOracleMainAssetAbstr
         ethUsdChainlinkAggregator = chainlinkAggregator;
     }
 
-    // override with mock; only for tests
+    /**
+     * @notice Mock implementation to get the USD price of an asset.
+     * @param asset The address of the asset token contract.
+     * @param amount The amount of the asset tokens.
+     * @param proofData The proof data struct (not used in mock).
+     * @return The price of the given amount of asset tokens in USD.
+     */
     function assetToUsd(address asset, uint amount, ProofDataStruct memory proofData) public override view returns (uint) {
 
         if (asset == WETH) {
@@ -59,13 +71,19 @@ contract KeydonixOracleMainAsset_Mock is ChainlinkedKeydonixOracleMainAssetAbstr
         return ethToUsd(assetToEth(asset, amount, proofData).div(tokenReserve));
     }
 
-    // override with mock; only for tests
+    /**
+     * @notice Mock implementation to get the ETH price of an asset.
+     * @param asset The address of the asset token contract.
+     * @param amount The amount of the asset tokens.
+     * @param proofData The proof data struct (not used in mock).
+     * @return The price of the given amount of asset tokens in ETH.
+     */
     function assetToEth(address asset, uint amount, ProofDataStruct memory proofData) public override view returns (uint) {
 
         address uniswapPair = uniswapFactory.getPair(asset, WETH);
         require(uniswapPair != address(0), "Unit Protocol: UNISWAP_PAIR_DOES_NOT_EXIST");
 
-        proofData;
+        proofData; // This is to silence the unused variable warning without changing the function signature.
 
         // WETH reserve of {Token}/WETH pool
         uint wethReserve = ERC20Like(WETH).balanceOf(uniswapPair);
@@ -74,9 +92,10 @@ contract KeydonixOracleMainAsset_Mock is ChainlinkedKeydonixOracleMainAssetAbstr
     }
 
     /**
-     * @notice ETH/USD price feed from Chainlink, see for more info: https://feeds.chain.link/eth-usd
-     * returns Price of given amount of Ether in USD (0 decimals)
-     **/
+     * @notice Retrieves the price of ETH in USD from the Chainlink aggregator.
+     * @param ethAmount The amount of ETH to convert to USD.
+     * @return The price of the given amount of ETH in USD.
+     */
     function ethToUsd(uint ethAmount) public override view returns (uint) {
         require(ethUsdChainlinkAggregator.latestTimestamp() > block.timestamp - 6 hours, "Unit Protocol: OUTDATED_CHAINLINK_PRICE");
         uint ethUsdPrice = uint(ethUsdChainlinkAggregator.latestAnswer());

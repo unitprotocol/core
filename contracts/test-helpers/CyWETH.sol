@@ -7,15 +7,28 @@ pragma solidity 0.7.6;
 
 import "./EmptyToken.sol";
 
-
+/* 
+ * @title CyWETH
+ * @notice This contract extends EmptyToken to represent a tokenized position in Yearn Wrapped Ether.
+ */
 contract CyWETH is EmptyToken {
 
-  address public underlying;
+    /* @notice The underlying asset of the Yearn Wrapped Ether. */
+    address public underlying;
 
-  address public implementation;
+    /* @notice The address of the implementation contract. */
+    address public implementation;
 
-  uint public exchangeRateStoredInternal;
+    /* @notice The stored exchange rate from the underlying to the Yearn Wrapped Ether. */
+    uint public exchangeRateStoredInternal;
 
+    /* 
+     * @dev Initializes the contract with the initial state.
+     * @param _totalSupply The initial total supply of the token.
+     * @param _underlying The address of the underlying asset.
+     * @param _implementation The address of the implementation contract.
+     * @param _exchangeRateStoredInternal The initial exchange rate from the underlying to the Yearn Wrapped Ether.
+     */
     constructor(
         uint          _totalSupply,
         address       _underlying,
@@ -29,11 +42,15 @@ contract CyWETH is EmptyToken {
         msg.sender
     )
     {
-      underlying = _underlying;
-      implementation = _implementation;
-      exchangeRateStoredInternal = _exchangeRateStoredInternal;
+        underlying = _underlying;
+        implementation = _implementation;
+        exchangeRateStoredInternal = _exchangeRateStoredInternal;
     }
 
+    /* 
+     * @notice Returns the stored exchange rate from the underlying to the Yearn Wrapped Ether.
+     * @return The current exchange rate as a uint.
+     */
     function exchangeRateStored() public view returns (uint) {
         return exchangeRateStoredInternal;
     }

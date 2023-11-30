@@ -5,6 +5,15 @@
 */
 pragma solidity ^0.7.6;
 
-interface IStableSwapStateOracle  {
+/**
+ * @title IStableSwapStateOracle Interface
+ * @dev Interface for a contract that provides the price of stETH token.
+ */
+interface IStableSwapStateOracle {
+  
+  /**
+   * @dev Returns the current price of stETH token
+   * @return The price of stETH
+   */
   function stethPrice() external view returns (uint256);
 }

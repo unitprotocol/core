@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IWrappedAsset is IERC20 /* IERC20WithOptional */ {
 
+    /* Events */
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
     event PositionMoved(address indexed userFrom, address indexed userTo, uint256 amount);
@@ -22,41 +23,49 @@ interface IWrappedAsset is IERC20 /* IERC20WithOptional */ {
     event AllowedBoneLockerSelectorRemoved(address boneLocker, bytes4 selector);
 
     /**
-     * @notice Get underlying token
+     * @notice Returns the underlying token of the wrapped asset
+     * @return The underlying IERC20 token
      */
     function getUnderlyingToken() external view returns (IERC20);
 
     /**
-     * @notice deposit underlying token and send wrapped token to user
-     * @dev Important! Only user or trusted contracts must be able to call this method
+     * @notice Deposits the underlying token and mints the wrapped token to the specified user
+     * @param _userAddr The address of the user to receive the wrapped tokens
+     * @param _amount The amount of the underlying token to deposit
      */
     function deposit(address _userAddr, uint256 _amount) external;
 
     /**
-     * @notice get wrapped token and return underlying
-     * @dev Important! Only user or trusted contracts must be able to call this method
+     * @notice Withdraws the underlying token by burning the wrapped token
+     * @param _userAddr The address of the user to return the underlying tokens to
+     * @param _amount The amount of the wrapped token to burn
      */
     function withdraw(address _userAddr, uint256 _amount) external;
 
     /**
-     * @notice get pending reward amount for user if reward is supported
+     * @notice Returns the pending reward amount for the user if rewards are supported
+     * @param _userAddr The address of the user to check the reward for
+     * @return The amount of pending reward
      */
     function pendingReward(address _userAddr) external view returns (uint256);
 
     /**
-     * @notice claim pending reward for user if reward is supported
+     * @notice Claims the pending reward for the user if rewards are supported
+     * @param _userAddr The address of the user to claim the reward for
      */
     function claimReward(address _userAddr) external;
 
     /**
-     * @notice Manually move position (or its part) to another user (for example in case of liquidation)
-     * @dev Important! Only trusted contracts must be able to call this method
+     * @notice Moves a position, or a portion of it, to another user (e.g., in case of liquidation)
+     * @param _userAddrFrom The address of the user from whom the position is moved
+     * @param _userAddrTo The address of the user to whom the position is moved
+     * @param _amount The amount of the position to move
      */
     function movePosition(address _userAddrFrom, address _userAddrTo, uint256 _amount) external;
 
     /**
-     * @dev function for checks that asset is unitprotocol wrapped asset.
-     * @dev For wrapped assets must return keccak256("UnitProtocolWrappedAsset")
+     * @notice Checks if an asset is a Unit Protocol wrapped asset
+     * @return Returns the keccak256 hash of "UnitProtocolWrappedAsset" if the asset is a wrapped asset
      */
     function isUnitProtocolWrappedAsset() external view returns (bytes32);
 }

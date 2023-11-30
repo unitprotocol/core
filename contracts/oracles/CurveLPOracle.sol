@@ -16,8 +16,8 @@ import "../interfaces/ICurvePool.sol";
 
 /**
  * @title CurveLPOracle
- * @dev Oracle to quote curve LP tokens
- **/
+ * @dev Oracle to quote curve LP tokens.
+ */
 contract CurveLPOracle is IOracleUsd {
     using SafeMath for uint;
 
@@ -30,16 +30,28 @@ contract CurveLPOracle is IOracleUsd {
     IOracleRegistry public immutable oracleRegistry;
 
     /**
-     * @param _curveProvider The address of the Curve Provider. Mainnet: 0x0000000022D53366457F9d5E68Ec105046FC4383
-     * @param _oracleRegistry The address of the OracleRegistry contract
-     **/
+     * @dev Constructs the CurveLPOracle contract.
+     * @param _curveProvider The address of the Curve Provider.
+     * @param _oracleRegistry The address of the OracleRegistry contract.
+     */
     constructor(address _curveProvider, address _oracleRegistry) {
         require(_curveProvider != address(0) && _oracleRegistry != address(0), "Unit Protocol: ZERO_ADDRESS");
         curveProvider = ICurveProvider(_curveProvider);
         oracleRegistry = IOracleRegistry(_oracleRegistry);
     }
 
-    // returns Q112-encoded value
+    /**
+     * @notice Converts the amount of the asset into the equivalent USD value.
+     * @dev Returns the Q112-encoded value of the asset in USD.
+     * @param asset The address of the LP token to be quoted.
+     * @param amount The amount of the LP token.
+     * @return The USD value of the input amount, Q112-encoded.
+     * @throws "Unit Protocol: ZERO_ADDRESS" if the Curve Provider or OracleRegistry is a zero address.
+     * @throws "Unit Protocol: NOT_A_CURVE_LP" if the provided asset is not a Curve LP token.
+     * @throws "Unit Protocol: INCORRECT_DECIMALS" if the LP token does not have 18 decimals.
+     * @throws "Unit Protocol: CURVE_INCORRECT_COINS_COUNT" if the Curve pool does not have any coins.
+     * @throws "Unit Protocol: ORACLE_NOT_FOUND" if an oracle for a coin is not found.
+     */
     function assetToUsd(address asset, uint amount) public override view returns (uint) {
         if (amount == 0) return 0;
         ICurveRegistry cR = ICurveRegistry(curveProvider.get_registry());

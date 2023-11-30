@@ -14,6 +14,8 @@ import "../../helpers/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
+ * @title UniswapV2Helper
+ * @dev Library providing functions to interact with UniswapV2 protocol.
  * @dev several methods for calculations different uniswap v2 params. Part of them extracted for uniswap contracts
  * @dev for original licenses see attached links
  */
@@ -21,8 +23,12 @@ library UniswapV2Helper {
     using SafeMath for uint;
 
     /**
-     * given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
+     * @notice Given some amount of an asset and pair reserves, returns an equivalent amount of the other asset.
      * see https://github.com/Uniswap/v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol
+     * @param amountA The amount of the first asset.
+     * @param reserveA The reserve of the first asset in the pair.
+     * @param reserveB The reserve of the second asset in the pair.
+     * @return amountB The equivalent amount of the second asset.
      */
     function quote(uint amountA, uint reserveA, uint reserveB) internal pure returns (uint amountB) {
         require(amountA > 0, 'Unit Protocol Swappers: INSUFFICIENT_AMOUNT');
@@ -31,8 +37,12 @@ library UniswapV2Helper {
     }
 
     /**
-     * given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
+     * @notice Given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset.
      * see https://github.com/Uniswap/v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol
+     * @param amountIn The amount of the input asset.
+     * @param reserveIn The reserve of the input asset.
+     * @param reserveOut The reserve of the output asset.
+     * @return amountOut The maximum output amount of the output asset.
      */
     function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) internal pure returns (uint amountOut) {
         require(amountIn > 0, 'Unit Protocol Swappers: INSUFFICIENT_INPUT_AMOUNT');
@@ -44,7 +54,12 @@ library UniswapV2Helper {
     }
 
     /**
+     * @notice Calculates the amount of LP tokens added during the fee minting process.
      * see pair._mintFee in pair contract https://github.com/Uniswap/v2-core/blob/master/contracts/UniswapV2Pair.sol
+     * @param pair The UniswapV2 pair contract.
+     * @param _reserve0 The reserve of the first token.
+     * @param _reserve1 The reserve of the second token.
+     * @return The amount of LP tokens added during fee minting.
      */
     function getLPAmountAddedDuringFeeMint(IUniswapV2PairFull pair, uint _reserve0, uint _reserve1) internal view returns (uint) {
         address feeTo = IUniswapV2Factory(pair.factory()).feeTo();
@@ -68,13 +83,27 @@ library UniswapV2Helper {
     }
 
     /**
+     * @notice Calculates the amount of LP tokens that will be received after depositing tokens to the pool.
      * see pair.mint in pair contract https://github.com/Uniswap/v2-core/blob/master/contracts/UniswapV2Pair.sol
+     * @param _pair The UniswapV2 pair contract.
+     * @param _amount0 The amount of the first token being deposited.
+     * @param _amount1 The amount of the second token being deposited.
+     * @return The amount of LP tokens that will be received.
      */
     function calculateLpAmountAfterDepositTokens(IUniswapV2PairFull _pair, uint _amount0, uint _amount1) internal view returns (uint) {
         (uint112 reserve0, uint112 reserve1,) = _pair.getReserves();
         return calculateLpAmountAfterDepositTokens(_pair, _amount0, _amount1, reserve0, reserve1);
     }
 
+    /**
+     * @notice Calculates the amount of LP tokens that will be received after depositing tokens to the pool with specific reserves.
+     * @param _pair The UniswapV2 pair contract.
+     * @param _amount0 The amount of the first token being deposited.
+     * @param _amount1 The amount of the second token being deposited.
+     * @param _reserve0 The reserve of the first token.
+     * @param _reserve1 The reserve of the second token.
+     * @return The amount of LP tokens that will be received.
+     */
     function calculateLpAmountAfterDepositTokens(
         IUniswapV2PairFull _pair, uint _amount0, uint _amount1, uint _reserve0, uint _reserve1
     ) internal view returns (uint) {
@@ -87,7 +116,12 @@ library UniswapV2Helper {
     }
 
     /**
+     * @notice Calculates the token amounts that will be received after withdrawing LP tokens from the pool.
      * see pair.burn in pair contract https://github.com/Uniswap/v2-core/blob/master/contracts/UniswapV2Pair.sol
+     * @param pair The UniswapV2 pair contract.
+     * @param lpAmount The amount of LP tokens being withdrawn.
+     * @return amount0 The amount of the first token that will be received.
+     * @return amount1 The amount of the second token that will be received.
      */
     function calculateTokensAmountAfterWithdrawLp(IUniswapV2PairFull pair, uint lpAmount) internal view returns (uint amount0, uint amount1) {
         (uint112 _reserve0, uint112 _reserve1,) = pair.getReserves();
@@ -101,6 +135,14 @@ library UniswapV2Helper {
         amount1 = lpAmount.mul(balance1) / _totalSupply;
     }
 
+    /**
+     * @notice Retrieves token information for a UniswapV2 pair given a token address.
+     * @param pair The UniswapV2 pair contract.
+     * @param _token The address of the token for which information is needed.
+     * @return tokenId The ID of the token in the pair (0 or 1).
+     * @return secondTokenId The ID of the other token in the pair (0 or 1).
+     * @return secondToken The address of the other token in the pair.
+     */
     function getTokenInfo(IUniswapV2PairFull pair, address _token) internal view returns (uint tokenId, uint secondTokenId, address secondToken) {
         if (pair.token0() == _token) {
             return (0, 1, pair.token1());
@@ -111,12 +153,27 @@ library UniswapV2Helper {
         }
     }
 
+    /**
+     * @notice Calculates the output amount of a token swap given the token ID and amount.
+     * @param _pair The UniswapV2 pair contract.
+     * @param _tokenId The ID of the token being swapped.
+     * @param _amount The amount of the token being swapped.
+     * @return The output amount of the token swap.
+     */
     function calcAmountOutByTokenId(IUniswapV2PairFull _pair, uint _tokenId, uint _amount) internal view returns (uint) {
         (uint112 reserve0, uint112 reserve1, ) = _pair.getReserves();
 
         return calcAmountOutByTokenId(_pair, _tokenId, _amount, uint(reserve0), uint(reserve1));
     }
 
+    /**
+     * @notice Calculates the output amount of a token swap given the token ID, amount and specific reserves.
+     * @param _tokenId The ID of the token being swapped.
+     * @param _amount The amount of the token being swapped.
+     * @param reserve0 The reserve of the first token.
+     * @param reserve1 The reserve of the second token.
+     * @return The output amount of the token swap.
+     */
     function calcAmountOutByTokenId(IUniswapV2PairFull /* _pair */, uint _tokenId, uint _amount, uint reserve0, uint reserve1) internal pure returns (uint) {
         uint256 reserveIn;
         uint256 reserveOut;
@@ -132,9 +189,11 @@ library UniswapV2Helper {
     }
 
     /**
-     * @dev In case we want to get pair LP tokens but we have weth only
-     * @dev - First we swap `wethToSwap` tokens
-     * @dev - then we deposit `_wethAmount-wethToSwap` and `exchangedTokenAmount` to pair
+     * @notice Calculates the amount of WETH to swap before minting LP tokens when only WETH is available.
+     * @param _pair The UniswapV2 pair contract.
+     * @param _wethAmount The total amount of WETH available for swapping and adding liquidity.
+     * @param _pairWethId The ID of WETH in the UniswapV2 pair.
+     * @return wethToSwap The amount of WETH to swap to balance the token amounts for adding liquidity.
      */
     function calcWethToSwapBeforeMint(IUniswapV2PairFull _pair, uint _wethAmount, uint _pairWethId) internal view returns (uint wethToSwap) {
         (uint112 reserve0, uint112 reserve1, ) = _pair.getReserves();

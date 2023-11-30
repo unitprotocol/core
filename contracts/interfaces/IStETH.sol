@@ -5,6 +5,15 @@
 */
 pragma solidity ^0.7.6;
 
-interface IStETH  {
+/**
+ * @title Interface for the StETH contract
+ */
+interface IStETH {
+  
+  /**
+   * @notice Calculate the amount of Ether pooled for the given amount of shares
+   * @param _sharesAmount The amount of shares
+   * @return The amount of pooled Ether
+   */
   function getPooledEthByShares(uint256 _sharesAmount) external view returns (uint256);
 }

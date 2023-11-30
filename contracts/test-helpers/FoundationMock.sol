@@ -7,7 +7,15 @@ pragma solidity 0.7.6;
 
 import "../interfaces/IFoundation.sol";
 
-
+/**
+ * @title FoundationMock
+ * @dev Mock implementation of the IFoundation interface for testing purposes.
+ */
 contract FoundationMock is IFoundation {
-  function submitLiquidationFee(uint fee) external override {}
+
+    /**
+     * @dev Submits the liquidation fee to the Foundation.
+     * @param fee The fee amount to be submitted.
+     */
+    function submitLiquidationFee(uint fee) external override {}
 }

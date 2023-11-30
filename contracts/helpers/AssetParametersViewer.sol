@@ -28,6 +28,9 @@ contract AssetParametersViewer {
     IVaultManagerBorrowFeeParameters public immutable vaultManagerBorrowFeeParameters;
     IAssetsBooleanParameters public immutable assetsBooleanParameters;
 
+    /**
+     * @dev Struct to hold asset parameters.
+     */
     struct AssetParametersStruct {
         // asset address
         address asset;
@@ -69,7 +72,12 @@ contract AssetParametersViewer {
         bool forceMoveWrappedAssetPositionOnLiquidation;
     }
 
-
+    /**
+     * @notice Constructs the AssetParametersViewer contract.
+     * @param _vaultManagerParameters Address of the VaultManagerParameters contract.
+     * @param _vaultManagerBorrowFeeParameters Address of the VaultManagerBorrowFeeParameters contract.
+     * @param _assetsBooleanParameters Address of the AssetsBooleanParameters contract.
+     */
     constructor(
         address _vaultManagerParameters,
         address _vaultManagerBorrowFeeParameters,
@@ -83,9 +91,10 @@ contract AssetParametersViewer {
     }
 
     /**
-     * @notice Get parameters of one asset
-     * @param asset asset address
-     * @param maxOracleTypesToSearch since complete list of oracle types is unknown, we'll check types up to this number
+     * @notice Retrieves parameters for a single asset.
+     * @param asset The address of the asset to retrieve parameters for.
+     * @param maxOracleTypesToSearch The maximum number of oracle types to search through.
+     * @return r A struct containing the asset's parameters.
      */
     function getAssetParameters(address asset, uint maxOracleTypesToSearch)
         public
@@ -129,9 +138,10 @@ contract AssetParametersViewer {
     }
 
     /**
-     * @notice Get parameters of many assets
-     * @param assets asset addresses
-     * @param maxOracleTypesToSearch since complete list of oracle types is unknown, we'll check types up to this number
+     * @notice Retrieves parameters for multiple assets.
+     * @param assets An array of asset addresses to retrieve parameters for.
+     * @param maxOracleTypesToSearch The maximum number of oracle types to search through for each asset.
+     * @return r An array of structs, each containing parameters for the respective asset.
      */
     function getMultiAssetParameters(address[] calldata assets, uint maxOracleTypesToSearch)
         external

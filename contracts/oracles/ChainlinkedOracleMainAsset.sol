@@ -14,23 +14,40 @@ import "../interfaces/IToken.sol";
 
 /**
  * @title ChainlinkedOracleMainAsset
- * @dev Calculates the USD price of desired tokens
- **/
+ * @dev Calculates the USD price of desired tokens using Chainlink Oracles.
+ * It supports both direct USD pricing and indirect pricing via ETH.
+ */
 contract ChainlinkedOracleMainAsset is IOracleUsd, IOracleEth, Auth {
     using SafeMath for uint;
 
+    // Mapping from token addresses to their USD Chainlink Aggregator
     mapping (address => address) public usdAggregators;
+
+    // Mapping from token addresses to their ETH Chainlink Aggregator
     mapping (address => address) public ethAggregators;
 
+    // Constant to convert raw Chainlink responses to 18 decimal places
     uint public constant Q112 = 2 ** 112;
 
+    // Constants to define price feed types
     uint public constant USD_TYPE = 0;
     uint public constant ETH_TYPE = 1;
 
+    // Address of the WETH token
     address public immutable WETH;
 
+    // Event emitted when a new aggregator is set
     event NewAggregator(address indexed asset, address indexed aggregator, uint aggType);
 
+    /**
+     * @dev Constructor that initializes the contract with predefined aggregators.
+     * @param tokenAddresses1 Array of token addresses for USD aggregators.
+     * @param _usdAggregators Array of USD Chainlink Aggregator addresses.
+     * @param tokenAddresses2 Array of token addresses for ETH aggregators.
+     * @param _ethAggregators Array of ETH Chainlink Aggregator addresses.
+     * @param weth Address of the WETH token.
+     * @param vaultParameters Address of the system's VaultParameters contract.
+     */
     constructor(
         address[] memory tokenAddresses1,
         address[] memory _usdAggregators,
@@ -58,6 +75,14 @@ contract ChainlinkedOracleMainAsset is IOracleUsd, IOracleEth, Auth {
         }
     }
 
+    /**
+     * @dev Sets new USD and ETH aggregators for specified tokens.
+     * Can only be called by the manager role.
+     * @param tokenAddresses1 Array of token addresses for USD aggregators.
+     * @param _usdAggregators Array of new USD Chainlink Aggregator addresses.
+     * @param tokenAddresses2 Array of token addresses for ETH aggregators.
+     * @param _ethAggregators Array of new ETH Chainlink Aggregator addresses.
+     */
     function setAggregators(
         address[] calldata tokenAddresses1,
         address[] calldata _usdAggregators,
@@ -79,11 +104,11 @@ contract ChainlinkedOracleMainAsset is IOracleUsd, IOracleEth, Auth {
     }
 
     /**
-     * @notice {asset}/USD or {asset}/ETH pair must be registered at Chainlink
-     * @param asset The token address
-     * @param amount Amount of tokens
-     * @return Q112-encoded price of asset amount in USD
-     **/
+     * @dev Converts the asset amount to its equivalent USD value.
+     * @param asset The address of the token to convert.
+     * @param amount The amount of the token to convert.
+     * @return The Q112-encoded price of the asset amount in USD.
+     */
     function assetToUsd(address asset, uint amount) public override view returns (uint) {
         if (amount == 0) {
             return 0;
@@ -94,6 +119,12 @@ contract ChainlinkedOracleMainAsset is IOracleUsd, IOracleEth, Auth {
         return ethToUsd(assetToEth(asset, amount));
     }
 
+    /**
+     * @dev Internal function to convert the asset amount to its equivalent USD value using the USD aggregator.
+     * @param asset The address of the token to convert.
+     * @param amount The amount of the token to convert.
+     * @return The Q112-encoded price of the asset amount in USD.
+     */
     function _assetToUsd(address asset, uint amount) internal view returns (uint) {
         IAggregator agg = IAggregator(usdAggregators[asset]);
         (, int256 answer, , uint256 updatedAt, ) = agg.latestRoundData();
@@ -108,11 +139,11 @@ contract ChainlinkedOracleMainAsset is IOracleUsd, IOracleEth, Auth {
     }
 
     /**
-     * @notice {asset}/ETH pair must be registered at Chainlink
-     * @param asset The token address
-     * @param amount Amount of tokens
-     * @return Q112-encoded price of asset amount in ETH
-     **/
+     * @dev Converts the asset amount to its equivalent ETH value.
+     * @param asset The address of the token to convert.
+     * @param amount The amount of the token to convert.
+     * @return The Q112-encoded price of the asset amount in ETH.
+     */
     function assetToEth(address asset, uint amount) public view override returns (uint) {
         if (amount == 0) {
             return 0;
@@ -140,9 +171,10 @@ contract ChainlinkedOracleMainAsset is IOracleUsd, IOracleEth, Auth {
     }
 
     /**
-     * @notice ETH/USD price feed from Chainlink, see for more info: https://feeds.chain.link/eth-usd
-     * returns The price of given amount of Ether in USD (0 decimals)
-     **/
+     * @dev Converts the ETH amount to its equivalent USD value using the Chainlink ETH/USD price feed.
+     * @param ethAmount The amount of ETH to convert.
+     * @return The price of the given amount of Ether in USD (0 decimals).
+     */
     function ethToUsd(uint ethAmount) public override view returns (uint) {
         IAggregator agg = IAggregator(usdAggregators[WETH]);
         (, int256 answer, , uint256 updatedAt, ) = agg.latestRoundData();
@@ -150,6 +182,11 @@ contract ChainlinkedOracleMainAsset is IOracleUsd, IOracleEth, Auth {
         return ethAmount.mul(uint(answer)).div(10 ** agg.decimals());
     }
 
+    /**
+     * @dev Converts the USD amount to its equivalent ETH value using the Chainlink ETH/USD price feed.
+     * @param _usdAmount The amount of USD to convert.
+     * @return The price of the given amount of USD in ETH (0 decimals).
+     */
     function usdToEth(uint _usdAmount) public override view returns (uint) {
         IAggregator agg = IAggregator(usdAggregators[WETH]);
         (, int256 answer, , uint256 updatedAt, ) = agg.latestRoundData();

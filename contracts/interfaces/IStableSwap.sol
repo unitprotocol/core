@@ -5,6 +5,18 @@
 */
 pragma solidity ^0.7.6;
 
-interface IStableSwap  {
-  function get_dy(uint256 x, uint256 y, uint256 dx) external view returns (uint256);
+/**
+ * @title IStableSwap Interface
+ * @dev Interface for the StableSwap contract.
+ */
+interface IStableSwap {
+
+    /**
+     * @notice Calculate the amount of token y you receive for token x with an amount of dx
+     * @param x The index of the token being sold
+     * @param y The index of the token being bought
+     * @param dx The amount of token x being sold
+     * @return The amount of token y that will be received
+     */
+    function get_dy(uint256 x, uint256 y, uint256 dx) external view returns (uint256);
 }

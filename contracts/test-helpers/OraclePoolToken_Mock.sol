@@ -12,31 +12,36 @@ import "../interfaces/IOracleUsd.sol";
 import "../interfaces/IOracleRegistry.sol";
 import "../interfaces/IToken.sol";
 
-/**
- * @title OraclePoolToken_Mock
- * @dev as OraclePoolToken but without flashloan resistance for test purposes
- **/
+/* @title Mock Oracle for Uniswap LP tokens to test USD price determination
+ * @dev Extends IOracleUsd to provide USD price of Uniswap LP tokens for testing purposes
+ */
 contract OraclePoolToken_Mock is IOracleUsd {
     using SafeMath for uint;
 
+    /* @notice Reference to the Oracle Registry contract */
     IOracleRegistry public immutable oracleRegistry;
 
+    /* @notice Address of the Wrapped Ether (WETH) contract */
     address public immutable WETH;
 
+    /* @notice Constant used for Q112 encoding (2**112) */
     uint public immutable Q112 = 2 ** 112;
 
+    /* @notice Constructor to set the Oracle Registry and WETH addresses
+     * @param _oracleRegistry The address of the Oracle Registry contract
+     */
     constructor(address _oracleRegistry) {
         oracleRegistry = IOracleRegistry(_oracleRegistry);
         WETH = IOracleRegistry(_oracleRegistry).WETH();
     }
 
-    /**
-     * @notice Flashloan-resistant logic to determine USD price of Uniswap LP tokens
-     * @notice Pair must be registered at Chainlink
-     * @param asset The LP token address
-     * @param amount Amount of asset
-     * @return Q112 encoded price of asset in USD
-     **/
+    /* @notice Returns the USD price of an asset
+     * @dev Calculates the price using Uniswap LP tokens and registered oracles
+     * @param asset The address of the LP token
+     * @param amount The amount of the LP token
+     * @return The price of the asset in USD, encoded in Q112 format
+     * @dev Throws if the pair is not registered or if the oracle is not found
+     */
     function assetToUsd(
         address asset,
         uint amount
